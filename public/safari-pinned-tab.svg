@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <path d="M12 10h40v28L32 58 12 38V10z" fill="#000"/>
+  <rect x="31" y="16" width="2" height="24" fill="#000"/>
+  <circle cx="32" cy="28" r="6" fill="none" stroke="#000" stroke-width="2"/>
+  <path d="M22 44h20" stroke="#000" stroke-width="3"/>
+  <path d="M18 22h28" stroke="#000" stroke-width="2" opacity="0.7"/>
+  <!-- ALFS letters as simple bars (monochrome for mask) -->
+  <path d="M18 30h4v10h-4zM26 30h4v10h-4zM34 30h4v10h-4zM42 30h4v10h-4z" fill="#000"/>
+</svg>
