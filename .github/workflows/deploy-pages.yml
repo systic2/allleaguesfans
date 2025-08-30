@@ -1,21 +1,22 @@
-name: CI
+name: Deploy (GitHub Pages)
 
 on:
   push:
     branches: [main]
-  pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  build-test:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,24 +35,30 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      # 빌드 시 Vite가 env를 읽어야 하므로 시크릿으로 .env 생성
-      - name: Create .env from GitHub Secrets
+      - name: Create .env from Secrets
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
           echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Test (Vitest)
-        run: pnpm test -- --run
-
-      - name: Build (Vite)
+      - name: Build
         run: pnpm build
 
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+      # SPA 404 → index.html fallback
+      - name: Add 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: dist
           path: dist
-          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
