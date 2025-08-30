@@ -17,5 +17,5 @@
 
     "types": ["vite/client"] // Vite/환경변수 타입 인식
   },
-  "include": ["src"]
+  "include": ["src", "src/tests/setupTests.ts"]
 }
