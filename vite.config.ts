@@ -1,13 +1,19 @@
-import { defineConfig } from "vitest/config"; // ⬅️ 요게 핵심
+// vite.config.ts
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)), // ✅ @ → src
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/tests/setupTests.ts"],
-    // globals: true, // (선택) describe/it/expect를 전역으로 쓰고 싶으면
     css: true,
   },
 });
