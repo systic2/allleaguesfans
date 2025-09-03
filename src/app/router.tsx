@@ -2,7 +2,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@/app/layout/RootLayout";
 import SasInspiredDashboard from "@/pages/SasInspiredDashboard";
-import LeaguesPage from "@/pages/LeaguesPage";
+import LeagueListPage from "@/pages/LeagueListPage";
 import LeaguePage from "@/pages/LeaguePage";
 import TeamPage from "@/pages/TeamPage";
 import PlayerPage from "@/pages/PlayerPage";
@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <SasInspiredDashboard /> }, // ✅ 홈을 대시보드로
       { path: "dashboard", element: <SasInspiredDashboard /> }, // 직접 URL 접근용
-      { path: "leagues", element: <LeaguesPage /> },
+      { path: "leagues", element: <LeagueListPage /> },
       { path: "leagues/:leagueId", element: <LeaguePage /> },
       { path: "teams/:teamId", element: <TeamPage /> },
       { path: "players/:playerId", element: <PlayerPage /> },

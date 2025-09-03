@@ -1,0 +1,124 @@
+[
+  {
+    "idTeam": "138117",
+    "strTeam": "Ulsan HD",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Ulsan HD",
+      "Ulsan Hyundai",
+      "Ulsan"
+    ]
+  },
+  {
+    "idTeam": "138112",
+    "strTeam": "Pohang Steelers",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Pohang Steelers"
+    ]
+  },
+  {
+    "idTeam": "138111",
+    "strTeam": "Jeonbuk Hyundai Motors",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Jeonbuk Hyundai Motors",
+      "Jeonbuk Hyundai",
+      "Jeonbuk"
+    ]
+  },
+  {
+    "idTeam": "138115",
+    "strTeam": "FC Seoul",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "FC Seoul"
+    ]
+  },
+  {
+    "idTeam": "138110",
+    "strTeam": "Incheon United",
+    "badge": null,
+    "league": "South Korean K League 2",
+    "country": "South Korea",
+    "tried": [
+      "Incheon United",
+      "Incheon Utd",
+      "Incheon"
+    ]
+  },
+  {
+    "idTeam": "138109",
+    "strTeam": "Gwangju FC",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Gwangju FC"
+    ]
+  },
+  {
+    "idTeam": "138107",
+    "strTeam": "Daegu FC",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Daegu FC"
+    ]
+  },
+  {
+    "idTeam": "139785",
+    "strTeam": "Daejeon Hana Citizen",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Daejeon Hana Citizen",
+      "Daejeon Citizen",
+      "Daejeon"
+    ]
+  },
+  {
+    "idTeam": "139789",
+    "strTeam": "Suwon FC",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Suwon FC"
+    ]
+  },
+  {
+    "idTeam": "138108",
+    "strTeam": "Gangwon FC",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Gangwon FC"
+    ]
+  },
+  {
+    "idTeam": "138113",
+    "strTeam": "Sangju Sangmu",
+    "badge": null,
+    "league": "South Korean K League 1",
+    "country": "South Korea",
+    "tried": [
+      "Gimcheon Sangmu",
+      "Gimcheon Sangmu FC",
+      "Sangju Sangmu",
+      "Gimcheon",
+      "Sangmu"
+    ]
+  }
+]

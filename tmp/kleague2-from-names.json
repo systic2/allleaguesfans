@@ -1,0 +1,24 @@
+[
+  {
+    "idTeam": "138116",
+    "strTeam": "Suwon Samsung Bluewings",
+    "badge": null,
+    "league": "South Korean K League 2",
+    "country": "South Korea",
+    "tried": [
+      "Suwon Samsung Bluewings",
+      "Suwon Bluewings",
+      "Suwon Samsung"
+    ]
+  },
+  {
+    "idTeam": "138106",
+    "strTeam": "Busan IPark",
+    "badge": null,
+    "league": "South Korean K League 2",
+    "country": "South Korea",
+    "tried": [
+      "Busan IPark"
+    ]
+  }
+]

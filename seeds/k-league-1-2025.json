@@ -1,0 +1,118 @@
+{
+  "league": {
+    "id": 292,
+    "name": "K League 1",
+    "latestSeason": 2025
+  },
+  "season": 2025,
+  "teams": [
+    {
+      "id": "2746",
+      "name": "Gangwon FC",
+      "shortName": "GAN",
+      "logo": "https://media.api-sports.io/football/teams/2746.png",
+      "founded": 2008,
+      "country": "South-Korea",
+      "venue": "Gangneung Stadium"
+    },
+    {
+      "id": "2747",
+      "name": "Daegu FC",
+      "shortName": "DAE",
+      "logo": "https://media.api-sports.io/football/teams/2747.png",
+      "founded": 2002,
+      "country": "South-Korea",
+      "venue": "DGB Arena"
+    },
+    {
+      "id": "2748",
+      "name": "FC Anyang",
+      "shortName": "ANY",
+      "logo": "https://media.api-sports.io/football/teams/2748.png",
+      "founded": null,
+      "country": "South-Korea",
+      "venue": "Anyang Stadium"
+    },
+    {
+      "id": "2750",
+      "name": "Daejeon Citizen",
+      "shortName": "DAE",
+      "logo": "https://media.api-sports.io/football/teams/2750.png",
+      "founded": 1997,
+      "country": "South-Korea",
+      "venue": "Daejeon World Cup Stadium"
+    },
+    {
+      "id": "2756",
+      "name": "Suwon City FC",
+      "shortName": "SUW",
+      "logo": "https://media.api-sports.io/football/teams/2756.png",
+      "founded": 2003,
+      "country": "South-Korea",
+      "venue": "Suwon Sports Complex"
+    },
+    {
+      "id": "2759",
+      "name": "Gwangju FC",
+      "shortName": "GWA",
+      "logo": "https://media.api-sports.io/football/teams/2759.png",
+      "founded": 2010,
+      "country": "South-Korea",
+      "venue": "Gwangju Football Stadium"
+    },
+    {
+      "id": "2761",
+      "name": "Jeju United FC",
+      "shortName": "JEJ",
+      "logo": "https://media.api-sports.io/football/teams/2761.png",
+      "founded": 1982,
+      "country": "South-Korea",
+      "venue": "Jeju World Cup Stadium"
+    },
+    {
+      "id": "2762",
+      "name": "Jeonbuk Motors",
+      "shortName": "JEO",
+      "logo": "https://media.api-sports.io/football/teams/2762.png",
+      "founded": 1993,
+      "country": "South-Korea",
+      "venue": "Jeonju World Cup Stadium"
+    },
+    {
+      "id": "2764",
+      "name": "Pohang Steelers",
+      "shortName": "POH",
+      "logo": "https://media.api-sports.io/football/teams/2764.png",
+      "founded": 1973,
+      "country": "South-Korea",
+      "venue": "Steelyard Stadium"
+    },
+    {
+      "id": "2766",
+      "name": "FC Seoul",
+      "shortName": "SEO",
+      "logo": "https://media.api-sports.io/football/teams/2766.png",
+      "founded": 1983,
+      "country": "South-Korea",
+      "venue": "Seoul World Cup Stadium"
+    },
+    {
+      "id": "2767",
+      "name": "Ulsan Hyundai FC",
+      "shortName": "ULS",
+      "logo": "https://media.api-sports.io/football/teams/2767.png",
+      "founded": 1983,
+      "country": "South-Korea",
+      "venue": "Ulsan Munsu Football Stadium"
+    },
+    {
+      "id": "2768",
+      "name": "Gimcheon Sangmu FC",
+      "shortName": "SAN",
+      "logo": "https://media.api-sports.io/football/teams/2768.png",
+      "founded": 1985,
+      "country": "South-Korea",
+      "venue": "Gimcheon Stadium"
+    }
+  ]
+}

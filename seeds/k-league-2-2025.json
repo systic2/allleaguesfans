@@ -1,0 +1,136 @@
+{
+  "league": {
+    "id": 293,
+    "name": "K League 2",
+    "latestSeason": 2025
+  },
+  "season": 2025,
+  "teams": [
+    {
+      "id": "2745",
+      "name": "Bucheon FC 1995",
+      "shortName": "BUC",
+      "logo": "https://media.api-sports.io/football/teams/2745.png",
+      "founded": 2007,
+      "country": "South-Korea",
+      "venue": "Bucheon Stadium"
+    },
+    {
+      "id": "2749",
+      "name": "Seoul E-Land FC",
+      "shortName": null,
+      "logo": "https://media.api-sports.io/football/teams/2749.png",
+      "founded": 2014,
+      "country": "South-Korea",
+      "venue": "Mokdong Stadium"
+    },
+    {
+      "id": "2751",
+      "name": "Gyeongnam FC",
+      "shortName": "GYE",
+      "logo": "https://media.api-sports.io/football/teams/2751.png",
+      "founded": 2005,
+      "country": "South-Korea",
+      "venue": "Changwon Football Center"
+    },
+    {
+      "id": "2752",
+      "name": "Busan I Park",
+      "shortName": "BUS",
+      "logo": "https://media.api-sports.io/football/teams/2752.png",
+      "founded": 1983,
+      "country": "South-Korea",
+      "venue": "Busan Asiad Main Stadium"
+    },
+    {
+      "id": "2753",
+      "name": "Asan Mugunghwa",
+      "shortName": "KOR",
+      "logo": "https://media.api-sports.io/football/teams/2753.png",
+      "founded": 1996,
+      "country": "South-Korea",
+      "venue": "Yishunsin Stadium"
+    },
+    {
+      "id": "2757",
+      "name": "Seongnam FC",
+      "shortName": "SEO",
+      "logo": "https://media.api-sports.io/football/teams/2757.png",
+      "founded": 1989,
+      "country": "South-Korea",
+      "venue": "Tancheon Sports Complex"
+    },
+    {
+      "id": "2758",
+      "name": "Ansan Greeners",
+      "shortName": null,
+      "logo": "https://media.api-sports.io/football/teams/2758.png",
+      "founded": 2017,
+      "country": "South-Korea",
+      "venue": "Ansan Wa Stadium"
+    },
+    {
+      "id": "2760",
+      "name": "Jeonnam Dragons",
+      "shortName": "JEO",
+      "logo": "https://media.api-sports.io/football/teams/2760.png",
+      "founded": 1994,
+      "country": "South-Korea",
+      "venue": "Gwangyang Stadium"
+    },
+    {
+      "id": "2763",
+      "name": "Incheon United",
+      "shortName": "INC",
+      "logo": "https://media.api-sports.io/football/teams/2763.png",
+      "founded": 2003,
+      "country": "South-Korea",
+      "venue": "Sungui Arena Park"
+    },
+    {
+      "id": "2765",
+      "name": "Suwon Bluewings",
+      "shortName": "SUW",
+      "logo": "https://media.api-sports.io/football/teams/2765.png",
+      "founded": 1995,
+      "country": "South-Korea",
+      "venue": "Suwon World Cup Stadium"
+    },
+    {
+      "id": "7060",
+      "name": "Cheonan City",
+      "shortName": "CHE",
+      "logo": "https://media.api-sports.io/football/teams/7060.png",
+      "founded": 2007,
+      "country": "South-Korea",
+      "venue": "Cheonan Baekseok Stadium"
+    },
+    {
+      "id": "7061",
+      "name": "Cheongju",
+      "shortName": "CHU",
+      "logo": "https://media.api-sports.io/football/teams/7061.png",
+      "founded": 2002,
+      "country": "South-Korea",
+      "venue": "Cheongju Stadium"
+    },
+    {
+      "id": "7078",
+      "name": "Gimpo Citizen",
+      "shortName": "GIM",
+      "logo": "https://media.api-sports.io/football/teams/7078.png",
+      "founded": 2013,
+      "country": "South-Korea",
+      "venue": "Gimpo Stadium"
+    },
+    {
+      "id": "7087",
+      "name": "Hwaseong",
+      "shortName": "HWA",
+      "logo": "https://media.api-sports.io/football/teams/7087.png",
+      "founded": 2013,
+      "country": "South-Korea",
+      "venue": "Hwaseong Stadium"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import "@testing-library/jest-dom/vitest";
 
 import * as api from "../lib/api";
 import type { League } from "../lib/types";
-import LeaguesPage from "../pages/LeaguesPage";
+import LeaguesPage from "../pages/LeagueListPage";
 
 describe("LeaguesPage", () => {
   it("리그 목록을 렌더링한다", async () => {

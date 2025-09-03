@@ -1,3 +1,4 @@
+// app/components/GlobalSearch.tsx
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +14,47 @@ function useDebouncedValue(value: string, delay = 200) {
     return () => clearTimeout(id);
   }, [value, delay]);
   return v;
+}
+
+/** 안전한 키/타입 접근을 위한 헬퍼들 */
+type AnyRow = Record<string, unknown>;
+const has = <K extends string>(
+  o: AnyRow,
+  k: K
+): o is AnyRow & Record<K, unknown> => k in o;
+
+function rowKind(r: AnyRow): "league" | "team" | "player" {
+  if (has(r, "kind") && typeof r.kind === "string") {
+    const v = r.kind.toLowerCase();
+    if (v === "league" || v === "team" || v === "player") return v;
+  }
+  if (has(r, "type") && typeof r.type === "string") {
+    const v = r.type.toLowerCase();
+    if (v === "league" || v === "team" || v === "player") return v;
+  }
+  // 기본값(과거 데이터 호환)
+  return "team";
+}
+
+function leagueSlug(r: AnyRow): string | undefined {
+  if (has(r, "slug") && typeof r.slug === "string" && r.slug) return r.slug;
+  return undefined;
+}
+
+function teamId(r: AnyRow): string | undefined {
+  if (has(r, "team_id") && typeof r.team_id === "string" && r.team_id)
+    return r.team_id;
+  if (has(r, "id") && typeof r.id === "string" && r.id) return r.id; // 신 스키마(team row의 id)
+  if (has(r, "entity_id") && typeof r.entity_id === "string" && r.entity_id)
+    return r.entity_id; // 구 스키마
+  return undefined;
+}
+
+function playerId(r: AnyRow): string | undefined {
+  if (has(r, "id") && typeof r.id === "string" && r.id) return r.id;
+  if (has(r, "entity_id") && typeof r.entity_id === "string" && r.entity_id)
+    return r.entity_id;
+  return undefined;
 }
 
 export default function GlobalSearch() {
@@ -50,7 +92,7 @@ export default function GlobalSearch() {
         setActive((i) => Math.max(i - 1, 0));
       }
       if (e.key === "Enter") {
-        const item = data[active];
+        const item = data[active] as unknown as AnyRow;
         if (item) handleSelect(item);
       }
     }
@@ -62,12 +104,42 @@ export default function GlobalSearch() {
     };
   }, [open, data, active]);
 
-  function handleSelect(r: SearchRow) {
-    const to =
-      r.type === "team" ? `/teams/${r.entity_id}` : `/players/${r.entity_id}`;
+  function handleSelect(row: AnyRow) {
+    const kind = rowKind(row);
+
+    if (kind === "league") {
+      const slug = leagueSlug(row);
+      setOpen(false);
+      setQ("");
+      nav(slug ? `/leagues/${slug}` : `/leagues`);
+      return;
+    }
+
+    if (kind === "team") {
+      const id = teamId(row);
+      setOpen(false);
+      setQ("");
+      if (id) nav(`/teams/${id}`);
+      else nav(`/teams`); // 안전 폴백
+      return;
+    }
+
+    // player
+    const pid = playerId(row);
     setOpen(false);
     setQ("");
-    nav(to);
+    if (pid) nav(`/players/${pid}`);
+    else nav(`/players`);
+  }
+
+  function renderKindTag(row: AnyRow) {
+    const kind = rowKind(row);
+    const label = kind === "league" ? "리그" : kind === "team" ? "팀" : "선수";
+    return (
+      <span className="uppercase text-[10px] px-1.5 py-0.5 rounded border border-white/20 opacity-80">
+        {label}
+      </span>
+    );
   }
 
   return (
@@ -107,25 +179,31 @@ export default function GlobalSearch() {
             <div className="px-4 py-3 text-sm opacity-70">검색 중…</div>
           ) : data && data.length > 0 ? (
             <ul role="listbox" className="max-h-[60vh] overflow-auto">
-              {data.map((r, idx) => (
-                <li key={`${r.type}-${r.entity_id}`}>
-                  <button
-                    role="option"
-                    aria-selected={active === idx}
-                    onMouseEnter={() => setActive(idx)}
-                    onClick={() => handleSelect(r)}
-                    className={[
-                      "w-full text-left px-4 py-2 text-sm transition flex items-center gap-2",
-                      active === idx ? "bg-white/10" : "hover:bg-white/5",
-                    ].join(" ")}
-                  >
-                    <span className="uppercase text-[10px] px-1.5 py-0.5 rounded border border-white/20 opacity-80">
-                      {r.type}
-                    </span>
-                    <span className="truncate">{r.name}</span>
-                  </button>
-                </li>
-              ))}
+              {data.map((raw, idx) => {
+                const r = raw as unknown as AnyRow;
+                const isActive = active === idx;
+                return (
+                  <li key={idx}>
+                    <button
+                      role="option"
+                      aria-selected={isActive}
+                      onMouseEnter={() => setActive(idx)}
+                      onClick={() => handleSelect(r)}
+                      className={[
+                        "w-full text-left px-4 py-2 text-sm transition flex items-center gap-2",
+                        isActive ? "bg-white/10" : "hover:bg-white/5",
+                      ].join(" ")}
+                    >
+                      {renderKindTag(r)}
+                      <span className="truncate">
+                        {has(r, "name") && typeof r.name === "string"
+                          ? r.name
+                          : ""}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <div className="px-4 py-3 text-sm opacity-70">
@@ -136,6 +214,7 @@ export default function GlobalSearch() {
             <button
               onClick={() => {
                 setOpen(false);
+                // 필요시 /search 라우트 구현에 맞게 조정
                 nav(`/search?q=${encodeURIComponent(q)}`);
               }}
               className="w-full text-left px-4 py-2 text-xs opacity-80 hover:bg-white/5"

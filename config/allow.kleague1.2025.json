@@ -1,0 +1,17 @@
+{
+  "expected": 12,
+  "teams": [
+    { "idTeam": "139786", "strTeam": "Anyang" },
+    { "idTeam": "138107", "strTeam": "Daegu FC" },
+    { "idTeam": "139785", "strTeam": "Daejeon Hana Citizen" },
+    { "idTeam": "138115", "strTeam": "FC Seoul" },
+    { "idTeam": "138108", "strTeam": "Gangwon FC" },
+    { "idTeam": "138109", "strTeam": "Gwangju FC" },
+    { "idTeam": "139078", "strTeam": "Jeju SK" },
+    { "idTeam": "138111", "strTeam": "Jeonbuk Hyundai Motors" },
+    { "idTeam": "138112", "strTeam": "Pohang Steelers" },
+    { "idTeam": "138113", "strTeam": "Sangju Sangmu" },
+    { "idTeam": "138115", "strTeam": "FC Seoul" },
+    { "idTeam": "138115", "strTeam": "FC Seoul" }
+  ]
+}
