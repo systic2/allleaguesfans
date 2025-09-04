@@ -19,12 +19,7 @@
       "@/*": ["src/*"]
     },
 
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest", "vitest/globals"]
   },
-  "include": [
-    "src",
-    "vite.config.ts",
-    "env.d.ts",
-    "scripts/lib/api-football.ts"
-  ]
+  "include": ["src", "src/tests", "env.d.ts"]
 }

@@ -1,51 +1,46 @@
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { searchByName } from "../lib/api";
-import type { SearchRow } from "../lib/types";
+import { searchByName } from "@/lib/api";
+
+type GSRow = {
+  type: "league" | "team" | "player";
+  entity_id: number;
+  name: string;
+  slug?: string;
+  team_id?: number;
+  crest_url?: string | null;
+  short_name?: string | null;
+};
 
 export default function SearchPage() {
   const [params] = useSearchParams();
   const q = params.get("q") ?? "";
-  const { data, isLoading, error } = useQuery<SearchRow[], Error>({
-    queryKey: ["search-full", q],
-    queryFn: () => searchByName(q),
+
+  const { data } = useQuery<GSRow[]>({
+    queryKey: ["search-page", q],
+    queryFn: async () => (await searchByName(q)) as unknown as GSRow[],
     enabled: q.trim().length > 0,
   });
 
-  if (!q) return <p>검색어를 입력해 주세요.</p>;
-  if (isLoading) return <p>로딩 중…</p>;
-  if (error)
-    return (
-      <pre className="text-red-500 whitespace-pre-wrap">
-        에러: {error.message}
-      </pre>
-    );
-  if (!data || data.length === 0) return <p>검색 결과가 없습니다.</p>;
+  const rows: GSRow[] = data ?? ([] as GSRow[]);
+  if (rows.length === 0) return <p>검색 결과가 없습니다.</p>;
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-3">“{q}” 검색 결과</h1>
-      <ul className="space-y-2">
-        {data.map((r) => {
-          const href =
-            r.type === "team"
-              ? `/teams/${r.entity_id}`
-              : `/players/${r.entity_id}`;
-          return (
-            <li
-              key={`${r.type}-${r.entity_id}`}
-              className="rounded-xl border p-3"
-            >
-              <span className="text-xs uppercase opacity-70 mr-2">
-                {r.type}
-              </span>
-              <Link to={href} className="underline">
-                {r.name}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <ul className="space-y-2">
+      {rows.map((r) => {
+        let href = "#";
+        if (r.type === "team") href = `/teams/${r.team_id ?? r.entity_id}`;
+        else if (r.type === "league") href = `/leagues/${r.slug ?? ""}`;
+        else href = `/players/${r.entity_id}`;
+
+        return (
+          <li key={`${r.type}-${r.entity_id}`}>
+            <Link to={href} className="hover:underline">
+              {r.name}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

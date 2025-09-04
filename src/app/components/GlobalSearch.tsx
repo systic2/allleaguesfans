@@ -1,229 +1,153 @@
-// app/components/GlobalSearch.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { Search, X } from "lucide-react";
-import { searchByName } from "../../lib/api";
-import type { SearchRow } from "../../lib/types";
+import { searchByName } from "@/lib/api";
 
-// 입력 디바운스
-function useDebouncedValue(value: string, delay = 200) {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return v;
-}
-
-/** 안전한 키/타입 접근을 위한 헬퍼들 */
-type AnyRow = Record<string, unknown>;
-const has = <K extends string>(
-  o: AnyRow,
-  k: K
-): o is AnyRow & Record<K, unknown> => k in o;
-
-function rowKind(r: AnyRow): "league" | "team" | "player" {
-  if (has(r, "kind") && typeof r.kind === "string") {
-    const v = r.kind.toLowerCase();
-    if (v === "league" || v === "team" || v === "player") return v;
-  }
-  if (has(r, "type") && typeof r.type === "string") {
-    const v = r.type.toLowerCase();
-    if (v === "league" || v === "team" || v === "player") return v;
-  }
-  // 기본값(과거 데이터 호환)
-  return "team";
-}
-
-function leagueSlug(r: AnyRow): string | undefined {
-  if (has(r, "slug") && typeof r.slug === "string" && r.slug) return r.slug;
-  return undefined;
-}
-
-function teamId(r: AnyRow): string | undefined {
-  if (has(r, "team_id") && typeof r.team_id === "string" && r.team_id)
-    return r.team_id;
-  if (has(r, "id") && typeof r.id === "string" && r.id) return r.id; // 신 스키마(team row의 id)
-  if (has(r, "entity_id") && typeof r.entity_id === "string" && r.entity_id)
-    return r.entity_id; // 구 스키마
-  return undefined;
-}
-
-function playerId(r: AnyRow): string | undefined {
-  if (has(r, "id") && typeof r.id === "string" && r.id) return r.id;
-  if (has(r, "entity_id") && typeof r.entity_id === "string" && r.entity_id)
-    return r.entity_id;
-  return undefined;
-}
+/**
+ * 검색 행을 컴포넌트 지역에서 상위 호환 타입으로 선언
+ * - 백엔드/공용 타입의 세부 필드 차이를 흡수
+ */
+type GSRow = {
+  type: "league" | "team" | "player";
+  entity_id: number;
+  name: string;
+  // 선택 필드(존재하면 사용)
+  slug?: string;
+  team_id?: number;
+  crest_url?: string | null;
+  short_name?: string | null;
+};
 
 export default function GlobalSearch() {
-  const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
-  const dq = useDebouncedValue(q, 200);
-  const nav = useNavigate();
-  const boxRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
-  const { data, isLoading } = useQuery<SearchRow[], Error>({
+  const dq = useDebounced(q, 200);
+
+  const { data } = useQuery<GSRow[]>({
     queryKey: ["global-search", dq],
-    queryFn: () => searchByName(dq),
-    enabled: open && dq.trim().length > 0,
+    // 공용 API 결과를 상위 호환 타입으로 수용
+    queryFn: async () => (await searchByName(dq)) as unknown as GSRow[],
+    enabled: dq.trim().length > 0,
   });
 
-  // 바깥 클릭/키보드 핸들링
+  // ❗ 빈 배열 기본값에 명시 타입 부여(never[] 방지)
+  const results: GSRow[] = data ?? ([] as GSRow[]);
+
+  const handleSelect = useCallback((item: GSRow) => {
+    setOpen(false);
+    let href = "#";
+    if (item.type === "team") href = `/teams/${item.team_id ?? item.entity_id}`;
+    else if (item.type === "league") href = `/leagues/${item.slug ?? ""}`;
+    else if (item.type === "player") href = `/players/${item.entity_id}`;
+    window.location.assign(href);
+  }, []);
+
   useEffect(() => {
-    function onDown(e: MouseEvent) {
+    function onKey(e: KeyboardEvent) {
+      if (!open || results.length === 0) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActive((i) => Math.min(i + 1, results.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleSelect(results[active]!);
+      } else if (e.key === "Escape") {
+        setOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, results, active, handleSelect]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
       if (boxRef.current && !boxRef.current.contains(e.target as Node))
         setOpen(false);
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setOpen(false);
-        (document.activeElement as HTMLElement)?.blur();
-      }
-      if (!open || !data?.length) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActive((i) => Math.min(i + 1, data.length - 1));
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActive((i) => Math.max(i - 1, 0));
-      }
-      if (e.key === "Enter") {
-        const item = data[active] as unknown as AnyRow;
-        if (item) handleSelect(item);
-      }
-    }
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, data, active]);
+    window.addEventListener("click", onClickOutside);
+    return () => window.removeEventListener("click", onClickOutside);
+  }, []);
 
-  function handleSelect(row: AnyRow) {
-    const kind = rowKind(row);
-
-    if (kind === "league") {
-      const slug = leagueSlug(row);
-      setOpen(false);
-      setQ("");
-      nav(slug ? `/leagues/${slug}` : `/leagues`);
-      return;
-    }
-
-    if (kind === "team") {
-      const id = teamId(row);
-      setOpen(false);
-      setQ("");
-      if (id) nav(`/teams/${id}`);
-      else nav(`/teams`); // 안전 폴백
-      return;
-    }
-
-    // player
-    const pid = playerId(row);
-    setOpen(false);
-    setQ("");
-    if (pid) nav(`/players/${pid}`);
-    else nav(`/players`);
-  }
-
-  function renderKindTag(row: AnyRow) {
-    const kind = rowKind(row);
-    const label = kind === "league" ? "리그" : kind === "team" ? "팀" : "선수";
-    return (
-      <span className="uppercase text-[10px] px-1.5 py-0.5 rounded border border-white/20 opacity-80">
-        {label}
-      </span>
-    );
-  }
+  const visible = open && dq.trim().length > 0;
 
   return (
-    <div ref={boxRef} className="relative w-full">
-      {/* 상단 전체 검색바 */}
-      <div className="flex items-center gap-2 rounded-2xl bg-white/10 border border-white/10 px-4 py-2 shadow-sm">
-        <Search className="size-4 opacity-70" />
-        <input
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOpen(true);
-            setActive(0);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="선수/팀/리그 검색…"
-          className="w-full bg-transparent outline-none placeholder:opacity-60"
-        />
-        {q && (
-          <button
-            aria-label="clear"
-            onClick={() => {
-              setQ("");
-              setActive(0);
-            }}
-            className="opacity-60 hover:opacity-100"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-
-      {/* 드롭다운 결과 */}
-      {open && dq.trim() && (
-        <div className="absolute left-0 right-0 mt-2 rounded-2xl border border-white/10 bg-black/80 backdrop-blur shadow-2xl z-50 overflow-hidden">
-          {isLoading ? (
-            <div className="px-4 py-3 text-sm opacity-70">검색 중…</div>
-          ) : data && data.length > 0 ? (
-            <ul role="listbox" className="max-h-[60vh] overflow-auto">
-              {data.map((raw, idx) => {
-                const r = raw as unknown as AnyRow;
-                const isActive = active === idx;
-                return (
-                  <li key={idx}>
-                    <button
-                      role="option"
-                      aria-selected={isActive}
-                      onMouseEnter={() => setActive(idx)}
-                      onClick={() => handleSelect(r)}
-                      className={[
-                        "w-full text-left px-4 py-2 text-sm transition flex items-center gap-2",
-                        isActive ? "bg-white/10" : "hover:bg-white/5",
-                      ].join(" ")}
-                    >
-                      {renderKindTag(r)}
-                      <span className="truncate">
-                        {has(r, "name") && typeof r.name === "string"
-                          ? r.name
-                          : ""}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="px-4 py-3 text-sm opacity-70">
+    <div ref={boxRef} className="relative">
+      <input
+        value={q}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="리그/팀 검색"
+        className="w-64 rounded-lg border border-white/20 bg-transparent px-3 py-2"
+      />
+      {visible && (
+        <div className="absolute mt-2 w-96 rounded-xl border border-white/10 bg-black/80 backdrop-blur p-2">
+          {results.length === 0 ? (
+            <div className="p-3 text-sm text-white/60">
               검색 결과가 없습니다.
             </div>
+          ) : (
+            <ul>
+              {results.map((row, idx) => (
+                <li
+                  key={`${row.type}-${row.entity_id}-${idx}`}
+                  className={`px-2 py-2 rounded-md ${
+                    idx === active ? "bg-white/10" : ""
+                  }`}
+                  onMouseEnter={() => setActive(idx)}
+                >
+                  <button
+                    className="w-full text-left"
+                    onClick={() => handleSelect(row)}
+                  >
+                    <Row row={row} />
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
-          <div className="border-t border-white/10">
-            <button
-              onClick={() => {
-                setOpen(false);
-                // 필요시 /search 라우트 구현에 맞게 조정
-                nav(`/search?q=${encodeURIComponent(q)}`);
-              }}
-              className="w-full text-left px-4 py-2 text-xs opacity-80 hover:bg-white/5"
-            >
-              “{q}” 전체 결과 보기
-            </button>
-          </div>
         </div>
       )}
     </div>
   );
+}
+
+function Row({ row }: { row: GSRow }) {
+  if (row.type === "league") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+          LEAGUE
+        </span>
+        <span>{row.name}</span>
+        {row.slug ? <span className="text-white/40">({row.slug})</span> : null}
+      </span>
+    );
+  }
+  if (row.type === "team") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <img
+          src={row.crest_url ?? "/logo-fallback.svg"}
+          alt={row.name}
+          className="w-5 h-5 object-contain"
+        />
+        <span>{row.name}</span>
+      </span>
+    );
+  }
+  return <span>{row.name}</span>;
+}
+
+function useDebounced(value: string, ms: number) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return v;
 }

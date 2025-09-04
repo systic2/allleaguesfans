@@ -1,25 +1,43 @@
-// src/app/router.tsx
+import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@/app/layout/RootLayout";
-import SasInspiredDashboard from "@/pages/SasInspiredDashboard";
-import LeagueListPage from "@/pages/LeagueListPage";
-import LeaguePage from "@/pages/LeaguePage";
-import TeamPage from "@/pages/TeamPage";
-import PlayerPage from "@/pages/PlayerPage";
-import SearchPage from "@/pages/SearchPage";
 
-export const router = createBrowserRouter([
+// 코드 스플리팅(성능)
+const LeagueListPage = lazy(() => import("@/pages/LeagueListPage"));
+const LeaguePage = lazy(() => import("@/pages/LeaguePage"));
+const TeamPage = lazy(() => import("@/pages/TeamPage"));
+const PlayerPage = lazy(() => import("@/pages/PlayerPage"));
+const SearchPage = lazy(() => import("@/pages/SearchPage"));
+
+function Fallback() {
+  return <div className="p-6 text-white/70">로딩중…</div>;
+}
+
+const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootLayout />,
+    element: (
+      <Suspense fallback={<Fallback />}>
+        <RootLayout />
+      </Suspense>
+    ),
     children: [
-      { index: true, element: <SasInspiredDashboard /> }, // ✅ 홈을 대시보드로
-      { path: "dashboard", element: <SasInspiredDashboard /> }, // 직접 URL 접근용
+      { index: true, element: <LeagueListPage /> },
+
+      // 리그
       { path: "leagues", element: <LeagueListPage /> },
-      { path: "leagues/:leagueId", element: <LeaguePage /> },
-      { path: "teams/:teamId", element: <TeamPage /> },
-      { path: "players/:playerId", element: <PlayerPage /> },
+      { path: "leagues/:slug", element: <LeaguePage /> },
+
+      // 팀 / 선수
+      { path: "teams/:id", element: <TeamPage /> },
+      { path: "players/:id", element: <PlayerPage /> },
+
+      // 검색
       { path: "search", element: <SearchPage /> },
     ],
   },
+  // 404
+  { path: "*", element: <div className="p-6">페이지를 찾을 수 없습니다.</div> },
 ]);
+
+export default router;

@@ -2,8 +2,8 @@
   "compilerOptions": {
     "composite": true,
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "lib": ["ES2022"],
     "types": ["node", "undici-types"],
     "strict": true,
@@ -15,5 +15,6 @@
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["scripts", "src/domain", "src/tests"]
+  "include": ["vite.config.ts"],
+  "exclude": ["scripts", "supabase/functions"]
 }

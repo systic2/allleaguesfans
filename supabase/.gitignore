@@ -1,8 +1,17 @@
-# Supabase
-.branches
-.temp
+# build & deps
+node_modules/
+dist/
+coverage/
 
-# dotenvx
-.env.keys
-.env.local
-.env.*.local
+# logs & OS
+*.log
+.DS_Store
+
+# env
+.env
+.env.* !.env.example
+
+# tmp/dumps (임시 JSON, 덤프, 스크립트 결과물 등)
+tmp/
+dumps/
+scripts/output/

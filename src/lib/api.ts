@@ -1,129 +1,124 @@
 // src/lib/api.ts
-import { supabase } from "./supabaseClient";
-import type { League, Team, Player, SearchRow } from "./types";
-import { getSeasonId } from "@/features/season/api"; // 시즌 id 조회 재사용
+import { supabase } from "@/lib/supabaseClient";
+import type { SearchRow } from "@/lib/types";
 
-/** 리그 목록 */
-export async function fetchLeagues(): Promise<League[]> {
-const { data, error } = await supabase
-  .from("leagues")
-  .select("id,name,country,slug,logo_url,tier") // ← slug,tier 포함
-  .order("tier", { ascending: true })
-  .order("name");
-  if (error) throw error;
-  return data as League[];
+// ---------- 공통 fetch 유틸 ----------
+export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(url, init);
+  if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
+  return (await r.json()) as T;
 }
 
-/**
- * (변경) 리그별 팀 목록 — 시즌 참가 팀 기준
- * @param leagueSlug kleague1 | kleague2
- * @param year 기본 2025
- */
-export async function fetchTeamsByLeague(
-  leagueSlug: string,
-  year = 2025
-): Promise<Team[]> {
-  // 1) 시즌 id 조회
-  const seasonId = await getSeasonId(
-    (leagueSlug as "kleague1" | "kleague2") ?? "kleague1",
-    year
-  );
+export async function postJson<Req, Res>(
+  url: string,
+  body: Req,
+  init?: RequestInit
+): Promise<Res> {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    body: JSON.stringify(body),
+    ...init
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
+  return (await r.json()) as Res;
+}
 
-  // 2) 시즌 참가팀 통해 teams 조인
-  //    ⚠️ 만약 DB가 team_seasons 테이블이라면 from("season_teams") -> from("team_seasons")로 바꾸세요.
+// ---------- 도메인 라이트 타입 ----------
+export type LeagueLite = { id: number; slug: string; name: string; tier: number | null };
+export type TeamLite = { id: number; name: string; short_name: string | null; crest_url: string | null };
+export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null };
+
+// ---------- API ----------
+export async function fetchLeagues(): Promise<LeagueLite[]> {
   const { data, error } = await supabase
-    .from("season_teams")
-    .select("team:teams(*)")
-    .eq("season_id", seasonId)
-    .order("team->>name");
+    .from("leagues")
+    .select("id, slug, name, tier")
+    .order("tier", { ascending: true });
   if (error) throw error;
-
-  // season_teams의 team 조인 결과만 꺼내서 반환
-  return (data ?? []).map((r: any) => r.team) as Team[];
+  return (data ?? []).map((x: any) => ({
+    id: Number(x.id),
+    slug: String(x.slug),
+    name: String(x.name),
+    tier: x.tier ?? null
+  }));
 }
 
-/** 팀 소속 선수 (스키마에 players 테이블 있는 경우 그대로 사용) */
-export async function fetchPlayersByTeam(teamId: string, season = 2025) {
-  const { data, error } = await supabase
-    .from("v_squad_current")
-    .select("player_id,name,nationality,photo_url,position,number,team_id,team_name,season_year,players!inner(birth_date)")
-    .eq("team_id", teamId)
-    .eq("season_year", season)
-    .order("position", { ascending: true });
-  if (error) throw error;
-  // UI에서 쓰기 좋게 매핑
-  return (data ?? []).map((r: any) => ({
-    id: r.player_id,
-    name: r.name,
-    nationality: r.nationality,
-    position: r.position,
-    photo: r.photo_url,
-    team_name: r.team_name,
-    birth_date: r.players?.birth_date ?? null,
-  })) as Player[]; // Player 타입에 birth_date?/team_name?가 추가되어 있으면 더 깔끔
-}
-
-/** 선수 상세 */
-export async function fetchPlayer(playerId: string): Promise<Player> {
+export async function fetchPlayersByTeam(teamId: number): Promise<PlayerLite[]> {
   const { data, error } = await supabase
     .from("players")
-    .select("*")
-    .eq("id", playerId)
-    .single();
+    .select("id, name, position, photo_url, team_id")
+    .eq("team_id", teamId)
+    .limit(500);
   if (error) throw error;
-  return data as Player;
+  return (data ?? []).map((p: any) => ({
+    id: Number(p.id),
+    name: String(p.name),
+    position: (p.position ?? null) as string | null,
+    photo_url: (p.photo_url ?? null) as string | null,
+    team_id: p.team_id == null ? null : Number(p.team_id)
+  }));
+}
+
+export async function fetchPlayer(id: number): Promise<PlayerLite | null> {
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, name, position, photo_url, team_id, nationality")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: Number(data.id),
+    name: String(data.name),
+    position: (data.position ?? null) as string | null,
+    photo_url: (data.photo_url ?? null) as string | null,
+    team_id: data.team_id == null ? null : Number(data.team_id)
+  };
 }
 
 /**
- * (변경) 이름 검색 — 리그 + 시즌 참가팀 동시 검색
- * 기존 search_index 뷰 사용을 제거하고, leagues / v_season_team_search를 직접 조회합니다.
- * SearchRow는 { type, entity_id, ... } 형태로 매핑합니다.
+ * 전역 검색 (리그/팀)
+ * - 반환 타입은 프로젝트의 src/lib/types.ts에 정의된 SearchRow와 동일하게 맞춤
+ * - team 결과는 team_id(=entity_id)를 필수로 포함
  */
 export async function searchByName(q: string): Promise<SearchRow[]> {
-  const keyword = q.trim();
-  if (!keyword) return [];
+  const qq = q.trim();
+  if (!qq) return [];
 
-  // 1) 리그 검색
-  const leaguesReq = supabase
-    .from("leagues")
-    .select("id, slug, name, tier, country")
-    .ilike("name", `%${keyword}%`)
-    .limit(5);
+  const [leagues, teams] = await Promise.all([
+    supabase
+      .from("leagues")
+      .select("id, name, slug")
+      .ilike("name", `%${qq}%`)
+      .limit(10),
+    supabase
+      .from("teams")
+      .select("id, name, short_name, crest_url")
+      .ilike("name", `%${qq}%`)
+      .limit(10)
+  ]);
 
-  // 2) 팀 검색 (시즌 제한 없음: 뷰에서 모든 시즌 팀을 대상으로)
-  //    특정 시즌으로 제한하고 싶다면 seasonId를 eq로 넘겨주세요.
-  const teamsReq = supabase
-    .from("v_season_team_search")
-    .select("season_id, team_id, team_name, team_short_name, crest_url")
-    .or(`team_name.ilike.%${keyword}%,team_short_name.ilike.%${keyword}%`)
-    .limit(10);
+  const rows: SearchRow[] = [];
 
-  const [{ data: leagues, error: e1 }, { data: teams, error: e2 }] =
-    await Promise.all([leaguesReq, teamsReq]);
-  if (e1) throw e1;
-  if (e2) throw e2;
+  for (const x of leagues.data ?? []) {
+    rows.push({
+      type: "league",
+      entity_id: Number(x.id),
+      name: String(x.name),
+      slug: String(x.slug)
+    } as SearchRow);
+  }
+  for (const t of teams.data ?? []) {
+    rows.push({
+      type: "team",
+      entity_id: Number(t.id),
+      team_id: Number(t.id), // 🔐 프로젝트 타입과 호환
+      name: String(t.name),
+      short_name: (t.short_name ?? null) as string | null,
+      crest_url: (t.crest_url ?? null) as string | null
+    } as SearchRow);
+  }
 
-  // ✅ SearchRow 규격에 맞게 매핑
-  const leagueRows: SearchRow[] = (leagues ?? []).map((l: any) => ({
-  type: "league",
-  entity_id: Number(l.id),
-  name: l.name,
-  slug: l.slug,
-  tier: l.tier ?? null,
-  country: l.country ?? null,
-}));
-
-const teamRows: SearchRow[] = (teams ?? []).map((t: any) => ({
-  type: "team",
-  entity_id: Number(t.team_id),
-  name: t.team_name,
-  team_id: Number(t.team_id),
-  season_id: t.season_id ? Number(t.season_id) : undefined,
-  short_name: t.team_short_name ?? null,
-  crest_url: t.crest_url ?? null,
-}));
-
-
-  // 리그 우선 → 팀
-  return [...leagueRows, ...teamRows];
+  return rows;
 }

@@ -1,19 +1,31 @@
-// vite.config.ts
-import { defineConfig } from "vitest/config";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import tailwindcss from "@tailwindcss/vite";
+import { visualizer } from "rollup-plugin-visualizer";
 import { fileURLToPath, URL } from "node:url";
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)), // ✅ @ → src
+export default defineConfig(({ mode }) => {
+  const plugins: PluginOption[] = [react()];
+
+  if (process.env.ANALYZE) {
+    plugins.push(
+      visualizer({
+        filename: "dist/stats.html",
+        gzipSize: true,
+        brotliSize: true,
+        open: true,
+      }) as unknown as PluginOption
+    );
+  }
+
+  return {
+    plugins,
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
     },
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/tests/setupTests.ts"],
-    css: true,
-  },
+    build: {
+      sourcemap: mode !== "production",
+    },
+  };
 });

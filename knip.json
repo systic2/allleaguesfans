@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": ["dist/**", "coverage/**", "scripts/**/*.md"],
+  "project": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+  "ignoreDependencies": [
+    // 테스트 전용 러너/타입 등 필요 시 여기에 추가
+  ]
+}
