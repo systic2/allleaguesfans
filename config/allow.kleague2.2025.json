@@ -1,0 +1,8 @@
+{
+  "expected": 12,
+  "teams": [
+    { "idTeam": "139079", "strTeam": "Ulsan HD" },
+    { "idTeam": "xxxxxx", "strTeam": "Pohang Steelers" }
+    // ... 12개 채우기 (idTeam은 덤프 결과에서 복사)
+  ]
+}
