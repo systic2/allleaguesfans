@@ -53,15 +53,17 @@ function asTeamLite(input: any): TeamLite | null {
 // ----- 리그/시즌 -----
 export async function getLeagueBySlug(slug: string): Promise<LeagueLite | null> {
   if (!slug) return null;
+  // 🔧 tier 제거
   const { data, error } = await supabase
     .from("leagues")
-    .select("id, slug, name, tier")
+    .select("id, slug, name")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { id: coerceInt(data.id), slug: data.slug, name: data.name, tier: data.tier ?? null };
+  return { id: coerceInt(data.id), slug: data.slug, name: data.name, tier: null };
 }
+
 export async function getSeasonByLeagueSlug(leagueSlug: string, year?: number): Promise<SeasonLite | null> {
   const league = await getLeagueBySlug(leagueSlug);
   if (!league) return null;
@@ -171,13 +173,15 @@ export async function listLeagueTable(leagueSlug: string, year?: number) {
   return fetchLeagueTable(leagueSlug, year);
 }
 export async function searchLeagues(q: string, limit = 20): Promise<LeagueLite[]> {
+  // 🔧 tier 제거
   const { data, error } = await supabase
     .from("leagues")
-    .select("id, slug, name, tier")
+    .select("id, slug, name")
     .ilike("name", `%${q}%`)
+    .order("name", { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []).map((x: any) => ({ id: coerceInt(x.id), slug: String(x.slug), name: String(x.name), tier: x.tier ?? null }));
+  return (data ?? []).map((x: any) => ({ id: coerceInt(x.id), slug: String(x.slug), name: String(x.name), tier: null }));
 }
 
 // 오버로드: (seasonId, q, limit?) | (leagueSlug, year, q, limit?)

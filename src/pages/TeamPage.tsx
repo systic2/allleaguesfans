@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlayersByTeam, type PlayerLite } from "@/lib/api";
 import SmallPitch from "@/app/components/SmallPitch";
+import CrestImg from "@/app/components/CrestImg";
 
 export default function TeamPage() {
   const { id = "0" } = useParams<{ id: string }>();
@@ -14,7 +15,6 @@ export default function TeamPage() {
   });
 
   const players: PlayerLite[] = data ?? [];
-
   const lineup = players
     .slice(0, 11)
     .map((p, i) => ({ label: p.position ?? "PL", order: i }));
@@ -32,10 +32,11 @@ export default function TeamPage() {
           {players.map((p) => (
             <li key={p.id} className="border border-white/10 rounded-xl p-3">
               <div className="flex items-center gap-3">
-                <img
-                  src={p.photo_url ?? "/player-fallback.svg"}
+                <CrestImg
+                  src={p.photo_url}
                   alt={p.name}
-                  className="w-10 h-10 object-cover rounded-full"
+                  size={40}
+                  className="rounded-full object-cover"
                 />
                 <div>
                   <div className="font-medium">{p.name}</div>

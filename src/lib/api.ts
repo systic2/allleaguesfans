@@ -31,16 +31,19 @@ export type PlayerLite = { id: number; name: string; position: string | null; ph
 
 // ---------- API ----------
 export async function fetchLeagues(): Promise<LeagueLite[]> {
+  // 🔧 tier 컬럼을 선택/정렬에서 제거, 이름순으로 정렬
   const { data, error } = await supabase
     .from("leagues")
-    .select("id, slug, name, tier")
-    .order("tier", { ascending: true });
+    .select("id, slug, name")
+    .order("name", { ascending: true });
+
   if (error) throw error;
+
   return (data ?? []).map((x: any) => ({
     id: Number(x.id),
     slug: String(x.slug),
     name: String(x.name),
-    tier: x.tier ?? null
+    tier: null, // DB에 없으므로 null 보정
   }));
 }
 
@@ -113,7 +116,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
     rows.push({
       type: "team",
       entity_id: Number(t.id),
-      team_id: Number(t.id), // 🔐 프로젝트 타입과 호환
+      team_id: Number(t.id),
       name: String(t.name),
       short_name: (t.short_name ?? null) as string | null,
       crest_url: (t.crest_url ?? null) as string | null

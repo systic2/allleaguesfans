@@ -2,7 +2,6 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@/app/layout/RootLayout";
 
-// 코드 스플리팅(성능)
 const LeagueListPage = lazy(() => import("@/pages/LeagueListPage"));
 const LeaguePage = lazy(() => import("@/pages/LeaguePage"));
 const TeamPage = lazy(() => import("@/pages/TeamPage"));
@@ -24,8 +23,10 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <LeagueListPage /> },
 
-      // 리그
+      // 리그 목록은 LeagueListPage로 고정
       { path: "leagues", element: <LeagueListPage /> },
+
+      // 리그 상세
       { path: "leagues/:slug", element: <LeaguePage /> },
 
       // 팀 / 선수
@@ -36,7 +37,6 @@ const router = createBrowserRouter([
       { path: "search", element: <SearchPage /> },
     ],
   },
-  // 404
   { path: "*", element: <div className="p-6">페이지를 찾을 수 없습니다.</div> },
 ]);
 
