@@ -28,7 +28,7 @@ export async function apiGet(path: string, params: Record<string, any> = {}, ret
 export async function apiPaged(path: string, baseParams: Record<string, any>) {
   const pages: any[] = []
   for (let page = 1; ; page++) {
-    const data = await apiGet(path, { ...baseParams, page })
+    const data: any = await apiGet(path, { ...baseParams, page })
     const arr = data.response ?? []
     pages.push(...arr)
     if (data.paging?.current >= data.paging?.total) break

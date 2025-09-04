@@ -66,15 +66,25 @@ export default function PlayerPage() {
               <div className="text-xl font-semibold">{player.name}</div>
               <div className="text-sm opacity-80">
                 {player.position ?? "—"} · {player.nationality ?? "—"} ·{" "}
-                {player.age ? `${player.age}세` : "—"}
+                {(() => {
+                  const b = (player as any).birth_date as string | undefined;
+                  if (!b) return "—";
+                  const d = new Date(b);
+                  if (Number.isNaN(d.getTime())) return "—";
+                  const now = new Date();
+                  let age = now.getFullYear() - d.getFullYear();
+                  const m = now.getMonth() - d.getMonth();
+                  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+                  return `${age}세`;
+                })()}
               </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm mt-4">
-            <KeyVal k="키" v={fmt(player.height_cm, "cm")} />
-            <KeyVal k="몸무게" v={fmt(player.weight_kg, "kg")} />
-            <KeyVal k="주발" v={player.preferred_foot ?? "—"} />
-            <KeyVal k="가치(€)" v={fmt(player.market_value_eur)} />
+            <KeyVal k="키" v={fmt((player as any).height_cm, "cm")} />
+            <KeyVal k="몸무게" v={fmt((player as any).weight_kg, "kg")} />
+            <KeyVal k="주발" v={(player as any).foot ?? "—"} />
+            <KeyVal k="가치(€)" v="—" />
           </div>
         </Card>
 

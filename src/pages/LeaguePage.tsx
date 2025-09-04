@@ -110,16 +110,12 @@ export default function LeaguePage() {
               <Newspaper className="size-4" /> 30분 전
             </span>
           }
-        >
-          {/* ...목업 유지... */}
-        </Section>
+        />
 
         <Section
           title="다가오는 일정"
           right={<CalendarDays className="size-4 opacity-80" />}
-        >
-          {/* ...목업 유지... */}
-        </Section>
+        />
       </div>
     </div>
   );
@@ -132,7 +128,7 @@ function Section({
 }: {
   title: string;
   right?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode; // ← 선택으로 변경
 }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 shadow-xl">
@@ -140,7 +136,9 @@ function Section({
         <h3 className="font-semibold">{title}</h3>
         {right}
       </header>
-      <div className="p-4">{children}</div>
+      <div className="p-4">
+        {children ?? <div className="text-sm opacity-70">콘텐츠 준비 중</div>}
+      </div>
     </section>
   );
 }

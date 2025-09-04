@@ -1,54 +1,55 @@
 // src/data/apiFootballAdapter.ts
-import type { FootballApi, League, Team, Player } from "@/domain/types"
+import type { League, Team, Player } from "@/domain/types";
+import { apiGet, apiPaged } from "@/../scripts/lib/api-football"; // 실제 경로에 맞게
+// 필요시 위 import는 제거하고 fetch 로직 직접 포함
 
-const API = "https://v3.football.api-sports.io"
-const KEY = process.env.API_FOOTBALL_KEY!
-if (!KEY) throw new Error("Missing API_FOOTBALL_KEY")
-
-async function req(path: string, params: Record<string, string | number | undefined> = {}) {
-  const qs = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v != null) as [string, string][]
-  )
-  const r = await fetch(`${API}/${path}?${qs}`, {
-    headers: { "x-apisports-key": KEY }
-  })
-  if (!r.ok) {
-    const msg = await r.text().catch(() => "")
-    throw new Error(`API-FOOTBALL ${r.status} ${r.statusText} ${msg}`)
-  }
-  return r.json()
+// 이 파일 내에서만 쓰는 인터페이스
+interface FootballApiAdapter {
+  getLeagues(country: string): Promise<League[]>;
+  getTeamsByLeague(leagueId: number, season: number): Promise<Team[]>;
+  getPlayersByTeam(teamId: number, season: number): Promise<Player[]>;
 }
 
-export const apiFootball: FootballApi = {
-  async getLeagues(country) {
-    const data = await req("leagues", { country })
-    return (data.response ?? []).map((x: any): League => ({
-      id: String(x.league.id),
+export const apiFootballAdapter: FootballApiAdapter = {
+  async getLeagues(country: string) {
+    const data: any = await apiGet("leagues", { country });
+    return (data.response ?? []).map((x: any) => ({
+      id: Number(x.league.id),
       name: x.league.name,
-      country: x.country?.name,
-      logo: x.league?.logo
-    }))
+      country: x.country?.name ?? null,
+      slug: undefined, // 필요시 매핑
+      tier: undefined,
+      logo: x.league?.logo ?? undefined,
+    })) as League[];
   },
 
-  async getTeamsByLeague(leagueId, season) {
-    const data = await req("teams", { league: leagueId, season })
-    return (data.response ?? []).map((x: any): Team => ({
-      id: String(x.team.id),
+  async getTeamsByLeague(leagueId: number, season: number) {
+    const rows: any[] = await apiPaged("teams", { league: leagueId, season });
+    return rows.map((x: any) => ({
+      id: Number(x.team.id),
       name: x.team.name,
-      shortName: x.team.code,
-      logo: x.team.logo,
-      founded: x.team.founded
-    }))
+      shortName: x.team.code ?? undefined,
+      logo: x.team.logo ?? undefined,
+      founded: x.team.founded ?? null,
+    })) as Team[];
   },
 
-  async getPlayersByTeam(teamId, season) {
-    const data = await req("players", { team: teamId, season })
-    return (data.response ?? []).map((x: any): Player => ({
-      id: String(x.player.id),
+  async getPlayersByTeam(teamId: number, season: number) {
+    const rows: any[] = await apiPaged("players", { team: teamId, season });
+    return rows.map((x: any) => ({
+      id: Number(x.player.id),
       name: x.player.name,
-      position: x.statistics?.[0]?.games?.position,
-      nationality: x.player.nationality,
-      photo: x.player.photo
-    }))
-  }
-}
+      nationality: x.player.nationality ?? undefined,
+      position: x.statistics?.[0]?.games?.position ?? undefined,
+      photo: x.player.photo ?? undefined,
+      birth_date: x.player.birth?.date ?? null,
+      height_cm: x.player.height
+        ? Number(String(x.player.height).replace(/\D/g, ""))
+        : null,
+      weight_kg: x.player.weight
+        ? Number(String(x.player.weight).replace(/\D/g, ""))
+        : null,
+      foot: x.player.foot ?? null,
+    })) as Player[];
+  },
+};

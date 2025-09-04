@@ -1,33 +1,51 @@
-export type League = {
-  id: string;
+// src/lib/types.ts (또는 실제 타입 정의 파일)
+export interface League {
+  id: number;
   name: string;
-  country: string | null;
-  tier: number | null;
-  logo_url: string | null;
-};
-export type Team = {
-  id: string;
-  league_id: string;
+  country?: string;
+  logo?: string;        // logo_url 매핑해도 괜찮습니다
+  slug?: string;
+  tier?: number | null; // DB가 text면 string | null
+}
+
+export interface Team {
+  id: number;
   name: string;
-  short_name: string | null;
-  stadium: string | null;
-  logo_url: string | null;
-};
-export type Player = {
-  id: string;
-  team_id: string;
+  shortName?: string;
+  logo?: string;
+  founded?: number | null;
+}
+
+export interface Player {
+  id: number;
   name: string;
-  position: string | null;
-  nationality: string | null;
-  age: number | null;
-  height_cm: number | null;
-  weight_kg: number | null;
-  preferred_foot: string | null;
-  photo_url: string | null;
-  market_value_eur: number | null;
-};
-export type SearchRow = {
-  type: "team" | "player";
-  entity_id: string;
-  name: string;
-};
+  nationality?: string;
+  position?: string;
+  photo?: string;
+  // 페이지들이 기대하는 필드들(있으면 사용, 없으면 undefined)
+  birth_date?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  foot?: string | null;
+  market_value_eur?: number | null;
+  team_name?: string | null;
+}
+
+export type SearchRow =
+  | {
+      type: "league";
+      entity_id: number;
+      name: string;
+      slug: string;
+      tier?: number | null;
+      country?: string | null;
+    }
+  | {
+      type: "team";
+      entity_id: number;
+      name: string;
+      team_id: number;
+      season_id?: number;
+      short_name?: string | null;
+      crest_url?: string | null;
+    };

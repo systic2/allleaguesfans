@@ -2,10 +2,22 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlayersByTeam } from "../lib/api";
 import type { Player } from "../lib/types";
-import { Shield, CalendarDays, Users2 } from "lucide-react";
+import { Shield, CalendarDays } from "lucide-react";
 
 export default function TeamPage() {
   const { teamId = "" } = useParams();
+  // birth_date(YYYY-MM-DD) → 나이 계산 유틸
+  const calcAge = (birth?: string | null) => {
+    if (!birth) return "—";
+    const d = new Date(birth);
+    if (Number.isNaN(d.getTime())) return "—";
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+    return age >= 0 ? String(age) : "—";
+  };
+
   const {
     data: players,
     isLoading,
@@ -47,7 +59,7 @@ export default function TeamPage() {
             <KeyVal k="감독" v="—" />
             <KeyVal k="구단 가치" v="—" />
             <KeyVal k="스폰서" v="—" />
-            <KeyVal k="스타디움" v={players?.[0]?.team_name ?? "—"} />
+            <KeyVal k="스타디움" v={"—"} />
             <KeyVal k="리그" v="—" />
             <KeyVal k="연봉 총액" v="—" />
           </div>
@@ -100,7 +112,9 @@ export default function TeamPage() {
                 <tr key={p.id} className="border-t border-white/10">
                   <td className="py-2 pr-2 font-medium">{p.name}</td>
                   <td className="py-2 pr-2 opacity-80">{p.position ?? "—"}</td>
-                  <td className="py-2 pr-2 opacity-80">{p.age ?? "—"}</td>
+                  <td className="py-2 pr-2 opacity-80">
+                    {calcAge((p as any).birth_date)}
+                  </td>
                   <td className="py-2 pr-2 opacity-80">
                     {p.nationality ?? "—"}
                   </td>

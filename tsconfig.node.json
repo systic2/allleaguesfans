@@ -2,27 +2,18 @@
   "compilerOptions": {
     "composite": true,
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
-
     "lib": ["ES2022"],
     "types": ["node", "undici-types"],
-
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "paths": { "@/*": ["src/*"] }
   },
-  "include": [
-    "scripts",
-    "src/domain", // (선택) Node 스크립트가 공유 도메인 타입/유틸을 쓴다면 포함
-    "tests" // (선택) Vitest 등의 Node 사이드 테스트
-  ]
+  "include": ["scripts", "src/domain", "src/tests"]
 }
