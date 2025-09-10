@@ -13,7 +13,14 @@
       "mcp__serena__find_file",
       "mcp__serena__think_about_collected_information",
       "mcp__serena__replace_regex",
-      "mcp__serena__find_referencing_symbols"
+      "mcp__serena__find_referencing_symbols",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_ANON_KEY=test-anon pnpm test -- --run)",
+      "Bash(VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_ANON_KEY=test-anon pnpm test --run)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm add:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
