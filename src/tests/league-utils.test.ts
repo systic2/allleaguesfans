@@ -10,7 +10,7 @@ describe("latestSeason", () => {
     expect(latestSeason([2022, 2023, 2024])).toBe(2024)
   })
   it("ignore invalid", () => {
-    // @ts-expect-error
+    // @ts-expect-error - Testing invalid input with undefined value
     expect(latestSeason([2021, undefined, 2020])).toBe(2021)
   })
 })

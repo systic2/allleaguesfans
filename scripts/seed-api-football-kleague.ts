@@ -13,8 +13,8 @@ const API = "https://v3.football.api-sports.io"
 const KEY = process.env.API_FOOTBALL_KEY
 if (!KEY) throw new Error("Missing API_FOOTBALL_KEY")
 
-const TARGET_LEAGUE_NAMES = ["K League 1", "K League 2"] as const
-type TargetName = typeof TARGET_LEAGUE_NAMES[number]
+const _TARGET_LEAGUE_NAMES = ["K League 1", "K League 2"] as const
+type _TargetName = typeof _TARGET_LEAGUE_NAMES[number]
 
 const LOGO_CACHE_DIR = process.env.LOGO_CACHE_DIR || "public/logos"
 const SEEDS_DIR = "seeds"

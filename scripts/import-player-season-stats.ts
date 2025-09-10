@@ -11,7 +11,7 @@ function nz(n: any) { return (n ?? null) as any }
 function takeStats(s: any) {
   const g = s?.goals || {}, sh = s?.shots || {}, p = s?.passes || {}, t = s?.tackles || {}
   const d = s?.dribbles || {}, du = s?.duels || {}, f = s?.fouls || {}, c = s?.cards || {}
-  const pen = s?.penalty || {}, gm = s?.games || {}, gk = s?.goals || {}
+  const pen = s?.penalty || {}, gm = s?.games || {}, _gk = s?.goals || {}
   return {
     position    : nz(gm?.position),
     apps        : nz(gm?.appearences),

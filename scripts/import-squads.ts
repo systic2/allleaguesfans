@@ -3,9 +3,9 @@ import 'dotenv/config'
 import { supa } from './lib/supabase'
 import { apiGet, apiPaged } from './lib/api-football'
 
-const K1 = Number(process.env.API_FOOTBALL_K1_ID) || undefined
-const K2 = Number(process.env.API_FOOTBALL_K2_ID) || undefined
-const SEASON = Number(process.env.SEASON_YEAR) || new Date().getFullYear()
+const _K1 = Number(process.env.API_FOOTBALL_K1_ID) || undefined
+const _K2 = Number(process.env.API_FOOTBALL_K2_ID) || undefined
+const _SEASON = Number(process.env.SEASON_YEAR) || new Date().getFullYear()
 
 const normalize = (s?: string) => (s ?? '').toLowerCase().replace(/[\s\-]+/g, '')
 

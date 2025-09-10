@@ -27,5 +27,5 @@ export interface Player {
 
 // 검색 통합 행: 라우팅을 위해 통일된 키 사용
 export type SearchRow =
-  | { type: 'league'; entity_id: number; name: string; slug: string; tier?: string; country?: string }
-  | { type: 'team';   entity_id: number; name: string; team_id: number; season_id?: number; short_name?: string; crest_url?: string };
+  | { type: 'league'; entity_id: number; name: string; slug: string; tier?: number | null; country?: string | null }
+  | { type: 'team'; entity_id: number; name: string; team_id: number; season_id?: number; short_name?: string | null; crest_url?: string | null };

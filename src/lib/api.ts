@@ -1,6 +1,6 @@
 // src/lib/api.ts
 import { supabase } from "@/lib/supabaseClient";
-import type { SearchRow } from "@/lib/types";
+import type { SearchRow } from "@/domain/types";
 
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -9,20 +9,6 @@ export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await r.json()) as T;
 }
 
-export async function postJson<Req, Res>(
-  url: string,
-  body: Req,
-  init?: RequestInit
-): Promise<Res> {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    body: JSON.stringify(body),
-    ...init
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
-  return (await r.json()) as Res;
-}
 
 // ---------- 도메인 라이트 타입 ----------
 export type LeagueLite = { id: number; slug: string; name: string; tier: number | null };
@@ -39,7 +25,7 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
 
   if (error) throw error;
 
-  return (data ?? []).map((x: any) => ({
+  return (data ?? []).map((x) => ({
     id: Number(x.id),
     slug: String(x.slug),
     name: String(x.name),
@@ -54,7 +40,7 @@ export async function fetchPlayersByTeam(teamId: number): Promise<PlayerLite[]> 
     .eq("team_id", teamId)
     .limit(500);
   if (error) throw error;
-  return (data ?? []).map((p: any) => ({
+  return (data ?? []).map((p) => ({
     id: Number(p.id),
     name: String(p.name),
     position: (p.position ?? null) as string | null,
