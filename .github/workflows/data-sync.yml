@@ -17,16 +17,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'pnpm'
-        
-    - name: Install pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 8
         
     - name: Install dependencies
       run: pnpm install
@@ -76,12 +76,3 @@ jobs:
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
       run: |
         npx tsx scripts/final-verification.ts
-        
-    - name: Notify on Failure
-      if: failure()
-      uses: 8398a7/action-slack@v3
-      with:
-        status: failure
-        text: 'AllLeaguesFans 데이터 동기화 실패!'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
