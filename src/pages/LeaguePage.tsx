@@ -4,8 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
+  fetchLeagueStats,
+  fetchUpcomingFixtures,
+  fetchTopScorers,
+  fetchHistoricalChampions,
   type LeagueDetail, 
-  type TeamStanding 
+  type TeamStanding,
+  type LeagueStats,
+  type UpcomingFixture,
+  type TopScorer,
+  type HistoricalChampion,
 } from "@/lib/api";
 
 function LoadingState() {
@@ -14,11 +22,27 @@ function LoadingState() {
       <div className="max-w-7xl mx-auto">
         <div className="animate-pulse">
           <div className="h-8 bg-slate-700 rounded w-64 mb-6"></div>
-          <div className="bg-slate-800 rounded-lg p-6">
-            <div className="h-6 bg-slate-700 rounded w-32 mb-4"></div>
-            <div className="space-y-3">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="h-12 bg-slate-700 rounded"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-slate-800 rounded-lg p-6">
+                <div className="h-6 bg-slate-700 rounded w-32 mb-4"></div>
+                <div className="space-y-3">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="h-12 bg-slate-700 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-slate-800 rounded-lg p-6">
+                  <div className="h-4 bg-slate-700 rounded w-24 mb-3"></div>
+                  <div className="space-y-2">
+                    {[...Array(3)].map((_, j) => (
+                      <div key={j} className="h-8 bg-slate-700 rounded"></div>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -160,22 +184,169 @@ function StandingsTable({ standings }: { standings: TeamStanding[] }) {
   );
 }
 
-function LeagueHeader({ league }: { league: LeagueDetail }) {
+function LeagueHeader({ league, stats }: { league: LeagueDetail; stats?: LeagueStats }) {
   return (
     <div className="bg-slate-800 rounded-lg p-6 mb-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">{league.name}</h1>
-          <div className="flex items-center space-x-4 text-slate-400">
+          <div className="flex items-center space-x-6 text-slate-400">
             {league.country && (
               <span className="text-sm">{league.country}</span>
             )}
             <span className="text-sm">{league.season} 시즌</span>
+            {stats && (
+              <>
+                <span className="text-sm">팀: {stats.total_teams}개</span>
+                <span className="text-sm">총 골: {stats.total_goals}골</span>
+                <span className="text-sm">경기당 평균: {stats.avg_goals_per_match}골</span>
+              </>
+            )}
           </div>
         </div>
         <div className="text-right">
           <div className="text-slate-400 text-sm">리그 ID</div>
           <div className="text-white font-mono">{league.id}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
+  if (fixtures.length === 0) {
+    return (
+      <div className="bg-slate-800 rounded-lg p-6">
+        <h3 className="text-white text-lg font-semibold mb-4">최근 경기</h3>
+        <p className="text-slate-400 text-sm">최근 경기가 없습니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-800 rounded-lg p-6">
+      <h3 className="text-white text-lg font-semibold mb-4">최근 경기</h3>
+      <div className="space-y-3">
+        {fixtures.map((fixture) => (
+          <div key={fixture.id} className="flex items-center justify-between p-3 bg-slate-700 rounded">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                {fixture.home_logo && (
+                  <img src={fixture.home_logo} alt="" className="w-5 h-5 object-contain" />
+                )}
+                <span className="text-white text-sm">{fixture.home_team}</span>
+              </div>
+              <span className="text-slate-400 text-xs">vs</span>
+              <div className="flex items-center space-x-2">
+                {fixture.away_logo && (
+                  <img src={fixture.away_logo} alt="" className="w-5 h-5 object-contain" />
+                )}
+                <span className="text-white text-sm">{fixture.away_team}</span>
+              </div>
+            </div>
+            <div className="text-slate-400 text-xs">
+              {new Date(fixture.match_date).toLocaleDateString('ko-KR', {
+                month: 'numeric',
+                day: 'numeric'
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopScorersCard({ scorers }: { scorers: TopScorer[] }) {
+  if (scorers.length === 0) {
+    return (
+      <div className="bg-slate-800 rounded-lg p-6">
+        <h3 className="text-white text-lg font-semibold mb-4">득점왕</h3>
+        <p className="text-slate-400 text-sm">득점 기록이 없습니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-800 rounded-lg p-6">
+      <h3 className="text-white text-lg font-semibold mb-4">득점왕</h3>
+      <div className="space-y-3">
+        {scorers.map((scorer, index) => (
+          <div key={`${scorer.player_name}-${scorer.team_name}`} className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={`
+                w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                ${index === 0 ? 'bg-yellow-500 text-black' : index === 1 ? 'bg-gray-400 text-black' : index === 2 ? 'bg-amber-600 text-black' : 'bg-slate-600 text-white'}
+              `}>
+                {index + 1}
+              </div>
+              <div>
+                <div className="text-white text-sm font-medium">{scorer.player_name}</div>
+                <div className="text-slate-400 text-xs">{scorer.team_name}</div>
+              </div>
+            </div>
+            <div className="text-green-400 font-bold">{scorer.goals}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HistoricalChampionsCard({ champions }: { champions: HistoricalChampion[] }) {
+  if (champions.length === 0) {
+    return (
+      <div className="bg-slate-800 rounded-lg p-6">
+        <h3 className="text-white text-lg font-semibold mb-4">역대 우승팀</h3>
+        <p className="text-slate-400 text-sm">우승 기록이 없습니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-800 rounded-lg p-6">
+      <h3 className="text-white text-lg font-semibold mb-4">역대 우승팀</h3>
+      <div className="space-y-2 max-h-96 overflow-y-auto">
+        {champions.map((champion) => (
+          <div key={champion.season_year} className="flex items-center justify-between py-2">
+            <div className="flex items-center space-x-3">
+              {champion.champion_logo && (
+                <img 
+                  src={champion.champion_logo} 
+                  alt={champion.champion_name}
+                  className="w-5 h-5 object-contain"
+                />
+              )}
+              <span className="text-white text-sm">{champion.champion_name}</span>
+            </div>
+            <span className="text-slate-400 text-sm">{champion.season_year}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LeagueStatsCard({ stats }: { stats: LeagueStats }) {
+  return (
+    <div className="bg-slate-800 rounded-lg p-6">
+      <h3 className="text-white text-lg font-semibold mb-4">리그 통계</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-blue-400">{stats.total_teams}</div>
+          <div className="text-slate-400 text-xs">팀</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-green-400">{stats.total_goals}</div>
+          <div className="text-slate-400 text-xs">총 골</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-yellow-400">{stats.total_matches}</div>
+          <div className="text-slate-400 text-xs">경기</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-purple-400">{stats.avg_goals_per_match}</div>
+          <div className="text-slate-400 text-xs">경기당 골</div>
         </div>
       </div>
     </div>
@@ -197,6 +368,30 @@ export default function LeaguePage() {
     enabled: !!league?.id,
   });
 
+  const { data: stats } = useQuery({
+    queryKey: ["leagueStats", league?.id],
+    queryFn: () => fetchLeagueStats(league!.id),
+    enabled: !!league?.id,
+  });
+
+  const { data: upcomingFixtures = [] } = useQuery({
+    queryKey: ["upcomingFixtures", league?.id],
+    queryFn: () => fetchUpcomingFixtures(league!.id),
+    enabled: !!league?.id,
+  });
+
+  const { data: topScorers = [] } = useQuery({
+    queryKey: ["topScorers", league?.id],
+    queryFn: () => fetchTopScorers(league!.id),
+    enabled: !!league?.id,
+  });
+
+  const { data: champions = [] } = useQuery({
+    queryKey: ["historicalChampions", league?.id],
+    queryFn: () => fetchHistoricalChampions(league!.id),
+    enabled: !!league?.id,
+  });
+
   if (leagueLoading) return <LoadingState />;
   
   if (leagueError || !league) {
@@ -206,30 +401,43 @@ export default function LeaguePage() {
   return (
     <div className="p-6 bg-slate-900 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <LeagueHeader league={league} />
+        <LeagueHeader league={league} stats={stats} />
 
-        {standingsLoading ? (
-          <div className="bg-slate-800 rounded-lg p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-slate-700 rounded w-32"></div>
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="h-12 bg-slate-700 rounded"></div>
-              ))}
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 왼쪽: 순위표 */}
+          <div className="lg:col-span-2">
+            {standingsLoading ? (
+              <div className="bg-slate-800 rounded-lg p-6">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-6 bg-slate-700 rounded w-32"></div>
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="h-12 bg-slate-700 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            ) : standingsError ? (
+              <div className="bg-slate-800 rounded-lg p-6">
+                <div className="text-red-400">순위표를 불러올 수 없습니다.</div>
+              </div>
+            ) : standings && standings.length > 0 ? (
+              <StandingsTable standings={standings} />
+            ) : (
+              <div className="bg-slate-800 rounded-lg p-6">
+                <div className="text-slate-400 text-center">
+                  이 리그의 순위표 정보가 없습니다.
+                </div>
+              </div>
+            )}
           </div>
-        ) : standingsError ? (
-          <div className="bg-slate-800 rounded-lg p-6">
-            <div className="text-red-400">순위표를 불러올 수 없습니다.</div>
+
+          {/* 오른쪽: 사이드바 정보 */}
+          <div className="space-y-6">
+            {stats && <LeagueStatsCard stats={stats} />}
+            <UpcomingFixturesCard fixtures={upcomingFixtures} />
+            <TopScorersCard scorers={topScorers} />
+            <HistoricalChampionsCard champions={champions} />
           </div>
-        ) : standings && standings.length > 0 ? (
-          <StandingsTable standings={standings} />
-        ) : (
-          <div className="bg-slate-800 rounded-lg p-6">
-            <div className="text-slate-400 text-center">
-              이 리그의 순위표 정보가 없습니다.
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

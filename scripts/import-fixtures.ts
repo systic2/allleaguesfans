@@ -99,8 +99,8 @@ async function importLeagueFixtures(leagueId: number, season: number) {
     // Only import lineups for finished matches to get coaches info
     if (f.fixture?.status?.short === 'FT') {
       await importLineups(id)
-      // Skip events for now to speed up import
-      // await importEvents(id)
+      // Import events for goal/card data
+      await importEvents(id)
     }
   }
 }
