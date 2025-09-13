@@ -15,3 +15,13 @@ coverage/
 tmp/
 dumps/
 scripts/output/
+
+# Security sensitive files - 실제 키값이 포함된 파일들
+GITHUB-SETUP.md
+**/secrets/**
+**/*-secrets.*
+**/*-keys.*
+**/*-credentials.*
+
+# Logs directory
+logs/

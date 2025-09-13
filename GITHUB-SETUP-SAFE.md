@@ -9,14 +9,16 @@
 #### 🔒 필수 Secrets
 ```
 SUPABASE_URL
-Value: https://whoszwxxwgmpdfckmcgh.supabase.co
+Value: [현재 .env 파일의 SUPABASE_URL 값]
 
 SUPABASE_SERVICE_ROLE  
-Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indob3N6d3h4d2dtcGRmY2ttY2doIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjUzMzk2MCwiZXhwIjoyMDcyMTA5OTYwfQ._lgkZ8OVDFRxvUBgqhmU2CFyXC-V50t5Qn4viJU_jvY
+Value: [현재 .env 파일의 SUPABASE_SERVICE_ROLE 값]
 
 API_FOOTBALL_KEY
-Value: cf3c7f305e193b6d6fd3fa9c7160cb27
+Value: [현재 .env 파일의 API_FOOTBALL_KEY 값]
 ```
+
+> ⚠️ **보안 주의**: 실제 키값은 .env 파일에서 복사하여 GitHub Secrets에 직접 입력하세요.
 
 #### 📢 선택적 Secrets (알림 기능)
 ```
@@ -172,3 +174,10 @@ Error: Invalid API key
 ---
 
 💡 **팁:** 처음 설정 후 24-48시간은 모니터링하여 안정성을 확인하세요!
+
+## 🔐 보안 참고사항
+
+- 실제 API 키와 토큰은 절대 코드에 하드코딩하지 마세요
+- GitHub Secrets를 통해서만 민감한 정보를 관리하세요
+- .env 파일은 절대 Git에 커밋하지 마세요
+- 정기적으로 API 키를 로테이션하세요
