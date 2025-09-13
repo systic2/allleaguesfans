@@ -83,7 +83,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
       .limit(10),
     supabase
       .from("teams")
-      .select("id, name, short_name, crest_url")
+      .select("id, name, short_name, logo_url")
       .ilike("name", `%${qq}%`)
       .limit(10)
   ]);
@@ -105,7 +105,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
       team_id: Number(t.id),
       name: String(t.name),
       short_name: (t.short_name ?? null) as string | null,
-      crest_url: (t.crest_url ?? null) as string | null
+      crest_url: (t.logo_url ?? null) as string | null
     } as SearchRow);
   }
 
@@ -170,7 +170,7 @@ export async function fetchLeagueStandings(leagueId: number, season: number = 20
       lose,
       goals_diff,
       form,
-      teams!inner(name, short_name, crest_url)
+      teams!inner(name, short_name, logo_url)
     `)
     .eq("league_id", leagueId)
     .eq("season_year", season)
@@ -182,7 +182,7 @@ export async function fetchLeagueStandings(leagueId: number, season: number = 20
     team_id: Number(standing.team_id),
     team_name: String(standing.teams.name),
     short_name: (standing.teams.short_name ?? null) as string | null,
-    crest_url: (standing.teams.crest_url ?? null) as string | null,
+    crest_url: (standing.teams.logo_url ?? null) as string | null,
     rank: Number(standing.rank),
     points: Number(standing.points),
     played: Number(standing.played),
@@ -200,7 +200,7 @@ export async function fetchLeagueTeams(leagueId: number, season: number = 2025):
   const { data, error } = await supabase
     .from("team_seasons")
     .select(`
-      teams!inner(id, name, short_name, crest_url)
+      teams!inner(id, name, short_name, logo_url)
     `)
     .eq("league_id", leagueId)
     .eq("season_year", season);
@@ -211,6 +211,6 @@ export async function fetchLeagueTeams(leagueId: number, season: number = 2025):
     id: Number(item.teams.id),
     name: String(item.teams.name),
     short_name: (item.teams.short_name ?? null) as string | null,
-    crest_url: (item.teams.crest_url ?? null) as string | null,
+    crest_url: (item.teams.logo_url ?? null) as string | null,
   }));
 }
