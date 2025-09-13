@@ -39,11 +39,12 @@ jobs:
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         API_FOOTBALL_K1_ID: 292
         API_FOOTBALL_K2_ID: 293
-        SEASON_YEAR: 2025
+        SEASON_YEAR: 2024
       run: |
-        # 경기 결과 및 순위 업데이트
+        # 경기 결과, 순위, 부상자 정보 업데이트
         npx tsx scripts/import-fixtures.ts
         npx tsx scripts/import-standings.ts
+        npx tsx scripts/import-injuries.ts
         
     - name: Weekly Squad Sync
       if: github.event.schedule == '0 3 * * 1'
@@ -53,10 +54,11 @@ jobs:
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         API_FOOTBALL_K1_ID: 292
         API_FOOTBALL_K2_ID: 293
-        SEASON_YEAR: 2025
+        SEASON_YEAR: 2024
       run: |
-        # 선수 이적 및 스쿼드 변경 사항 체크
+        # 선수 이적, 스쿼드 변경, 부상자 정보 체크
         npx tsx scripts/import-squads.ts
+        npx tsx scripts/import-injuries.ts
         
     - name: Manual Full Sync
       if: github.event_name == 'workflow_dispatch'

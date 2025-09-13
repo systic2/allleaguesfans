@@ -1,7 +1,7 @@
 // scripts/import-fixtures.ts
 import 'dotenv/config'
 import { supa } from './lib/supabase'
-import { apiGet, apiPaged } from './lib/api-football'
+import { apiGet } from './lib/api-football'
 
 const K1 = Number(process.env.API_FOOTBALL_K1_ID) || undefined
 const K2 = Number(process.env.API_FOOTBALL_K2_ID) || undefined
@@ -87,12 +87,17 @@ async function importEvents(fixtureId: number) {
 
 async function importLeagueFixtures(leagueId: number, season: number) {
   console.log(`== Import fixtures: league=${leagueId} season=${season}`)
-  const fixtures = await apiPaged('fixtures', { league: leagueId, season })
+  // Use apiGet instead of apiPaged for fixtures since they return all data in one page
+  const data = await apiGet('fixtures', { league: leagueId, season })
+  const fixtures = data.response || []
+  console.log(`  Found ${fixtures.length} fixtures`)
+  
   for (const f of fixtures) {
     await upsertFixture(f, leagueId, season)
-    const id = Number(f.fixture.id)
-    await importLineups(id)
-    await importEvents(id)
+    // Skip lineups and events for now to speed up import
+    // const id = Number(f.fixture.id)
+    // await importLineups(id)
+    // await importEvents(id)
   }
 }
 
