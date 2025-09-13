@@ -39,7 +39,7 @@ jobs:
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         API_FOOTBALL_K1_ID: 292
         API_FOOTBALL_K2_ID: 293
-        SEASON_YEAR: 2024
+        SEASON_YEAR: 2025
       run: |
         # 경기 결과, 순위, 부상자 정보 업데이트
         npx tsx scripts/import-fixtures.ts
@@ -54,7 +54,7 @@ jobs:
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         API_FOOTBALL_K1_ID: 292
         API_FOOTBALL_K2_ID: 293
-        SEASON_YEAR: 2024
+        SEASON_YEAR: 2025
       run: |
         # 선수 이적, 스쿼드 변경, 부상자 정보 체크
         npx tsx scripts/import-squads.ts
