@@ -22,7 +22,10 @@
       "Bash(pnpm add:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(pnpm test:*)",
+      "mcp__serena__read_memory",
+      "mcp__serena__create_text_file"
     ],
     "deny": [],
     "ask": []

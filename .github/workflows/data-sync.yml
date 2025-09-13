@@ -1,0 +1,87 @@
+# .github/workflows/data-sync.yml
+name: API Football Data Sync
+
+on:
+  schedule:
+    # 매일 오전 2시 (UTC) - 한국시간 오전 11시
+    - cron: '0 2 * * *'
+    # 매주 월요일 오전 3시 (선수 이적 체크)
+    - cron: '0 3 * * 1'
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'pnpm'
+        
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Install dependencies
+      run: pnpm install
+      
+    - name: Daily Data Sync
+      if: github.event.schedule == '0 2 * * *'
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        API_FOOTBALL_K1_ID: 292
+        API_FOOTBALL_K2_ID: 293
+        SEASON_YEAR: 2025
+      run: |
+        # 경기 결과 및 순위 업데이트
+        npx tsx scripts/import-fixtures.ts
+        npx tsx scripts/import-standings.ts
+        
+    - name: Weekly Squad Sync
+      if: github.event.schedule == '0 3 * * 1'
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        API_FOOTBALL_K1_ID: 292
+        API_FOOTBALL_K2_ID: 293
+        SEASON_YEAR: 2025
+      run: |
+        # 선수 이적 및 스쿼드 변경 사항 체크
+        npx tsx scripts/import-squads.ts
+        
+    - name: Manual Full Sync
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        API_FOOTBALL_K1_ID: 292
+        API_FOOTBALL_K2_ID: 293
+      run: |
+        # 전체 데이터 동기화
+        npx tsx scripts/master-import.ts
+        
+    - name: Verify Data
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+      run: |
+        npx tsx scripts/final-verification.ts
+        
+    - name: Notify on Failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}

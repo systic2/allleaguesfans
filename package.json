@@ -13,7 +13,14 @@
     "exports:check": "ts-prune --ignore \"**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/*.spec.tsx\"",
     "files:check": "knip",
     "lint:unused": "eslint . --fix",
-    "analyze:bundle": "ANALYZE=1 vite build"
+    "analyze:bundle": "ANALYZE=1 vite build",
+    "sync:full": "npx tsx scripts/master-import.ts",
+    "sync:daily": "npx tsx scripts/import-fixtures.ts && npx tsx scripts/import-standings.ts",
+    "sync:weekly": "npx tsx scripts/import-squads.ts",
+    "sync:check": "npx tsx scripts/final-verification.ts",
+    "sync:monitor": "npx tsx scripts/monitoring.ts",
+    "sync:debug": "npx tsx scripts/debug-api-response.ts",
+    "sync:test-db": "npx tsx scripts/test-database.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
