@@ -94,10 +94,14 @@ async function importLeagueFixtures(leagueId: number, season: number) {
   
   for (const f of fixtures) {
     await upsertFixture(f, leagueId, season)
-    // Skip lineups and events for now to speed up import
-    // const id = Number(f.fixture.id)
-    // await importLineups(id)
-    // await importEvents(id)
+    const id = Number(f.fixture.id)
+    
+    // Only import lineups for finished matches to get coaches info
+    if (f.fixture?.status?.short === 'FT') {
+      await importLineups(id)
+      // Skip events for now to speed up import
+      // await importEvents(id)
+    }
   }
 }
 

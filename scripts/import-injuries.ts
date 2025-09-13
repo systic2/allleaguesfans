@@ -1,7 +1,7 @@
 // scripts/import-injuries.ts
 import 'dotenv/config'
 import { supa } from './lib/supabase'
-import { apiPaged, apiGet } from './lib/api-football'
+import { apiGet } from './lib/api-football'
 
 const K1 = Number(process.env.API_FOOTBALL_K1_ID)
 const K2 = Number(process.env.API_FOOTBALL_K2_ID)
@@ -11,7 +11,10 @@ function nz(n:any){ return (n??null) as any }
 
 async function importInjuriesByLeague(leagueId:number, season:number){
   // injuries?league=&season=  (리그 단위로 현재/최근 부상 목록)
-  const rows = await apiPaged('injuries', { league: leagueId, season })
+  console.log(`  Importing injuries for league ${leagueId}, season ${season}`)
+  const data = await apiGet('injuries', { league: leagueId, season })
+  const rows = data.response || []
+  console.log(`  Found ${rows.length} injuries`)
   const payload = rows.map((r:any)=>({
     player_id: Number(r.player?.id),
     team_id  : Number(r.team?.id),
@@ -27,7 +30,8 @@ async function importInjuriesByLeague(leagueId:number, season:number){
   if (payload.length) {
     // (1) injuries → sidelined upsert
     const { error } = await supa.from('sidelined').upsert(payload, {
-      onConflict: 'player_id,kind,start_date_norm,reason_norm'
+      onConflict: 'player_id,kind,start_date_norm,reason_norm',
+      ignoreDuplicates: true
     })
     if (error) throw error
   }
