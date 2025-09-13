@@ -78,10 +78,10 @@ jobs:
         npx tsx scripts/final-verification.ts
         
     - name: Notify on Failure
-      if: failure()
+      if: failure() && secrets.SLACK_WEBHOOK_URL != ''
       uses: 8398a7/action-slack@v3
       with:
         status: failure
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        text: 'AllLeaguesFans 데이터 동기화 실패!'
       env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
