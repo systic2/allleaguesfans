@@ -80,7 +80,12 @@ async function importEvents(fixtureId: number) {
     extra_minute: E.time?.extra ?? null
   }))
   if (rows.length) {
-    const { error } = await supa.from('events').insert(rows, { returning: 'minimal' })
+    // Use upsert with composite unique constraint to prevent duplicates
+    // Duplicates are identified by: fixture_id + player_id + type + minute (using actual DB column)
+    const { error } = await supa.from('events').upsert(rows, { 
+      onConflict: 'fixture_id,player_id,type,minute',
+      returning: 'minimal' 
+    })
     if (error) throw error
   }
 }

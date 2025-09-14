@@ -123,7 +123,7 @@ serve(async (req) => {
     const K2_ID = 293
     const leagues = league ? [league] : [K1_ID, K2_ID]
     
-    let results: any = { success: true, timestamp: new Date().toISOString() }
+    const results: any = { success: true, timestamp: new Date().toISOString() }
     
     switch (type) {
       case 'fixtures':
