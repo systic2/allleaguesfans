@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchByName } from "@/lib/api";
 
@@ -33,7 +33,7 @@ export default function GlobalSearch() {
   });
 
   // ❗ 빈 배열 기본값에 명시 타입 부여(never[] 방지)
-  const results: GSRow[] = data ?? ([] as GSRow[]);
+  const results: GSRow[] = useMemo(() => data ?? ([] as GSRow[]), [data]);
 
   const handleSelect = useCallback((item: GSRow) => {
     setOpen(false);
