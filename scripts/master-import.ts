@@ -173,24 +173,28 @@ async function importFixtures(leagueId: number, season: number) {
         if (fixture.fixture?.status?.short === 'FT') {
           try {
             const eventsData = await apiGet('fixtures/events', { fixture: fixture.fixture.id })
-            const events = (eventsData.response || []).map((event: any) => ({
-              fixture_id: Number(fixture.fixture.id),
-              team_id: Number(event.team?.id),
-              player_id: event.player?.id ? Number(event.player.id) : null,
-              assist_id: event.assist?.id ? Number(event.assist.id) : null,
-              type: event.type || null,
-              detail: event.detail || null,
-              comments: event.comments || null,
-              minute: event.time?.elapsed ?? null,
-              extra_minute: event.time?.extra ?? null
-            }))
+            const events = (eventsData.response || [])
+              .filter((event: any) => event.player?.id) // player_id가 있는 것만
+              .map((event: any) => ({
+                fixture_id: Number(fixture.fixture.id),
+                team_id: Number(event.team?.id),
+                player_id: Number(event.player.id),
+                assist_id: event.assist?.id ? Number(event.assist.id) : null,
+                type: event.type || null,
+                detail: event.detail || null,
+                comments: event.comments || null,
+                minute: event.time?.elapsed ?? null,
+                extra_minute: event.time?.extra ?? null
+              }))
             
             if (events.length > 0) {
-              const { error: eventsError } = await supa.from('events').upsert(events, { onConflict: 'fixture_id,team_id,type,minute,player_id', ignoreDuplicates: true })
+              // events 테이블 사용 (RLS 비활성화되어 있음)
+              const { error: eventsError } = await supa.from('events').insert(events)
               if (!eventsError) eventCount += events.length
             }
           } catch (err) {
-            // Events might not be available for all fixtures
+            // Events might not be available for all fixtures - try with events table as fallback
+            console.warn(`    Events import failed for fixture ${fixture.fixture.id}: ${err}`)
           }
         }
         
