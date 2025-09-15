@@ -72,10 +72,9 @@ async function importUpcomingFixtures() {
     try {
       // 1. Get upcoming fixtures using 'next' parameter
       console.log("  → Fetching next 20 fixtures...");
-      const nextResponse = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?league=${leagueId}&season=${seasonYear}&next=20`, {
+      const nextResponse = await fetch(`https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${seasonYear}&next=20`, {
         headers: {
-          "X-RapidAPI-Key": apiKey,
-          "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+          "x-rapidapi-key": apiKey
         }
       });
 
@@ -94,10 +93,9 @@ async function importUpcomingFixtures() {
 
       // 2. Get fixtures with TBD status
       console.log("  → Fetching TBD status fixtures...");
-      const tbdResponse = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?league=${leagueId}&season=${seasonYear}&status=TBD`, {
+      const tbdResponse = await fetch(`https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${seasonYear}&status=TBD`, {
         headers: {
-          "X-RapidAPI-Key": apiKey,
-          "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+          "x-rapidapi-key": apiKey
         }
       });
 
@@ -116,10 +114,9 @@ async function importUpcomingFixtures() {
 
       // 3. Get fixtures with NS (Not Started) status
       console.log("  → Fetching NS status fixtures...");
-      const nsResponse = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?league=${leagueId}&season=${seasonYear}&status=NS`, {
+      const nsResponse = await fetch(`https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${seasonYear}&status=NS`, {
         headers: {
-          "X-RapidAPI-Key": apiKey,
-          "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+          "x-rapidapi-key": apiKey
         }
       });
 
@@ -173,7 +170,7 @@ async function processFixtures(fixtures: APIFootballFixture[], leagueId: number,
         away_team_id: fixture.teams.away.id,
         home_goals: fixture.goals.home,
         away_goals: fixture.goals.away,
-        venue_id: fixture.fixture.venue.id,
+        venue_id: fixture.fixture.venue.id
       };
 
       if (existing) {

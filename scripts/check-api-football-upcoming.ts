@@ -10,10 +10,9 @@ async function checkAPIFootballUpcoming() {
 
   // Try to fetch upcoming fixtures from API-Football for K-League
   try {
-    const response = await fetch("https://api-football-v1.p.rapidapi.com/v3/fixtures?league=292&season=2025&status=NS", {
+    const response = await fetch("https://v3.football.api-sports.io/fixtures?league=292&season=2025&status=NS", {
       headers: {
-        "X-RapidAPI-Key": process.env.API_FOOTBALL_KEY || "demo-key",
-        "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+        "x-rapidapi-key": process.env.API_FOOTBALL_KEY || "demo-key"
       }
     });
 

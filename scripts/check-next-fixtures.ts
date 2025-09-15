@@ -12,23 +12,23 @@ async function checkNextFixtures() {
   const testCases = [
     {
       name: "K-League 1 next 5 fixtures",
-      url: "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=292&season=2025&next=5"
+      url: "https://v3.football.api-sports.io/fixtures?league=292&season=2025&next=5"
     },
     {
       name: "K-League 2 next 5 fixtures", 
-      url: "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=293&season=2025&next=5"
+      url: "https://v3.football.api-sports.io/fixtures?league=293&season=2025&next=5"
     },
     {
       name: "All Korean leagues next fixtures",
-      url: "https://api-football-v1.p.rapidapi.com/v3/fixtures?next=10"
+      url: "https://v3.football.api-sports.io/fixtures?next=10"
     },
     {
       name: "Fixtures with TBD status",
-      url: "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=292&season=2025&status=TBD"
+      url: "https://v3.football.api-sports.io/fixtures?league=292&season=2025&status=TBD"
     },
     {
       name: "Fixtures with NS status", 
-      url: "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=292&season=2025&status=NS"
+      url: "https://v3.football.api-sports.io/fixtures?league=292&season=2025&status=NS"
     }
   ];
 
@@ -39,8 +39,7 @@ async function checkNextFixtures() {
     try {
       const response = await fetch(testCase.url, {
         headers: {
-          "X-RapidAPI-Key": process.env.API_FOOTBALL_KEY || "demo-key",
-          "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+          "x-rapidapi-key": process.env.API_FOOTBALL_KEY || "demo-key"
         }
       });
 
