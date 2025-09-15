@@ -188,9 +188,49 @@ async function importFixtures(leagueId: number, season: number) {
               }))
             
             if (events.length > 0) {
-              // events 테이블 사용 (RLS 비활성화되어 있음)
-              const { error: eventsError } = await supa.from('events').insert(events)
-              if (!eventsError) eventCount += events.length
+              // 🔒 중복 방지: 기존 이벤트 확인
+              const existingEvents = await supa.from('events')
+                .select('id, fixture_id, team_id, player_id, elapsed_minutes, extra_minutes, event_type, event_detail')
+                .eq('fixture_id', fixture.fixture.id)
+
+              const existingEventKeys = new Set()
+              if (existingEvents.data) {
+                existingEvents.data.forEach(event => {
+                  const key = `${event.fixture_id}-${event.team_id}-${event.player_id}-${event.elapsed_minutes || 0}-${event.extra_minutes || 0}-${event.event_type}-${event.event_detail || ''}`
+                  existingEventKeys.add(key)
+                })
+              }
+
+              // 새로운 이벤트만 필터링
+              const newEvents = events.filter((event: any) => {
+                const key = `${event.fixture_id}-${event.team_id}-${event.player_id}-${event.minute || 0}-${event.extra_minute || 0}-${event.type}-${event.detail || ''}`
+                return !existingEventKeys.has(key)
+              })
+
+              if (newEvents.length > 0) {
+                // events 테이블에 올바른 컬럼명으로 매핑
+                const mappedEvents = newEvents.map((event: any) => ({
+                  fixture_id: event.fixture_id,
+                  team_id: event.team_id,
+                  player_id: event.player_id,
+                  assist_player_id: event.assist_id,
+                  elapsed_minutes: event.minute,
+                  extra_minutes: event.extra_minute,
+                  event_type: event.type,
+                  event_detail: event.detail,
+                  comments: event.comments
+                }))
+
+                const { error: eventsError } = await supa.from('events').insert(mappedEvents)
+                if (!eventsError) {
+                  eventCount += mappedEvents.length
+                  console.log(`    ✅ Added ${mappedEvents.length} new events (${events.length - newEvents.length} duplicates skipped)`)
+                } else {
+                  console.warn(`    ❌ Events insert error:`, eventsError)
+                }
+              } else {
+                console.log(`    ℹ️ All ${events.length} events already exist, skipping`)
+              }
             }
           } catch (err) {
             // Events might not be available for all fixtures - try with events table as fallback
