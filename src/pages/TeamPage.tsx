@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { 
   fetchPlayersByTeam, 
   fetchTeamDetails, 
@@ -12,6 +13,7 @@ import {
 } from "@/lib/api";
 import SmallPitch from "@/app/components/SmallPitch";
 import CrestImg from "@/app/components/CrestImg";
+import UpcomingFixtures from "@/components/UpcomingFixtures";
 
 type TabType = 'overview' | 'squad' | 'fixtures' | 'statistics';
 
@@ -165,6 +167,21 @@ export default function TeamPage() {
                 </div>
               </section>
             )}
+
+            {/* Upcoming Fixtures */}
+            <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
+              <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
+                🗓️ 예정된 경기
+              </h2>
+              <div className="[&>div]:!bg-transparent [&>div]:!shadow-none [&>div]:!border-0 [&>div]:!p-0">
+                <UpcomingFixtures 
+                  teamId={teamId} 
+                  title="" 
+                  limit={5}
+                  className="!bg-transparent !shadow-none !border-0 !p-0"
+                />
+              </div>
+            </section>
 
             {/* Squad List */}
             <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">

@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchLeagues, type LeagueLite } from "@/lib/api";
 import { Link } from "react-router-dom";
+import UpcomingFixtures from "@/components/UpcomingFixtures";
 
 function LoadingState() {
   return (
@@ -132,6 +133,15 @@ export default function LeagueListPage() {
             </div>
           </div>
         )}
+
+        {/* 예정된 경기 */}
+        <div className="mt-8">
+          <UpcomingFixtures 
+            title="🗓️ 전체 예정 경기" 
+            limit={8}
+            className="bg-slate-800"
+          />
+        </div>
       </div>
     </div>
   );

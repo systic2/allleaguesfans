@@ -42,6 +42,8 @@ jobs:
       run: |
         # 새 스키마 기반 증분 업데이트 (경기 결과, 순위표, 이벤트)
         SEASON_YEAR=2025 npx tsx scripts/fixed-api-football-import.ts
+        # 예정 경기 업데이트 (next, TBD, NS 상태)
+        SEASON_YEAR=2025 npx tsx scripts/import-upcoming-fixtures.ts
         
     - name: Weekly Full Sync
       if: github.event.schedule == '0 3 * * 1'
@@ -54,6 +56,8 @@ jobs:
       run: |
         # 새 스키마 기반 전체 동기화 (모든 데이터 재검증)
         SEASON_YEAR=2025 npx tsx scripts/master-import.ts
+        # 예정 경기 업데이트 (next, TBD, NS 상태)
+        SEASON_YEAR=2025 npx tsx scripts/import-upcoming-fixtures.ts
         
     - name: Manual Full Sync
       if: github.event_name == 'workflow_dispatch'
@@ -66,6 +70,8 @@ jobs:
       run: |
         # 수동 실행 시 전체 동기화
         SEASON_YEAR=2025 npx tsx scripts/master-import.ts
+        # 예정 경기 업데이트 (next, TBD, NS 상태)
+        SEASON_YEAR=2025 npx tsx scripts/import-upcoming-fixtures.ts
         
     - name: Data Quality Check
       env:

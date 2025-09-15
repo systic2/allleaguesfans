@@ -673,3 +673,174 @@ export async function fetchTeamStatistics(teamId: number, season: number = 2025)
     away_record: awayRecord,
   };
 }
+
+// ====== UPCOMING FIXTURES API ======
+
+export interface UpcomingFixture {
+  id: number;
+  date_utc: string;
+  status: string;
+  round: string;
+  home_team: {
+    id: number;
+    name: string;
+    logo_url: string | null;
+  };
+  away_team: {
+    id: number;
+    name: string;
+    logo_url: string | null;
+  };
+  venue?: string;
+  league_id: number;
+}
+
+export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 10): Promise<UpcomingFixture[]> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  let query = supabase
+    .from("fixtures")
+    .select(`
+      id, date_utc, status_short, round, home_team_id, away_team_id, league_id,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
+      venues(name)
+    `)
+    .gte("date_utc", today)
+    .in("status_short", ["TBD", "NS", "PST"]) // Time To Be Defined, Not Started, Postponed
+    .order("date_utc", { ascending: true })
+    .limit(limit);
+
+  if (leagueId) {
+    query = query.eq("league_id", leagueId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching upcoming fixtures:", error);
+    return [];
+  }
+
+  if (!data) return [];
+
+  return data.map(fixture => ({
+    id: Number(fixture.id),
+    date_utc: String(fixture.date_utc),
+    status: String(fixture.status_short),
+    round: String(fixture.round),
+    home_team: {
+      id: Number(fixture.home_team_id),
+      name: String(Array.isArray(fixture.home_team) ? fixture.home_team[0]?.name : fixture.home_team?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.home_team) ? fixture.home_team[0]?.logo_url : fixture.home_team?.logo_url || null,
+    },
+    away_team: {
+      id: Number(fixture.away_team_id),
+      name: String(Array.isArray(fixture.away_team) ? fixture.away_team[0]?.name : fixture.away_team?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.away_team) ? fixture.away_team[0]?.logo_url : fixture.away_team?.logo_url || null,
+    },
+    venue: Array.isArray(fixture.venues) ? fixture.venues[0]?.name : fixture.venues?.name || undefined,
+    league_id: Number(fixture.league_id),
+  }));
+}
+
+export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 5): Promise<UpcomingFixture[]> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select(`
+      id, date_utc, status_short, round, home_team_id, away_team_id, league_id,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
+      venues(name)
+    `)
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+    .gte("date_utc", today)
+    .in("status_short", ["TBD", "NS", "PST"])
+    .order("date_utc", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching team upcoming fixtures:", error);
+    return [];
+  }
+
+  if (!data) return [];
+
+  return data.map(fixture => ({
+    id: Number(fixture.id),
+    date_utc: String(fixture.date_utc),
+    status: String(fixture.status_short),
+    round: String(fixture.round),
+    home_team: {
+      id: Number(fixture.home_team_id),
+      name: String(Array.isArray(fixture.home_team) ? fixture.home_team[0]?.name : fixture.home_team?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.home_team) ? fixture.home_team[0]?.logo_url : fixture.home_team?.logo_url || null,
+    },
+    away_team: {
+      id: Number(fixture.away_team_id),
+      name: String(Array.isArray(fixture.away_team) ? fixture.away_team[0]?.name : fixture.away_team?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.away_team) ? fixture.away_team[0]?.logo_url : fixture.away_team?.logo_url || null,
+    },
+    venue: Array.isArray(fixture.venues) ? fixture.venues[0]?.name : fixture.venues?.name || undefined,
+    league_id: Number(fixture.league_id),
+  }));
+}
+
+// API Football 호출 함수 (향후 사용)
+export async function fetchAPIFootballUpcomingFixtures(leagueId: number, count: number = 5) {
+  const API_KEY = process.env.API_FOOTBALL_KEY;
+  if (!API_KEY) {
+    console.log("API_FOOTBALL_KEY not available");
+    return [];
+  }
+
+  try {
+    const response = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?league=${leagueId}&season=2025&next=${count}`, {
+      headers: {
+        "X-RapidAPI-Key": API_KEY,
+        "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+      }
+    });
+
+    if (!response.ok) {
+      console.log(`API Football request failed: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.response || [];
+  } catch (error) {
+    console.error("API Football request error:", error);
+    return [];
+  }
+}
+
+export async function fetchAPIFootballTBDFixtures(leagueId: number) {
+  const API_KEY = process.env.API_FOOTBALL_KEY;
+  if (!API_KEY) {
+    console.log("API_FOOTBALL_KEY not available");
+    return [];
+  }
+
+  try {
+    const response = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?league=${leagueId}&season=2025&status=TBD`, {
+      headers: {
+        "X-RapidAPI-Key": API_KEY,
+        "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+      }
+    });
+
+    if (!response.ok) {
+      console.log(`API Football TBD request failed: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.response || [];
+  } catch (error) {
+    console.error("API Football TBD request error:", error);
+    return [];
+  }
+}
