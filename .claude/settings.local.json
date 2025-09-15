@@ -64,7 +64,9 @@
       "Bash(curl:*)",
       "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/test-team-api.ts)",
       "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-players-columns.ts)",
-      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-squad-structure.ts)"
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-squad-structure.ts)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-round-fixtures.ts)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-api-football-upcoming.ts)"
     ],
     "deny": [],
     "ask": []

@@ -281,15 +281,7 @@ export type LeagueStats = {
   total_teams: number;
 };
 
-export type UpcomingFixture = {
-  id: number;
-  home_team: string;
-  away_team: string;
-  home_logo: string | null;
-  away_logo: string | null;
-  match_date: string;
-  status: string;
-};
+
 
 export type TopScorer = {
   player_name: string;
@@ -336,54 +328,7 @@ export async function fetchLeagueStats(leagueId: number, season: number = 2025):
   };
 }
 
-export async function fetchUpcomingFixtures(leagueId: number, season: number = 2025, limit: number = 5): Promise<UpcomingFixture[]> {
-  // 2024 시즌은 모든 경기가 완료되었으므로 최근 경기를 보여줌
-  const { data, error } = await supabase
-    .from("fixtures")
-    .select(`
-      id,
-      date_utc,
-      status_short,
-      home_team_id,
-      away_team_id
-    `)
-    .eq("league_id", leagueId)
-    .eq("season_year", season)
-    .eq("status_short", "FT") // 완료된 경기
-    .order("date_utc", { ascending: false }) // 최근 경기부터
-    .limit(limit);
 
-  if (error) {
-    console.warn("Failed to fetch upcoming fixtures:", error);
-    return [];
-  }
-
-  // 팀 정보를 별도로 가져와서 매핑
-  const teamIds = [...new Set([
-    ...(data || []).map(f => f.home_team_id),
-    ...(data || []).map(f => f.away_team_id)
-  ])].filter(Boolean);
-
-  const { data: teams } = await supabase
-    .from("teams")
-    .select("id, name, logo_url")
-    .in("id", teamIds);
-
-  const teamMap = (teams || []).reduce((acc, team) => {
-    acc[team.id] = team;
-    return acc;
-  }, {} as Record<number, TeamRecord>);
-
-  return (data ?? []).map((fixture: { id: number; home_team_id: number; away_team_id: number; date_utc: string; status_short: string }) => ({
-    id: Number(fixture.id),
-    home_team: String(teamMap[fixture.home_team_id]?.name || "Unknown"),
-    away_team: String(teamMap[fixture.away_team_id]?.name || "Unknown"),
-    home_logo: (teamMap[fixture.home_team_id]?.logo_url ?? null) as string | null,
-    away_logo: (teamMap[fixture.away_team_id]?.logo_url ?? null) as string | null,
-    match_date: String(fixture.date_utc),
-    status: String(fixture.status_short),
-  }));
-}
 
 export async function fetchTopScorers(leagueId: number, season: number = 2025, limit: number = 5): Promise<TopScorer[]> {
   // 이벤트 데이터 조회 (2025시즌 데이터 존재 확인됨)
@@ -731,15 +676,15 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
     round: String(fixture.round),
     home_team: {
       id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? fixture.home_team[0]?.name : fixture.home_team?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? fixture.home_team[0]?.logo_url : fixture.home_team?.logo_url || null,
+      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
     },
     away_team: {
       id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? fixture.away_team[0]?.name : fixture.away_team?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? fixture.away_team[0]?.logo_url : fixture.away_team?.logo_url || null,
+      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
     },
-    venue: Array.isArray(fixture.venues) ? fixture.venues[0]?.name : fixture.venues?.name || undefined,
+    venue: Array.isArray(fixture.venues) ? (fixture.venues as any)[0]?.name : (fixture.venues as any)?.name || undefined,
     league_id: Number(fixture.league_id),
   }));
 }
@@ -775,15 +720,15 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
     round: String(fixture.round),
     home_team: {
       id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? fixture.home_team[0]?.name : fixture.home_team?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? fixture.home_team[0]?.logo_url : fixture.home_team?.logo_url || null,
+      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
     },
     away_team: {
       id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? fixture.away_team[0]?.name : fixture.away_team?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? fixture.away_team[0]?.logo_url : fixture.away_team?.logo_url || null,
+      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
     },
-    venue: Array.isArray(fixture.venues) ? fixture.venues[0]?.name : fixture.venues?.name || undefined,
+    venue: Array.isArray(fixture.venues) ? (fixture.venues as any)[0]?.name : (fixture.venues as any)?.name || undefined,
     league_id: Number(fixture.league_id),
   }));
 }

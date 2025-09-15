@@ -1,0 +1,1508 @@
+Widgets
+Our widgets are completely free and work with all our plans including the free plan.
+
+To integrate the widgets to your site you just have to copy/paste the code provided and fill in the tags needed for the widget to work properly. If you integrate several widgets on the same page a single theme will be applied for all widgets. Also you will only have to integrate the script tag once.
+
+For all widgets the following tags are needed :
+data-host : v3.football.api-sports.io or api-football-v1.p.rapidapi.com depending on whether you have subscribed with us or RapidApi.
+
+data-key : Indicate your API-KEY obtained on our Dashboard or on RapidApi.
+
+data-theme : If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark. It is also possible to indicate false which will not display any theme and lets you customize the widget with your own css.
+
+data-show-errors : By default false, used for debugging, with a value of true it allows to display the errors.
+
+Widgets use the requests associated with your account and therefore they will stop working if your daily limit is reached. You can track all requests made directly in the dashboard.
+
+Security :
+When using these widgets it is important to be aware that your API-KEY will be visible to the users of your site, it is possible to protect yourself from this by allowing only the desired domains in our dashboard. This way no one else can use your API-KEY for you. If you have already set up your widget and have not activated this option, you can reset your API-KEY and activate this option after.
+
+Debugging :
+If the widget does not display the requested information, it is possible to set the data-show-errors tag to true to display error messages directly in the widget and in the console. This can be due to several things like : (Non-exhaustive list)
+
+You have reached your daily number of requests
+Tags are incorrectly filled in
+Your API-KEY is incorrect
+Tutorials :
+HOW CUSTOM API-FOOTBALL WIDGETS
+HOW TO CHANGE WIDGET ATTRIBUTES DYNAMICALLY
+HOW TO ADD TWO WIDGETS ON THE SAME PAGE
+Changelog :
+2.0.3
+Merge of Livescore and Fixtures widgets in Games widget
+Add a date selector in the Games widget
+Add a status selector in the Games widget
+Add a modal to display standings in games widget
+Add the possibility to display or not the logos or images
+Add widgets for other sports (Baseball, Basketball, Handball, Hockey, Rugby and Volleyball).
+Rename Fixture widget in Game widget
+1.1.8
+Add the widget Fixture
+Add the possibility to load a modal containing the details of a fixture in the widgets Livescore and Fixtures
+1.0.0
+Starting version with widgets Livescore Fixtures and Standings
+Sources :
+All the sources to make your own CSS can be downloaded here :
+
+2.0.3 files
+1.1.8 files
+Games
+Display the list of matches grouped by competition according to the parameters used.
+
+The matches are automatically updated according to the selected frequency data-refresh.
+
+You can find all the leagues ids on our Dashboard.
+
+Example of the widget with the default theme image
+
+query Parameters
+data-host
+required
+string
+Enum: "v3.football.api-sports.io" "api-football-v1.p.rapidapi.com"
+data-key
+required
+string
+Your Api Key
+
+data-refresh	
+integer >15
+Number in seconds corresponding to the desired data update frequency. If you indicate 0 or leave this field empty the data will not be updated automatically
+
+data-date	
+stringYYYY-MM-DD
+Fill in the desired date. If empty the current date is automatically applied
+
+data-league	
+integer
+Fill in the desired league id
+
+data-season	
+integer = 4 characters YYYY
+Fill in the desired season
+
+data-theme	
+string
+If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark
+
+data-show-toolbar	
+string
+Enum: true false
+Displays the toolbar allowing to change the view between the current, finished or upcoming fixtures and to change the date
+
+data-show-logos	
+string
+Enum: true false
+If true display teams logos
+
+data-modal-game	
+string
+Enum: true false
+If true allows to load a modal containing all the details of the game
+
+data-modal-standings	
+string
+Enum: true false
+If true allows to load a modal containing the standings
+
+data-modal-show-logos	
+string
+Enum: true false
+If true display teams logos and players images in the modal
+
+data-show-errors	
+string
+Enum: true false
+By default false, used for debugging, with a value of true it allows to display the errors
+
+
+get
+/widgets/Games
+
+Request samples
+Html
+
+Copy
+<div id="wg-api-football-games"
+     data-host="v3.football.api-sports.io"
+     data-key="Your-Api-Key-Here"
+     data-date=""
+     data-league=""
+     data-season=""
+     data-theme=""
+     data-refresh="15"
+     data-show-toolbar="true"
+     data-show-errors="false"
+     data-show-logos="true"
+     data-modal-game="true"
+     data-modal-standings="true"
+     data-modal-show-logos="true">
+</div>
+<script
+    type="module"
+    src="https://widgets.api-sports.io/2.0.3/widgets.js">
+</script>
+Game
+Display a specific fixture as well as events, statistics, lineups and players statistics if they are available.
+
+The fixture is automatically updated according to the selected frequency data-refresh.
+
+Example of the widget with the default theme image
+
+query Parameters
+data-host
+required
+string
+Enum: "v3.football.api-sports.io" "api-football-v1.p.rapidapi.com"
+data-key
+required
+string
+Your Api Key
+
+data-refresh	
+integer >15
+Number in seconds corresponding to the desired data update frequency. If you indicate 0 or leave this field empty the data will not be updated automatically
+
+data-id	
+integer
+Fill in the desired fixture id
+
+data-theme	
+string
+If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark
+
+data-show-errors	
+string
+Enum: true false
+By default false, used for debugging, with a value of true it allows to display the errors
+
+data-show-logos	
+string
+Enum: true false
+If true display teams logos and players images
+
+
+get
+/widgets/game
+
+Request samples
+Html
+
+Copy
+<div id="wg-api-football-game"
+    data-host="v3.football.api-sports.io"
+    data-key="Your-Api-Key-Here"
+    data-id="718243"
+    data-theme=""
+    data-refresh="15"
+    data-show-errors="false"
+    data-show-logos="true">
+</div>
+<script
+    type="module"
+    src="https://widgets.api-sports.io/2.0.3/widgets.js">
+</script>
+Standings
+Display the ranking of a competition or a team according to the parameters used.
+
+You can find all the leagues and teams ids on our Dashboard.
+
+Example of the widget with the available themes image
+
+query Parameters
+data-host
+required
+string
+Enum: "v3.football.api-sports.io" "api-football-v1.p.rapidapi.com"
+data-key
+required
+string
+Your Api Key
+
+data-league	
+integer
+Fill in the desired league id
+
+data-team	
+integer
+Fill in the desired team id
+
+data-season
+required
+integer = 4 characters YYYY
+Fill in the desired season
+
+data-theme	
+string
+If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark
+
+data-show-errors	
+string
+Enum: true false
+By default false, used for debugging, with a value of true it allows to display the errors
+
+data-show-logos	
+string
+Enum: true false
+If true display teams logos
+
+Timezone
+Get the list of available timezone to be used in the fixtures endpoint.
+
+This endpoint does not require any parameters.
+
+Update Frequency : This endpoint contains all the existing timezone, it is not updated.
+
+Recommended Calls : 1 call when you need.
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Countries
+Get the list of available countries for the leagues endpoint.
+
+The name and code fields can be used in other endpoints as filters.
+
+To get the flag of a country you have to call the following url: https://media.api-sports.io/flags/{country_code}.svg
+
+Examples available in Request samples "Use Cases".
+
+All the parameters of this endpoint can be used together.
+
+Update Frequency : This endpoint is updated each time a new league from a country not covered by the API is added.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+name	
+string
+The name of the country
+
+code	
+string [ 2 .. 6 ] characters FR, GB-ENG, IT…
+The Alpha code of the country
+
+search	
+string = 3 characters
+The name of the country
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Leagues
+Leagues
+Get the list of available leagues and cups.
+
+The league id are unique in the API and leagues keep it across all seasons
+
+To get the logo of a competition you have to call the following url: https://media.api-sports.io/football/leagues/{league_id}.png
+
+This endpoint also returns the coverage of each competition, which makes it possible to know what is available for that league or cup.
+
+The values returned by the coverage indicate the data available at the moment you call the API, so for a competition that has not yet started, it is normal to have all the features set to False. This will be updated once the competition has started.
+
+You can find all the leagues ids on our Dashboard.
+
+Example :
+
+"coverage": {
+  "fixtures": {
+      "events": true,
+      "lineups": true,
+      "statistics_fixtures": false,
+      "statistics_players": false
+  },
+  "standings": true,
+  "players": true,
+  "top_scorers": true,
+  "top_assists": true,
+  "top_cards": true,
+  "injuries": true,
+  "predictions": true,
+  "odds": false
+}
+In this example we can deduce that the competition does not have the following features: statistics_fixtures, statistics_players, odds because it is set to False.
+
+The coverage of a competition can vary from season to season and values set to True do not guarantee 100% data availability.
+
+Some competitions, such as the friendlies, are exceptions to the coverage indicated in the leagues endpoint, and the data available may differ depending on the match, including livescore, events, lineups, statistics and players.
+
+Competitions are automatically renewed by the API when a new season is available. There may be a delay between the announcement of the official calendar and the availability of data in the API.
+
+For Cup competitions, fixtures are automatically added when the two participating teams are known. For example if the current phase is the 8th final, the quarter final will be added once the teams playing this phase are known.
+
+Examples available in Request samples "Use Cases".
+
+Most of the parameters of this endpoint can be used together.
+
+Update Frequency : This endpoint is updated several times a day.
+
+Recommended Calls : 1 call per hour.
+
+query Parameters
+id	
+integer
+The id of the league
+
+name	
+string
+The name of the league
+
+country	
+string
+The country name of the league
+
+code	
+string [ 2 .. 6 ] characters FR, GB-ENG, IT…
+The Alpha code of the country
+
+season	
+integer = 4 characters YYYY
+The season of the league
+
+team	
+integer
+The id of the team
+
+type	
+string
+Enum: "league" "cup"
+The type of the league
+
+current	
+string Return the list of active seasons or the las...Show pattern
+Enum: "true" "false"
+The state of the league
+
+search	
+string >= 3 characters
+The name or the country of the league
+
+last	
+integer <= 2 characters
+The X last leagues/cups added in the API
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Seasons
+Get the list of available seasons.
+
+All seasons are only 4-digit keys, so for a league whose season is 2018-2019 like the English Premier League (EPL), the 2018-2019 season in the API will be 2018.
+
+All seasons can be used in other endpoints as filters.
+
+This endpoint does not require any parameters.
+
+Update Frequency : This endpoint is updated each time a new league is added.
+
+Recommended Calls : 1 call per day.
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Teams
+Teams information
+Get the list of available teams.
+
+The team id are unique in the API and teams keep it among all the leagues/cups in which they participate.
+
+To get the logo of a team you have to call the following url: https://media.api-sports.io/football/teams/{team_id}.png
+
+You can find all the teams ids on our Dashboard.
+
+Examples available in Request samples "Use Cases".
+
+All the parameters of this endpoint can be used together.
+
+This endpoint requires at least one parameter.
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+Tutorials :
+
+HOW TO GET ALL TEAMS AND PLAYERS FROM A LEAGUE ID
+query Parameters
+id	
+integer
+The id of the team
+
+name	
+string
+The name of the team
+
+league	
+integer
+The id of the league
+
+season	
+integer = 4 characters YYYY
+The season of the league
+
+country	
+string
+The country name of the team
+
+code	
+string = 3 characters
+The code of the team
+
+venue	
+integer
+The id of the venue
+
+search	
+string >= 3 characters
+The name or the country name of the team
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Teams statistics
+Returns the statistics of a team in relation to a given competition and season.
+
+It is possible to add the date parameter to calculate statistics from the beginning of the season to the given date. By default the API returns the statistics of all games played by the team for the competition and the season.
+
+Update Frequency : This endpoint is updated twice a day.
+
+Recommended Calls : 1 call per day for the teams who have at least one fixture during the day otherwise 1 call per week.
+
+Here is an example of what can be achieved
+
+demo-teams-statistics
+
+query Parameters
+league
+required
+integer
+The id of the league
+
+season
+required
+integer = 4 characters YYYY
+The season of the league
+
+team
+required
+integer
+The id of the team
+
+date	
+stringYYYY-MM-DD
+The limit date
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Teams seasons
+Get the list of seasons available for a team.
+
+Examples available in Request samples "Use Cases".
+
+This endpoint requires at least one parameter.
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+team
+required
+integer
+The id of the team
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Teams countries
+Get the list of countries available for the teams endpoint.
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Venues
+Venues
+Get the list of available venues.
+
+The venue id are unique in the API.
+
+To get the image of a venue you have to call the following url: https://media.api-sports.io/football/venues/{venue_id}.png
+
+Examples available in Request samples "Use Cases".
+
+All the parameters of this endpoint can be used together.
+
+This endpoint requires at least one parameter.
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+id	
+integer
+The id of the venue
+
+name	
+string
+The name of the venue
+
+city	
+string
+The city of the venue
+
+country	
+string
+The country name of the venue
+
+search	
+string >= 3 characters
+The name, city or the country of the venue
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Standings
+Standings
+Get the standings for a league or a team.
+
+Return a table of one or more rankings according to the league / cup.
+
+Some competitions have several rankings in a year, group phase, opening ranking, closing ranking etc…
+
+Examples available in Request samples "Use Cases".
+
+Most of the parameters of this endpoint can be used together.
+
+Update Frequency : This endpoint is updated every hour.
+
+Recommended Calls : 1 call per hour for the leagues or teams who have at least one fixture in progress otherwise 1 call per day.
+
+Tutorials :
+
+HOW TO GET STANDINGS FOR ALL CURRENT SEASONS
+query Parameters
+league	
+integer
+The id of the league
+
+season
+required
+integer = 4 characters YYYY
+The season of the league
+
+team	
+integer
+The id of the team
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Fixtures
+Rounds
+Get the rounds for a league or a cup.
+
+The round can be used in endpoint fixtures as filters
+
+Examples available in Request samples "Use Cases".
+
+Update Frequency : This endpoint is updated every day.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+league
+required
+integer
+The id of the league
+
+season
+required
+integer = 4 characters YYYY
+The season of the league
+
+current	
+boolean
+Enum: "true" "false"
+The current round only
+
+dates	
+boolean
+Default: false
+Enum: "true" "false"
+Add the dates of each round in the response
+
+timezone	
+string
+A valid timezone from the endpoint Timezone
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Fixtures
+For all requests to fixtures you can add the query parameter timezone to your request in order to retrieve the list of matches in the time zone of your choice like “Europe/London“
+
+To know the list of available time zones you have to use the endpoint timezone.
+
+Available fixtures status
+
+SHORT	LONG	TYPE	DESCRIPTION
+TBD	Time To Be Defined	Scheduled	Scheduled but date and time are not known
+NS	Not Started	Scheduled	
+1H	First Half, Kick Off	In Play	First half in play
+HT	Halftime	In Play	Finished in the regular time
+2H	Second Half, 2nd Half Started	In Play	Second half in play
+ET	Extra Time	In Play	Extra time in play
+BT	Break Time	In Play	Break during extra time
+P	Penalty In Progress	In Play	Penaly played after extra time
+SUSP	Match Suspended	In Play	Suspended by referee's decision, may be rescheduled another day
+INT	Match Interrupted	In Play	Interrupted by referee's decision, should resume in a few minutes
+FT	Match Finished	Finished	Finished in the regular time
+AET	Match Finished	Finished	Finished after extra time without going to the penalty shootout
+PEN	Match Finished	Finished	Finished after the penalty shootout
+PST	Match Postponed	Postponed	Postponed to another day, once the new date and time is known the status will change to Not Started
+CANC	Match Cancelled	Cancelled	Cancelled, match will not be played
+ABD	Match Abandoned	Abandoned	Abandoned for various reasons (Bad Weather, Safety, Floodlights, Playing Staff Or Referees), Can be rescheduled or not, it depends on the competition
+AWD	Technical Loss	Not Played	
+WO	WalkOver	Not Played	Victory by forfeit or absence of competitor
+LIVE	In Progress	In Play	Used in very rare cases. It indicates a fixture in progress but the data indicating the half-time or elapsed time are not available
+Fixtures with the status TBD may indicate an incorrect fixture date or time because the fixture date or time is not yet known or final. Fixtures with this status are checked and updated daily. The same applies to fixtures with the status PST, CANC.
+
+The fixtures ids are unique and specific to each fixture. In no case an ID will change.
+
+Not all competitions have livescore available and only have final result. In this case, the status remains in NS and will be updated in the minutes/hours following the match (this can take up to 48 hours, depending on the competition).
+
+Although the data is updated every 15 seconds, depending on the competition there may be a delay between reality and the availability of data in the API.
+
+Update Frequency : This endpoint is updated every 15 seconds.
+
+Recommended Calls : 1 call per minute for the leagues, teams, fixtures who have at least one fixture in progress otherwise 1 call per day.
+
+Here are several examples of what can be achieved
+
+demo-fixtures
+
+query Parameters
+id	
+integer
+Value: "id"
+The id of the fixture
+
+ids	
+stringMaximum of 20 fixtures ids
+Value: "id-id-id"
+One or more fixture ids
+
+live	
+string
+Enum: "all" "id-id"
+All or several leagues ids
+
+date	
+stringYYYY-MM-DD
+A valid date
+
+league	
+integer
+The id of the league
+
+season	
+integer = 4 characters YYYY
+The season of the league
+
+team	
+integer
+The id of the team
+
+last	
+integer <= 2 characters
+For the X last fixtures
+
+next	
+integer <= 2 characters
+For the X next fixtures
+
+from	
+stringYYYY-MM-DD
+A valid date
+
+to	
+stringYYYY-MM-DD
+A valid date
+
+round	
+string
+The round of the fixture
+
+status	
+string
+Enum: "NS" "NS-PST-FT"
+One or more fixture status short
+
+venue	
+integer
+The venue id of the fixture
+
+timezone	
+string
+A valid timezone from the endpoint Timezone
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Head To Head
+Get heads to heads between two teams.
+
+Update Frequency : This endpoint is updated every 15 seconds.
+
+Recommended Calls : 1 call per minute for the leagues, teams, fixtures who have at least one fixture in progress otherwise 1 call per day.
+
+Here is an example of what can be achieved
+
+demo-h2h
+
+query Parameters
+h2h
+required
+stringID-ID
+The ids of the teams
+
+date	
+stringYYYY-MM-DD
+league	
+integer
+The id of the league
+
+season	
+integer = 4 characters YYYY
+The season of the league
+
+last	
+integer
+For the X last fixtures
+
+next	
+integer
+For the X next fixtures
+
+from	
+stringYYYY-MM-DD
+to	
+stringYYYY-MM-DD
+status	
+string
+Enum: "NS" "NS-PST-FT"
+One or more fixture status short
+
+venue	
+integer
+The venue id of the fixture
+
+timezone	
+string
+A valid timezone from the endpoint Timezone
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Statistics
+Get the statistics for one fixture.
+
+Available statistics
+
+Shots on Goal
+Shots off Goal
+Shots insidebox
+Shots outsidebox
+Total Shots
+Blocked Shots
+Fouls
+Corner Kicks
+Offsides
+Ball Possession
+Yellow Cards
+Red Cards
+Goalkeeper Saves
+Total passes
+Passes accurate
+Passes %
+Update Frequency : This endpoint is updated every minute.
+
+Recommended Calls : 1 call every minute for the teams or fixtures who have at least one fixture in progress otherwise 1 call per day.
+
+Here is an example of what can be achieved
+
+demo-statistics
+
+query Parameters
+fixture
+required
+integer
+The id of the fixture
+
+team	
+integer
+The id of the team
+
+type	
+string
+The type of statistics
+
+half	
+boolean
+Default: false
+Enum: "true" "false"
+Add the halftime statistics in the response Data start from 2024 season for half parameter
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Events
+Get the events from a fixture.
+
+Available events
+
+TYPE				
+Goal	Normal Goal	Own Goal	Penalty	Missed Penalty
+Card	Yellow Card	Red card		
+Subst	Substitution [1, 2, 3...]			
+Var	Goal cancelled	Penalty confirmed		
+VAR events are available from the 2020-2021 season.
+Update Frequency : This endpoint is updated every 15 seconds.
+
+Recommended Calls : 1 call per minute for the fixtures in progress otherwise 1 call per day.
+
+You can also retrieve all the events of the fixtures in progress with to the endpoint fixtures?live=all
+
+Here is an example of what can be achieved
+
+demo-events
+
+query Parameters
+fixture
+required
+integer
+The id of the fixture
+
+team	
+integer
+The id of the team
+
+player	
+integer
+The id of the player
+
+type	
+string
+The type
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Lineups
+Get the lineups for a fixture.
+
+Lineups are available between 20 and 40 minutes before the fixture when the competition covers this feature. You can check this with the endpoint leagues and the coverage field.
+
+It's possible that for some competitions the lineups are not available before the fixture, this can be the case for minor competitions
+
+Available datas
+
+Formation
+Coach
+Start XI
+Substitutes
+Players' positions on the grid *
+
+X = row and Y = column (X:Y)
+
+Line 1 X being the one of the goal and then for each line this number is incremented. The column Y will go from left to right, and incremented for each player of the line.
+
+* As a new feature, some irregularities may occur, do not hesitate to report them on our public Roadmap
+
+Update Frequency : This endpoint is updated every 15 minutes.
+
+Recommended Calls : 1 call every 15 minutes for the fixtures in progress otherwise 1 call per day.
+
+Here are several examples of what can be done
+
+demo-lineups
+
+demo-lineups
+
+query Parameters
+fixture
+required
+integer
+The id of the fixture
+
+team	
+integer
+The id of the team
+
+player	
+integer
+The id of the player
+
+type	
+string
+The type
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Players statistics
+Get the players statistics from one fixture.
+
+Update Frequency : This endpoint is updated every minute.
+
+Recommended Calls : 1 call every minute for the fixtures in progress otherwise 1 call per day.
+
+query Parameters
+fixture
+required
+integer
+The id of the fixture
+
+team	
+integer
+The id of the team
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Injuries
+Injuries
+Get the list of players not participating in the fixtures for various reasons such as suspended, injured for example.
+
+Being a new endpoint, the data is only available from April 2021.
+
+There are two types:
+
+Missing Fixture : The player will not play the fixture.
+Questionable : The information is not yet 100% sure, the player may eventually play the fixture.
+Examples available in Request samples "Use Cases".
+
+All the parameters of this endpoint can be used together.
+
+This endpoint requires at least one parameter.
+
+Update Frequency : This endpoint is updated every 4 hours.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+league	
+integer
+The id of the league
+
+season	
+integer = 4 characters YYYY
+The season of the league, required with league, team and player parameters
+
+fixture	
+integer
+The id of the fixture
+
+team	
+integer
+The id of the team
+
+player	
+integer
+The id of the player
+
+date	
+stringYYYY-MM-DD
+A valid date
+
+ids	
+stringMaximum of 20 fixtures ids
+Value: "id-id-id"
+One or more fixture ids
+
+timezone	
+string
+A valid timezone from the endpoint Timezone
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Predictions
+Predictions
+Get predictions about a fixture.
+
+The predictions are made using several algorithms including the poisson distribution, comparison of team statistics, last matches, players etc…
+
+Bookmakers odds are not used to make these predictions
+
+Also provides some comparative statistics between teams
+
+Available Predictions
+
+Match winner : Id of the team that can potentially win the fixture
+Win or Draw : If True indicates that the designated team can win or draw
+Under / Over : -1.5 / -2.5 / -3.5 / -4.5 / +1.5 / +2.5 / +3.5 / +4.5 *
+Goals Home : -1.5 / -2.5 / -3.5 / -4.5 *
+Goals Away -1.5 / -2.5 / -3.5 / -4.5 *
+Advice (Ex : Deportivo Santani or draws and -3.5 goals)
+* -1.5 means that there will be a maximum of 1.5 goals in the fixture, i.e : 1 goal
+
+Update Frequency : This endpoint is updated every hour.
+
+Recommended Calls : 1 call per hour for the fixtures in progress otherwise 1 call per day.
+
+Here is an example of what can be achieved
+
+demo-prediction
+
+query Parameters
+fixture
+required
+integer
+The id of the fixture
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Coachs
+Coachs
+Get all the information about the coachs and their careers.
+
+To get the photo of a coach you have to call the following url: https://media.api-sports.io/football/coachs/{coach_id}.png
+
+Update Frequency : This endpoint is updated every day.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+id	
+integer
+The id of the coach
+
+team	
+integer
+The id of the team
+
+search	
+string >= 3 characters
+The name of the coach
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Players
+Seasons
+Get all available seasons for players statistics.
+
+Update Frequency : This endpoint is updated every day.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+player	
+integer
+The id of the player
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Transfers
+Transfers
+Get all available transfers for players and teams
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+player	
+integer
+The id of the player
+
+team	
+integer
+The id of the team
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Trophies
+Trophies
+Get all available trophies for a player or a coach.
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+player	
+integer
+The id of the player
+
+players	
+stringMaximum of 20 players ids
+Value: "id-id-id"
+One or more players ids
+
+coach	
+integer
+The id of the coach
+
+coachs	
+stringMaximum of 20 coachs ids
+Value: "id-id-id"
+One or more coachs ids
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Sidelined
+Sidelined
+Get all available sidelined for a player or a coach.
+
+Update Frequency : This endpoint is updated several times a week.
+
+Recommended Calls : 1 call per day.
+
+query Parameters
+player	
+integer
+The id of the player
+
+players	
+stringMaximum of 20 players ids
+Value: "id-id-id"
+One or more players ids
+
+coach	
+integer
+The id of the coach
+
+coachs	
+stringMaximum of 20 coachs ids
+Value: "id-id-id"
+One or more coachs ids
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+Odds (In-Play)
+odds/live
+This endpoint returns in-play odds for fixtures in progress.
+
+Fixtures are added between 15 and 5 minutes before the start of the fixture. Once the fixture is over they are removed from the endpoint between 5 and 20 minutes. No history is stored. So fixtures that are about to start, fixtures in progress and fixtures that have just ended are available in this endpoint.
+
+Update Frequency : This endpoint is updated every 5 seconds.*
+
+* This value can change in the range of 5 to 60 seconds
+
+INFORMATIONS ABOUT STATUS
+
+"status": {
+    "stopped": false, // True if the fixture is stopped by the referee for X reason
+    "blocked": false, // True if bets on this fixture are temporarily blocked
+    "finished": false // True if the fixture has not started or if it is finished
+},
+INFORMATIONS ABOUT VALUES
+
+When several identical values exist for the same bet the main field is set to True for the bet being considered, the others will have the value False.
+
+The main field will be set to True only if several identical values exist for the same bet.
+
+When a value is unique for a bet the main value will always be False or null.
+
+Example below :
+
+"id": 36,
+"name": "Over/Under Line",
+"values": [
+    {
+        "value": "Over",
+        "odd": "1.975",
+        "handicap": "2",
+        "main": true, // Bet to consider
+        "suspended": false // True if this bet is temporarily suspended
+    },
+    {
+        "value": "Over",
+        "odd": "3.45",
+        "handicap": "2",
+        "main": false, // Bet to no consider
+        "suspended": false
+    },
+]
+query Parameters
+fixture	
+integer
+The id of the fixture
+
+league	
+integer (In this endpoint the "season" parameter is ...Show pattern
+The id of the league
+
+bet	
+integer
+The id of the bet
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error
+
+odds/live/bets
+Get all available bets for in-play odds.
+
+All bets id can be used in endpoint odds/live as filters, but are not compatible with endpoint odds for pre-match odds.
+
+Update Frequency : This endpoint is updated every 60 seconds.
+
+query Parameters
+id	
+string
+The id of the bet name
+
+search	
+string = 3 characters
+The name of the bet
+
+header Parameters
+x-rapidapi-key
+required
+string
+Your Api-Key
+
+Responses
+200 OK
+204 No Content
+499 Time Out
+500 Internal Server Error

@@ -231,21 +231,21 @@ function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
           <div key={fixture.id} className="flex items-center justify-between p-3 bg-slate-700 rounded">
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
-                {fixture.home_logo && (
-                  <img src={fixture.home_logo} alt="" className="w-5 h-5 object-contain" />
+                {fixture.home_team.logo_url && (
+                  <img src={fixture.home_team.logo_url} alt="" className="w-5 h-5 object-contain" />
                 )}
-                <span className="text-white text-sm">{fixture.home_team}</span>
+                <span className="text-white text-sm">{fixture.home_team.name}</span>
               </div>
               <span className="text-slate-400 text-xs">vs</span>
               <div className="flex items-center space-x-2">
-                {fixture.away_logo && (
-                  <img src={fixture.away_logo} alt="" className="w-5 h-5 object-contain" />
+                {fixture.away_team.logo_url && (
+                  <img src={fixture.away_team.logo_url} alt="" className="w-5 h-5 object-contain" />
                 )}
-                <span className="text-white text-sm">{fixture.away_team}</span>
+                <span className="text-white text-sm">{fixture.away_team.name}</span>
               </div>
             </div>
             <div className="text-slate-400 text-xs">
-              {new Date(fixture.match_date).toLocaleDateString('ko-KR', {
+              {new Date(fixture.date_utc).toLocaleDateString('ko-KR', {
                 month: 'numeric',
                 day: 'numeric'
               })}
