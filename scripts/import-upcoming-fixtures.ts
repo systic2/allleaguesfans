@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import fetch from 'node-fetch';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || "http://localhost:54321";
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "test-anon";
