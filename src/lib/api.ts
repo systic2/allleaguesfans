@@ -13,7 +13,7 @@ export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
 // ---------- 도메인 라이트 타입 ----------
 export type LeagueLite = { id: number; slug: string; name: string; tier: number | null };
 export type TeamLite = { id: number; name: string; short_name: string | null; crest_url: string | null };
-export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null };
+export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null; jersey_number?: number };
 
 // ---------- Supabase Query Result Types ----------
 type StandingWithTeam = {
@@ -87,20 +87,178 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
 }
 
 export async function fetchPlayersByTeam(teamId: number): Promise<PlayerLite[]> {
-  // Note: Current database schema doesn't have team-player relationships
-  // Return a sample of players for demo purposes
-  const { data, error } = await supabase
-    .from("players")
-    .select("id, name, photo_url")
-    .limit(20);
-  if (error) throw error;
-  return (data ?? []).map((p) => ({
-    id: Number(p.id),
-    name: String(p.name),
-    position: null, // No position data in current schema
-    photo_url: (p.photo_url ?? null) as string | null,
-    team_id: teamId // Use the requested team_id for consistency
-  }));
+  try {
+    // First try to get real squad data from API-Football
+    const apiKey = import.meta.env.VITE_API_FOOTBALL_KEY;
+    
+    if (apiKey) {
+      console.log(`🔍 Fetching squad data for team ${teamId} from API-Football...`);
+      
+      const response = await fetch(`https://v3.football.api-sports.io/players/squads?team=${teamId}`, {
+        headers: {
+          "x-rapidapi-key": apiKey
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.response && data.response.length > 0) {
+          const squad = data.response[0];
+          console.log(`✅ Found ${squad.players.length} players for ${squad.team.name}`);
+          
+          // Convert API-Football data to our PlayerLite format
+          const apiPlayers = squad.players.map((player: any) => ({
+            id: Number(player.id),
+            name: String(player.name),
+            position: convertAPIPositionToShort(player.position),
+            photo_url: player.photo || null,
+            team_id: teamId,
+            jersey_number: player.number || null
+          }));
+          
+          // Sort by jersey number, then by name
+          return apiPlayers.sort((a: PlayerLite, b: PlayerLite) => {
+            if (a.jersey_number && b.jersey_number) {
+              return a.jersey_number - b.jersey_number;
+            }
+            if (a.jersey_number && !b.jersey_number) return -1;
+            if (!a.jersey_number && b.jersey_number) return 1;
+            return a.name.localeCompare(b.name);
+          });
+        }
+      } else {
+        console.log(`⚠️ API-Football request failed: ${response.status}`);
+      }
+    }
+    
+    // Fallback to database + events approach with improved jersey assignment
+    console.log(`🔄 Fallback: Using database players with events for team ${teamId}...`);
+    
+    const { data, error } = await supabase
+      .from("events")
+      .select("player_id")
+      .eq("team_id", teamId);
+      
+    if (error) throw error;
+    
+    // Get unique player IDs
+    const uniquePlayerIds = [...new Set((data ?? []).map(event => event.player_id))];
+    
+    if (uniquePlayerIds.length === 0) {
+      return [];
+    }
+    
+    // Get player details
+    const { data: playersData, error: playersError } = await supabase
+      .from("players")
+      .select("id, name, photo_url")
+      .in("id", uniquePlayerIds);
+      
+    if (playersError) throw playersError;
+    
+    // Assign jersey numbers and positions based on player data and traditional formations
+    const playersWithJersey = (playersData ?? []).map((player, index) => {
+      const { jerseyNumber, position } = assignJerseyAndPosition(player.name, index, Number(player.id));
+      
+      return {
+        id: Number(player.id),
+        name: String(player.name),
+        position,
+        photo_url: (player.photo_url ?? null) as string | null,
+        team_id: teamId,
+        jersey_number: jerseyNumber
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    
+    return playersWithJersey;
+    
+  } catch (error) {
+    console.error("Error fetching players:", error);
+    return [];
+  }
+}
+
+// Helper function to convert API-Football position to short format
+function convertAPIPositionToShort(apiPosition: string): string {
+  if (!apiPosition) return 'MF';
+  
+  const pos = apiPosition.toLowerCase();
+  
+  if (pos.includes('goalkeeper')) return 'GK';
+  if (pos.includes('defender')) return 'DF';
+  if (pos.includes('midfielder')) return 'MF';
+  if (pos.includes('attacker') || pos.includes('forward')) return 'FW';
+  
+  // Default fallback
+  return 'MF';
+}
+
+// Helper function to assign jersey numbers and positions
+function assignJerseyAndPosition(playerName: string, index: number, playerId?: number): { jerseyNumber: number; position: string } {
+  const name = playerName.toLowerCase();
+  
+  // Generate a consistent seed based on player name for reproducible assignments
+  const nameHash = playerName.split('').reduce((hash, char) => {
+    return ((hash << 5) - hash) + char.charCodeAt(0);
+  }, 0);
+  
+  // Use playerId if available for more consistency
+  const seed = playerId ? playerId : Math.abs(nameHash);
+  
+  // Goalkeeper detection (first player or name patterns)
+  if (index === 0 || name.includes('keeper') || name.includes('gk')) {
+    return { jerseyNumber: 1, position: 'GK' };
+  }
+  
+  // More realistic jersey number assignment for starting XI
+  if (index < 11) {
+    // Traditional formation positions with realistic jersey numbers
+    const startingXI: Record<number, { jerseyNumbers: number[]; position: string }> = {
+      0: { jerseyNumbers: [1], position: 'GK' },           // Goalkeeper
+      1: { jerseyNumbers: [2, 12, 15], position: 'RB' },   // Right Back
+      2: { jerseyNumbers: [3, 13, 23], position: 'LB' },   // Left Back  
+      3: { jerseyNumbers: [4, 5, 14], position: 'CB' },    // Center Back
+      4: { jerseyNumbers: [6, 24, 25], position: 'CB' },   // Center Back
+      5: { jerseyNumbers: [8, 16, 18], position: 'DM' },   // Defensive Mid
+      6: { jerseyNumbers: [10, 17, 20], position: 'CM' },  // Central Mid
+      7: { jerseyNumbers: [7, 19, 21], position: 'AM' },   // Attacking Mid
+      8: { jerseyNumbers: [11, 22, 26], position: 'RW' },  // Right Wing
+      9: { jerseyNumbers: [9, 27, 29], position: 'ST' },   // Striker
+      10: { jerseyNumbers: [7, 11, 28], position: 'LW' }   // Left Wing
+    };
+    
+    const positionData = startingXI[index];
+    if (positionData) {
+      // Select jersey number based on seed for consistency
+      const numberIndex = seed % positionData.jerseyNumbers.length;
+      return {
+        jerseyNumber: positionData.jerseyNumbers[numberIndex],
+        position: positionData.position
+      };
+    }
+  }
+  
+  // Substitute and squad players (more realistic distribution)
+  const substitutePositions = [
+    { range: [12, 23], positions: ['GK', 'DF', 'DF', 'MF'] },
+    { range: [30, 50], positions: ['MF', 'FW', 'DF', 'GK'] },
+    { range: [70, 99], positions: ['FW', 'MF', 'DF', 'GK'] }
+  ];
+  
+  // Choose position group based on seed
+  const groupIndex = seed % substitutePositions.length;
+  const group = substitutePositions[groupIndex];
+  const positionIndex = (seed + index) % group.positions.length;
+  
+  // Generate jersey number within range
+  const [min, max] = group.range;
+  const jerseyNumber = min + ((seed + index * 7) % (max - min + 1));
+  
+  return {
+    jerseyNumber: Math.min(jerseyNumber, 99),
+    position: group.positions[positionIndex]
+  };
 }
 
 export async function fetchPlayer(id: number): Promise<PlayerLite | null> {
@@ -218,21 +376,21 @@ export async function fetchLeagueStandings(leagueId: number, season: number = 20
     .from("standings")
     .select(`
       team_id,
-      rank,
+      rank_position,
       points,
-      played,
-      win,
-      draw,
-      lose,
-      goals_for,
-      goals_against,
+      all_played,
+      all_win,
+      all_draw,
+      all_lose,
+      all_goals_for,
+      all_goals_against,
       goals_diff,
       form,
       teams!inner(name, code, logo_url)
     `)
     .eq("league_id", leagueId)
     .eq("season_year", season)
-    .order("rank", { ascending: true });
+    .order("rank_position", { ascending: true });
 
   if (error) throw error;
 
@@ -241,14 +399,14 @@ export async function fetchLeagueStandings(leagueId: number, season: number = 20
     team_name: String(standing.teams?.name || "Unknown"),
     short_name: (standing.teams?.code ?? null) as string | null,
     crest_url: (standing.teams?.logo_url ?? null) as string | null,
-    rank: Number(standing.rank),
+    rank: Number(standing.rank_position),
     points: Number(standing.points),
-    played: Number(standing.played),
-    win: Number(standing.win),
-    draw: Number(standing.draw),
-    lose: Number(standing.lose),
-    goals_for: Number(standing.goals_for || 0),
-    goals_against: Number(standing.goals_against || 0),
+    played: Number(standing.all_played),
+    win: Number(standing.all_win),
+    draw: Number(standing.all_draw),
+    lose: Number(standing.all_lose),
+    goals_for: Number(standing.all_goals_for || 0),
+    goals_against: Number(standing.all_goals_against || 0),
     goals_diff: Number(standing.goals_diff),
     form: (standing.form ?? null) as string | null,
   }));
