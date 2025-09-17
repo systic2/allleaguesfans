@@ -166,13 +166,35 @@ npx tsx scripts/env-check.ts
 # 3. Check API_FOOTBALL_KEY validity
 ```
 
-**Event Import Schema Issues:**
+**PostgreSQL Constraint Errors:**
 ```bash
-# Check database table structure
-npx tsx scripts/check-events-table-structure.ts
+# Error 42830: "there is no unique constraint matching given keys"
+# Fix: Update leagues table primary key structure
+\i scripts/fix-leagues-primary-key-safe.sql
 
-# Fix schema mismatches (event_type vs type columns)
-npx tsx scripts/fix-event-import-schema-mismatch.ts
+# Error 42601: "syntax error at or near 'RAISE'"
+# Fix: Use corrected script with proper PL/pgSQL blocks
+\i scripts/fix-leagues-primary-key-corrected.sql
+
+# Error P0001: "cannot drop constraint because other objects depend on it"
+# Fix: Use safe migration with dependency handling
+\i scripts/fix-leagues-primary-key-safe.sql
+
+# Verify fixes
+\i scripts/quick-verify-leagues-fix.sql
+```
+
+**ON CONFLICT Specification Errors:**
+```bash
+# Error 42P10: "there is no unique or exclusion constraint matching the ON CONFLICT specification"
+# 1. First ensure database schema is up to date
+\i scripts/fix-leagues-primary-key-safe.sql
+
+# 2. Use improved import logic with proper conflict handling
+npx tsx scripts/fix-import-upsert-logic.ts
+
+# 3. Verify constraint structure
+\i scripts/diagnose-leagues-dependencies.sql
 ```
 
 **Database Connection Issues:**
@@ -184,15 +206,59 @@ console.log('✅ Connection test:', await supa.from('leagues').select('count').s
 "
 ```
 
+### Database Migration and Error Resolution Guide
+
+#### Step-by-Step Fix Process
+When encountering GitHub Actions data sync errors or PostgreSQL constraint violations:
+
+1. **Diagnose the Problem**
+   ```bash
+   # Check current database state
+   \i scripts/diagnose-leagues-dependencies.sql
+   \i scripts/quick-verify-leagues-fix.sql
+   ```
+
+2. **Apply Safe Migration**
+   ```bash
+   # Fix leagues table primary key structure (resolves 42830, P0001 errors)
+   \i scripts/fix-leagues-primary-key-safe.sql
+   ```
+
+3. **Verify Migration Success**
+   ```bash
+   # Ensure migration completed successfully
+   \i scripts/quick-verify-leagues-fix.sql
+   # Expected results: "CORRECT", "CORRECT", "CLEAN"
+   ```
+
+4. **Run Data Import**
+   ```bash
+   # Execute master import with fixed database structure
+   SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
+   ```
+
+5. **Validate Results**
+   ```bash
+   # Check GitHub Actions logs for resolved errors
+   # No more 42830, P0001, or 42P10 errors should occur
+   ```
+
+#### Error Resolution Map
+- **42830**: leagues table missing composite primary key → `fix-leagues-primary-key-safe.sql`
+- **42601**: RAISE statement syntax error → `fix-leagues-primary-key-corrected.sql`  
+- **P0001**: Constraint dependency error → `fix-leagues-primary-key-safe.sql`
+- **42P10**: ON CONFLICT specification error → Apply migration first, then retry import
+
 ### Import Process Flow
 1. **Environment Validation** - Verify all required variables and connections
-2. **Teams & Venues** - Import team information and stadium data  
-3. **Players & Squads** - Import player profiles and team rosters
-4. **Fixtures** - Import match schedules and results
-5. **Events** - Import match events (goals, cards, substitutions)
-6. **Standings** - Import league tables and rankings
-7. **Statistics** - Import player and team statistics
-8. **Quality Check** - Validate data integrity and completeness
+2. **Database Migration** - Apply any necessary schema fixes using migration scripts
+3. **Teams & Venues** - Import team information and stadium data  
+4. **Players & Squads** - Import player profiles and team rosters
+5. **Fixtures** - Import match schedules and results
+6. **Events** - Import match events (goals, cards, substitutions)
+7. **Standings** - Import league tables and rankings
+8. **Statistics** - Import player and team statistics
+9. **Quality Check** - Validate data integrity and completeness
 
 ### Performance Considerations
 - **Rate Limiting**: API calls include automatic retry with exponential backoff
@@ -210,15 +276,14 @@ SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
 # Environment validation (run before any script)
 npx tsx scripts/env-check.ts
 
-# Fix event import issues (if events are missing)
-npx tsx scripts/fix-event-import-schema-mismatch.ts
-
-# Check database table structure
-npx tsx scripts/check-events-table-structure.ts
-
 # Database schema setup (if needed)
 psql -f 01-drop-all-tables.sql    # Reset database
 psql -f 02-create-all-tables.sql  # Create schema
+
+# Database integrity fixes (run if encountering constraint errors)
+\i scripts/fix-leagues-primary-key-safe.sql        # Fix leagues primary key structure
+\i scripts/quick-verify-leagues-fix.sql            # Verify migration results
+\i scripts/diagnose-leagues-dependencies.sql       # Analyze dependencies
 ```
 
 ### Development Best Practices
