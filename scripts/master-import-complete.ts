@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { importKLeagueTopScorers, importKLeagueTopAssists } from "./import-kleague-stats.js";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "http://localhost:54321";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || process.env.VITE_SUPABASE_ANON_KEY || "test-anon";
@@ -741,6 +742,135 @@ async function importStandings(seasonYear: number) {
   }
 }
 
+async function importTopStats(seasonYear: number) {
+  console.log("🏆 Importing top scorers and assists...");
+  
+  const leagues = [292, 293]; // K League 1 and K League 2
+  
+  for (const leagueId of leagues) {
+    console.log(`\n📊 Processing league ${leagueId}...`);
+    
+    // Import Top Scorers
+    try {
+      console.log(`🏆 Importing top scorers... (League: ${leagueId}, Season: ${seasonYear})`);
+      const scorersResponse = await fetch(
+        `https://v3.football.api-sports.io/players/topscorers?season=${seasonYear}&league=${leagueId}`,
+        {
+          headers: {
+            'x-rapidapi-key': apiKey!,
+          },
+        }
+      );
+
+      const scorersData = await scorersResponse.json();
+      
+      if (scorersData.response && scorersData.response.length > 0) {
+        const topScorers = scorersData.response.map((item: any, index: number) => {
+          const stats = item.statistics[0]; // First team/league stats
+          return {
+            league_id: leagueId,
+            season_year: seasonYear,
+            player_id: item.player.id,
+            player_name: item.player.name,
+            player_photo: item.player.photo,
+            team_id: stats.team.id,
+            team_name: stats.team.name,
+            team_logo: stats.team.logo,
+            rank_position: index + 1,
+            goals: stats.goals.total || 0,
+            assists: stats.goals.assists || 0,
+            appearances: stats.games.appearences || 0,
+            minutes: stats.games.minutes || 0,
+            penalties_scored: stats.penalty.scored || 0,
+            penalties_missed: stats.penalty.missed || 0,
+            yellow_cards: stats.cards.yellow || 0,
+            red_cards: stats.cards.red || 0,
+            player_rating: stats.games.rating ? parseFloat(stats.games.rating) : null,
+          };
+        });
+
+        const { error } = await supabase
+          .from('top_scorers')
+          .upsert(topScorers, {
+            onConflict: 'league_id,season_year,player_id',
+          });
+
+        if (error) {
+          console.error('  ❌ Top scorers import error:', error);
+        } else {
+          console.log(`  ✅ ${topScorers.length} top scorers imported`);
+        }
+      } else {
+        console.log('  ⚠️ No top scorers data available');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('  ❌ Top scorers API error:', error);
+    }
+
+    // Import Top Assists
+    try {
+      console.log(`🎯 Importing top assists... (League: ${leagueId}, Season: ${seasonYear})`);
+      const assistsResponse = await fetch(
+        `https://v3.football.api-sports.io/players/topassists?season=${seasonYear}&league=${leagueId}`,
+        {
+          headers: {
+            'x-rapidapi-key': apiKey!,
+          },
+        }
+      );
+
+      const assistsData = await assistsResponse.json();
+      
+      if (assistsData.response && assistsData.response.length > 0) {
+        const topAssists = assistsData.response.map((item: any, index: number) => {
+          const stats = item.statistics[0]; // First team/league stats
+          return {
+            league_id: leagueId,
+            season_year: seasonYear,
+            player_id: item.player.id,
+            player_name: item.player.name,
+            player_photo: item.player.photo,
+            team_id: stats.team.id,
+            team_name: stats.team.name,
+            team_logo: stats.team.logo,
+            rank_position: index + 1,
+            assists: stats.goals.assists || 0,
+            goals: stats.goals.total || 0,
+            appearances: stats.games.appearences || 0,
+            minutes: stats.games.minutes || 0,
+            key_passes: stats.passes.key || 0,
+            yellow_cards: stats.cards.yellow || 0,
+            red_cards: stats.cards.red || 0,
+            player_rating: stats.games.rating ? parseFloat(stats.games.rating) : null,
+          };
+        });
+
+        const { error } = await supabase
+          .from('top_assists')
+          .upsert(topAssists, {
+            onConflict: 'league_id,season_year,player_id',
+          });
+
+        if (error) {
+          console.error('  ❌ Top assists import error:', error);
+        } else {
+          console.log(`  ✅ ${topAssists.length} top assists imported`);
+        }
+      } else {
+        console.log('  ⚠️ No top assists data available');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('  ❌ Top assists API error:', error);
+    }
+  }
+  
+  console.log('✅ Top stats import completed');
+}
+
 async function masterImport() {
   const seasonYear = Number(process.env.SEASON_YEAR) || 2025;
   
@@ -764,13 +894,23 @@ async function masterImport() {
     await importFixtures(seasonYear);
     await importEvents(seasonYear);
     await importStandings(seasonYear);
+    await importTopStats(seasonYear);
+    
+    // Import K League official data to replace API-Football data with accurate statistics
+    console.log(`
+🏆 Importing K League official data to correct statistics...`);
+    for (const leagueId of [292, 293]) {
+      await importKLeagueTopScorers(leagueId, seasonYear);
+      await importKLeagueTopAssists(leagueId, seasonYear);
+    }
 
-    console.log("\n==========================================");
+    console.log(`
+==========================================`);
     console.log("🎉 Master import completed successfully!");
     console.log("All API-Football data has been imported to the database.");
     
     // Print summary
-    const tables = ['countries', 'leagues', 'teams', 'players', 'fixtures', 'events', 'standings'];
+    const tables = ['countries', 'leagues', 'teams', 'players', 'fixtures', 'events', 'standings', 'top_scorers', 'top_assists'];
     for (const table of tables) {
       try {
         const { count } = await supabase
