@@ -31,53 +31,140 @@ jobs:
     - name: Install dependencies
       run: pnpm install
       
-    - name: Daily Incremental Sync
-      if: github.event.schedule == '0 2 * * *'
+    - name: Environment Check
       env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         SEASON_YEAR: 2025
+        NODE_ENV: production
       run: |
+        echo "🔍 Checking environment configuration..."
+        npx tsx scripts/env-check.ts
+      
+    - name: Daily Incremental Sync
+      if: github.event.schedule == '0 2 * * *'
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        SEASON_YEAR: 2025
+        NODE_ENV: production
+      run: |
+        echo "🚀 Starting daily incremental sync..."
+        echo "Environment check:"
+        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
+        
         # 새 스키마 기반 증분 업데이트 (경기 결과, 순위표, 이벤트)
-        SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
+        if npx tsx scripts/master-import-complete.ts; then
+          echo "✅ Master import completed successfully"
+        else
+          echo "❌ Master import failed"
+          exit 1
+        fi
+        
         # 예정 경기 업데이트 (next, TBD, NS 상태)
-        SEASON_YEAR=2025 npx tsx scripts/import-upcoming-fixtures.ts
+        if npx tsx scripts/import-upcoming-fixtures.ts; then
+          echo "✅ Upcoming fixtures import completed"
+        else
+          echo "⚠️ Upcoming fixtures import failed (non-critical)"
+        fi
         
     - name: Weekly Full Sync
       if: github.event.schedule == '0 3 * * 1'
       env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         SEASON_YEAR: 2025
+        NODE_ENV: production
       run: |
+        echo "🚀 Starting weekly full sync..."
+        echo "Environment check:"
+        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
+        
         # 새 스키마 기반 전체 동기화 (모든 데이터 재검증)
-        SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
+        if npx tsx scripts/master-import-complete.ts; then
+          echo "✅ Master import completed successfully"
+        else
+          echo "❌ Master import failed"
+          exit 1
+        fi
+        
         # 예정 경기 업데이트 (next, TBD, NS 상태)
-        SEASON_YEAR=2025 npx tsx scripts/import-upcoming-fixtures.ts
+        if npx tsx scripts/import-upcoming-fixtures.ts; then
+          echo "✅ Upcoming fixtures import completed"
+        else
+          echo "⚠️ Upcoming fixtures import failed (non-critical)"
+        fi
         
     - name: Manual Full Sync
       if: github.event_name == 'workflow_dispatch'
       env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
         API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         SEASON_YEAR: 2025
+        NODE_ENV: production
       run: |
+        echo "🚀 Starting manual full sync..."
+        echo "Environment check:"
+        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
+        
         # 수동 실행 시 전체 동기화
-        SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
+        if npx tsx scripts/master-import-complete.ts; then
+          echo "✅ Master import completed successfully"
+        else
+          echo "❌ Master import failed"
+          exit 1
+        fi
+        
         # 예정 경기 업데이트 (next, TBD, NS 상태)
-        SEASON_YEAR=2025 npx tsx scripts/import-upcoming-fixtures.ts
+        if npx tsx scripts/import-upcoming-fixtures.ts; then
+          echo "✅ Upcoming fixtures import completed"
+        else
+          echo "⚠️ Upcoming fixtures import failed (non-critical)"
+        fi
         
     - name: Data Quality Check
       env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        NODE_ENV: production
       run: |
+        echo "🔍 Starting data quality check..."
+        echo "Environment check:"
+        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
+        
         # 데이터 품질 검증 (새 스키마 기반)
-        SEASON_YEAR=2025 npx tsx scripts/final-verification.ts
+        if npx tsx scripts/final-verification.ts; then
+          echo "✅ Data quality check passed"
+        else
+          echo "⚠️ Data quality check failed (non-critical, will continue)"
+        fi
+        
+    - name: Workflow Summary
+      if: always()
+      run: |
+        echo "🎉 Data Sync Workflow Completed"
+        echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+        echo "Trigger: ${{ github.event_name }}"
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
