@@ -1,4 +1,4 @@
-import { supa } from './lib/supabase.js';
+import { supa } from './lib/supabase.ts';
 
 async function checkTableStructure() {
   console.log('🔍 Checking top_scorers table structure...');

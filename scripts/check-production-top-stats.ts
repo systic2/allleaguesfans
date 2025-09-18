@@ -1,4 +1,4 @@
-import { supabase } from '../src/lib/supabaseClient.js';
+import { supabase } from '../src/lib/supabaseClient.ts';
 
 async function checkProductionTopStats() {
   console.log('🔍 Checking production database for top_scorers and top_assists tables...');

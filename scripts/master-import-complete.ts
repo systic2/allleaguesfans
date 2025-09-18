@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { importKLeagueTopScorers, importKLeagueTopAssists } from "./import-kleague-stats.js";
+import { importKLeagueTopScorers, importKLeagueTopAssists } from "./import-kleague-stats.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "http://localhost:54321";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || process.env.VITE_SUPABASE_ANON_KEY || "test-anon";

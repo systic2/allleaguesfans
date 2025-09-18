@@ -16,7 +16,7 @@ import {
   safeFixtureUpsert,
   safeBatchUpsert,
   validateDatabaseIntegrity
-} from "./fix-import-upsert-logic.js";
+} from "./fix-import-upsert-logic.ts";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || "";

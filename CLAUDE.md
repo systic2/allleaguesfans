@@ -211,6 +211,45 @@ console.log('✅ Connection test:', await supa.from('leagues').select('count').s
 "
 ```
 
+**TypeScript Import Errors (ERR_MODULE_NOT_FOUND):**
+```bash
+# Error: Cannot find module './file.js' imported from './script.ts'
+# Root Cause: TypeScript files imported with .js extension
+
+# Common error pattern:
+# Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/path/to/script.js' 
+# imported from /path/to/another-script.ts
+
+# Fix: Use .ts extension for TypeScript imports
+# ❌ Wrong:
+import { func } from "./module.js";
+
+# ✅ Correct:
+import { func } from "./module.ts";
+
+# Quick fix command to find and check import issues:
+grep -r "import.*\.js['\"]" scripts/ --include="*.ts"
+
+# Verify fix with test import:
+npx tsx -e "import { yourFunction } from './scripts/your-file.ts'; console.log('✅ Import successful');"
+```
+
+**Common TypeScript Import Fixes:**
+```bash
+# 1. Scripts directory imports
+# Files: master-import-complete.ts, master-import-improved.ts, etc.
+# Fix: Change .js to .ts in import statements
+
+# 2. Library imports in scripts/lib/
+# Fix: Update supabase.js → supabase.ts, api-football.js → api-football.ts
+
+# 3. Src directory imports from scripts
+# Fix: Update relative paths to use .ts extension
+
+# Prevention: Always use .ts extension for TypeScript file imports
+# GitHub Actions runs tsx which requires correct TypeScript import syntax
+```
+
 ### Database Migration and Error Resolution Guide
 
 #### Step-by-Step Fix Process
@@ -253,6 +292,7 @@ When encountering GitHub Actions data sync errors or PostgreSQL constraint viola
 - **42601**: RAISE statement syntax error → `fix-leagues-primary-key-corrected.sql`  
 - **P0001**: Constraint dependency error → `fix-leagues-primary-key-safe.sql`
 - **42P10**: ON CONFLICT specification error → Apply migration first, then retry import
+- **ERR_MODULE_NOT_FOUND**: TypeScript import with .js extension → Change .js to .ts in import statements
 
 ### Import Process Flow
 1. **Environment Validation** - Verify all required variables and connections
@@ -304,8 +344,32 @@ pnpm deps:check        # Find unused dependencies
 pnpm exports:check     # Find unused exports
 pnpm files:check       # Comprehensive dead code analysis
 
+# TypeScript import validation (prevent GitHub Actions errors)
+grep -r "import.*\.js['\"]" scripts/ --include="*.ts"  # Should return no results
+npx tsx scripts/env-check.ts                           # Test environment setup
+
 # Development server
 pnpm dev               # Start development server with hot reload
+```
+
+### TypeScript Import Guidelines
+```bash
+# ✅ ALWAYS use .ts extension for TypeScript imports
+import { func } from "./module.ts";
+import { helper } from "./lib/utility.ts";
+import { api } from "../src/lib/client.ts";
+
+# ❌ NEVER use .js extension for TypeScript files (causes GitHub Actions errors)
+import { func } from "./module.js";     # Will fail in tsx
+import { helper } from "./lib/utility.js";  # Runtime module not found
+
+# Validation commands to run before committing scripts:
+1. Check for problematic imports: grep -r "import.*\.js['\"]" scripts/ --include="*.ts"
+2. Test import syntax: npx tsx -e "import { testFunc } from './scripts/your-script.ts';"
+3. Validate environment: npx tsx scripts/env-check.ts
+
+# Quick fix for import errors:
+find scripts/ -name "*.ts" -exec sed -i 's/\.js["'"'"']/\.ts["'"'"']/g' {} \;
 ```
 
 ### Debugging Commands

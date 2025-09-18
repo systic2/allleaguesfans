@@ -1,5 +1,5 @@
-import { supa } from './lib/supabase.js';
-import { apiGet } from './lib/api-football.js';
+import { supa } from './lib/supabase.ts';
+import { apiGet } from './lib/api-football.ts';
 
 interface APIFootballPlayer {
   player: {
