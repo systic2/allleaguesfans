@@ -449,6 +449,14 @@ export type TopScorer = {
   matches: number;
 };
 
+export type TopAssist = {
+  player_name: string;
+  team_name: string;
+  assists: number;
+  goals: number;
+  matches: number;
+};
+
 export type HistoricalChampion = {
   season_year: number;
   champion_name: string;
@@ -488,76 +496,62 @@ export async function fetchLeagueStats(leagueId: number, season: number = 2025):
 
 
 
-export async function fetchTopScorers(leagueId: number, season: number = 2025, limit: number = 5): Promise<TopScorer[]> {
-  // 이벤트 데이터 조회 (2025시즌 데이터 존재 확인됨)
-  const { data: goalEvents, error } = await supabase
-    .from("events")
+export async function fetchTopScorers(leagueId: number, season: number = 2025, limit: number = 10): Promise<TopScorer[]> {
+  const { data, error } = await supabase
+    .from("top_scorers")
     .select(`
-      player_id,
-      team_id,
-      fixtures!inner(league_id, season_year)
+      player_name,
+      team_name,
+      goals,
+      assists,
+      appearances
     `)
-    .eq("fixtures.league_id", leagueId)
-    .eq("fixtures.season_year", season)
-    .eq("event_type", "Goal")
-    .not("player_id", "is", null);
+    .eq("league_id", leagueId)
+    .eq("season_year", season)
+    .order("rank_position", { ascending: true })
+    .limit(limit);
 
   if (error) {
-    console.warn("Failed to fetch goal events:", error);
+    console.warn("Failed to fetch top scorers:", error);
     return [];
   }
 
-  if (!goalEvents || goalEvents.length === 0) {
+  return (data ?? []).map(scorer => ({
+    player_name: String(scorer.player_name),
+    team_name: String(scorer.team_name),
+    goals: Number(scorer.goals),
+    assists: Number(scorer.assists),
+    matches: Number(scorer.appearances),
+  }));
+}
+
+export async function fetchTopAssists(leagueId: number, season: number = 2025, limit: number = 10): Promise<TopAssist[]> {
+  const { data, error } = await supabase
+    .from("top_assists")
+    .select(`
+      player_name,
+      team_name,
+      assists,
+      goals,
+      appearances
+    `)
+    .eq("league_id", leagueId)
+    .eq("season_year", season)
+    .order("rank_position", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.warn("Failed to fetch top assists:", error);
     return [];
   }
 
-  // 골 이벤트별 선수 집계
-  const playerGoalCounts = goalEvents.reduce((acc: Record<number, { goals: number; team_id: number }>, event: GoalEvent) => {
-    const playerId = event.player_id;
-    if (!acc[playerId]) {
-      acc[playerId] = { goals: 0, team_id: event.team_id };
-    }
-    acc[playerId].goals++;
-    return acc;
-  }, {});
-
-  // 선수 정보 가져오기
-  const playerIds = Object.keys(playerGoalCounts).map(Number);
-  const { data: players } = await supabase
-    .from("players")
-    .select("id, name")
-    .in("id", playerIds);
-
-  // 팀 정보 가져오기
-  const teamIds = [...new Set(Object.values(playerGoalCounts).map(p => p.team_id))];
-  const { data: teams } = await supabase
-    .from("teams")
-    .select("id, name, logo_url")
-    .in("id", teamIds);
-
-  const playerMap = (players || []).reduce((acc, player) => {
-    acc[player.id] = player;
-    return acc;
-  }, {} as Record<number, PlayerRecord>);
-
-  const teamMap = (teams || []).reduce((acc, team) => {
-    acc[team.id] = team;
-    return acc;
-  }, {} as Record<number, TeamRecord>);
-
-  // 최종 결과 구성
-  const topScorers = Object.entries(playerGoalCounts)
-    .map(([playerId, data]) => ({
-      player_name: playerMap[Number(playerId)]?.name || "Unknown Player",
-      team_name: teamMap[data.team_id]?.name || "Unknown Team",
-      goals: data.goals,
-      assists: 0, // 현재는 계산하지 않음
-      matches: 0, // 현재는 계산하지 않음
-    }))
-    .sort((a, b) => b.goals - a.goals)
-    .slice(0, limit);
-
-  return topScorers;
+  return (data ?? []).map(assist => ({
+    player_name: String(assist.player_name),
+    team_name: String(assist.team_name),
+    assists: Number(assist.assists),
+    goals: Number(assist.goals),
+    matches: Number(assist.appearances),
+  }));
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {

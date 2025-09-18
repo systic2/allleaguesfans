@@ -10,7 +10,7 @@ import {
   type TeamFixture, 
   type TeamStatistics 
 } from "@/lib/api";
-import SmallPitch from "@/app/components/SmallPitch";
+import TeamLineup from "@/components/TeamLineup";
 import CrestImg from "@/app/components/CrestImg";
 import UpcomingFixtures from "@/components/UpcomingFixtures";
 
@@ -53,9 +53,7 @@ export default function TeamPage() {
     );
   }
 
-  const lineup = (players ?? [])
-    .slice(0, 11)
-    .map((p, i) => ({ label: p.position ?? "PL", order: i }));
+
 
   const getResultColor = (result: 'W' | 'D' | 'L' | null) => {
     switch (result) {
@@ -125,11 +123,12 @@ export default function TeamPage() {
             {/* Squad Section */}
             <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
               <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
-                🔥 예상 선발 라인업
+                🔥 선발 라인업
               </h2>
-              <div className="bg-green-900/30 rounded-lg p-4">
-                <SmallPitch items={lineup} />
-              </div>
+              <TeamLineup 
+                teamId={teamId}
+                players={players ?? []}
+              />
             </section>
 
             {/* Recent Fixtures */}

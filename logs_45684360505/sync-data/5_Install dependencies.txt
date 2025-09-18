@@ -1,0 +1,58 @@
+﻿2025-09-17T13:38:18.5396549Z ##[group]Run pnpm install
+2025-09-17T13:38:18.5396905Z [36;1mpnpm install[0m
+2025-09-17T13:38:18.5522620Z shell: /usr/bin/bash -e {0}
+2025-09-17T13:38:18.5522889Z env:
+2025-09-17T13:38:18.5523152Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2025-09-17T13:38:18.5523473Z ##[endgroup]
+2025-09-17T13:38:18.9942320Z  WARN  Ignoring not compatible lockfile at /home/runner/work/allleaguesfans/allleaguesfans/pnpm-lock.yaml
+2025-09-17T13:38:19.1931153Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2025-09-17T13:38:20.1937336Z Progress: resolved 117, reused 100, downloaded 15, added 0
+2025-09-17T13:38:21.1934289Z Progress: resolved 247, reused 207, downloaded 30, added 0
+2025-09-17T13:38:22.2132993Z Progress: resolved 407, reused 283, downloaded 40, added 0
+2025-09-17T13:38:22.7810864Z  WARN  deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+2025-09-17T13:38:23.2134727Z Progress: resolved 595, reused 455, downloaded 52, added 0
+2025-09-17T13:38:23.3754506Z  WARN  5 deprecated subdependencies found: @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, glob@7.2.3, inflight@1.0.6, rimraf@3.0.2
+2025-09-17T13:38:23.3968710Z Packages: +510
+2025-09-17T13:38:23.3969517Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2025-09-17T13:38:23.8091060Z Progress: resolved 604, reused 464, downloaded 52, added 510, done
+2025-09-17T13:38:23.9183310Z .../node_modules/@tailwindcss/oxide postinstall$ node ./scripts/install.js
+2025-09-17T13:38:23.9187052Z .../node_modules/@swc/core postinstall$ node postinstall.js
+2025-09-17T13:38:23.9388203Z .../esbuild@0.25.9/node_modules/esbuild postinstall$ node install.js
+2025-09-17T13:38:23.9878146Z .../esbuild@0.25.9/node_modules/esbuild postinstall: Done
+2025-09-17T13:38:24.0082664Z .../node_modules/@swc/core postinstall: Done
+2025-09-17T13:38:24.0086650Z .../node_modules/@tailwindcss/oxide postinstall: Done
+2025-09-17T13:38:24.0313056Z .../node_modules/oxc-resolver postinstall$ napi-postinstall oxc-resolver 11.8.0 check
+2025-09-17T13:38:24.0770611Z .../node_modules/oxc-resolver postinstall: Done
+2025-09-17T13:38:24.6668516Z 
+2025-09-17T13:38:24.6669091Z dependencies:
+2025-09-17T13:38:24.6669835Z + @supabase/supabase-js 2.57.4
+2025-09-17T13:38:24.6670566Z + @tanstack/react-query 5.89.0
+2025-09-17T13:38:24.6670977Z + react 19.1.1
+2025-09-17T13:38:24.6671308Z + react-dom 19.1.1
+2025-09-17T13:38:24.6671664Z + react-router-dom 7.9.1
+2025-09-17T13:38:24.6671897Z 
+2025-09-17T13:38:24.6672030Z devDependencies:
+2025-09-17T13:38:24.6672425Z + @eslint/js 9.35.0
+2025-09-17T13:38:24.6672776Z + @tailwindcss/postcss 4.1.13
+2025-09-17T13:38:24.6673244Z + @testing-library/jest-dom 6.8.0
+2025-09-17T13:38:24.6673812Z + @testing-library/react 16.3.0
+2025-09-17T13:38:24.6674367Z + @types/node 24.5.1
+2025-09-17T13:38:24.6674835Z + @types/react 19.1.13
+2025-09-17T13:38:24.6675239Z + @types/react-dom 19.1.9
+2025-09-17T13:38:24.6675830Z + @vitejs/plugin-react-swc 3.11.0 (4.1.0 is available)
+2025-09-17T13:38:24.6676385Z + depcheck 1.4.7
+2025-09-17T13:38:24.6676778Z + dotenv 17.2.2
+2025-09-17T13:38:24.6677206Z + eslint-plugin-react 7.37.5
+2025-09-17T13:38:24.6677747Z + eslint-plugin-react-hooks 5.2.0
+2025-09-17T13:38:24.6678455Z + eslint-plugin-unused-imports 3.2.0 (4.2.0 is available)
+2025-09-17T13:38:24.6692379Z + globals 16.4.0
+2025-09-17T13:38:24.6692941Z + jsdom 26.1.0 (27.0.0 is available)
+2025-09-17T13:38:24.6693417Z + knip 5.63.1
+2025-09-17T13:38:24.6694009Z + rollup-plugin-visualizer 5.14.0 (6.0.3 is available)
+2025-09-17T13:38:24.6694688Z + tailwindcss 4.1.13
+2025-09-17T13:38:24.6695137Z + ts-prune 0.10.3
+2025-09-17T13:38:24.6695560Z + typescript-eslint 8.44.0
+2025-09-17T13:38:24.6695983Z + vite 7.1.5
+2025-09-17T13:38:24.6696335Z + vitest 3.2.4
+2025-09-17T13:38:24.6696576Z 
+2025-09-17T13:38:24.6696721Z Done in 6s

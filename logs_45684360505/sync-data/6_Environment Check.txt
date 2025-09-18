@@ -1,0 +1,42 @@
+﻿2025-09-17T13:38:24.7380222Z ##[group]Run echo "🔍 Checking environment configuration..."
+2025-09-17T13:38:24.7380873Z [36;1mecho "🔍 Checking environment configuration..."[0m
+2025-09-17T13:38:24.7381212Z [36;1mnpx tsx scripts/env-check.ts[0m
+2025-09-17T13:38:24.7411850Z shell: /usr/bin/bash -e {0}
+2025-09-17T13:38:24.7412093Z env:
+2025-09-17T13:38:24.7412333Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2025-09-17T13:38:24.7412822Z   SUPABASE_URL: ***
+2025-09-17T13:38:24.7413137Z   VITE_SUPABASE_URL: ***
+2025-09-17T13:38:24.7413362Z   VITE_SUPABASE_ANON_KEY: 
+2025-09-17T13:38:24.7414615Z   SUPABASE_SERVICE_ROLE: ***
+2025-09-17T13:38:24.7414899Z   API_FOOTBALL_KEY: ***
+2025-09-17T13:38:24.7415107Z   SEASON_YEAR: 2025
+2025-09-17T13:38:24.7415302Z   NODE_ENV: production
+2025-09-17T13:38:24.7415496Z ##[endgroup]
+2025-09-17T13:38:24.7466362Z 🔍 Checking environment configuration...
+2025-09-17T13:38:36.9285356Z npm warn exec The following package was not found and will be installed: tsx@4.20.5
+2025-09-17T13:38:38.3185744Z 🚀 GitHub Actions Environment Check
+2025-09-17T13:38:38.3186285Z 
+2025-09-17T13:38:38.3187412Z 🔍 Environment Variables Check
+2025-09-17T13:38:38.3188022Z ==================================================
+2025-09-17T13:38:38.3189224Z ✅ SUPABASE_URL (Required): ***
+2025-09-17T13:38:38.3190213Z ✅ VITE_SUPABASE_URL (Optional): ***
+2025-09-17T13:38:38.3191166Z ✅ SUPABASE_SERVICE_ROLE (Required): eyJhbGci...
+2025-09-17T13:38:38.3191941Z ❌ VITE_SUPABASE_ANON_KEY (Optional): undefined
+2025-09-17T13:38:38.3192653Z ✅ API_FOOTBALL_KEY (Required): 4970b271...
+2025-09-17T13:38:38.3193287Z ✅ SEASON_YEAR (Optional): 2025
+2025-09-17T13:38:38.3193922Z ✅ NODE_ENV (Optional): production
+2025-09-17T13:38:38.3194443Z ✅ CI (Optional): true
+2025-09-17T13:38:38.3194675Z 
+2025-09-17T13:38:38.3194867Z 📊 Summary:
+2025-09-17T13:38:38.3195229Z Total variables: 8
+2025-09-17T13:38:38.3195617Z ✅ OK: 7
+2025-09-17T13:38:38.3195971Z ❌ Missing: 1
+2025-09-17T13:38:38.3196778Z ⚠️ Empty: 0
+2025-09-17T13:38:38.3197192Z 🚨 Required missing: 0
+2025-09-17T13:38:38.3198894Z 
+2025-09-17T13:38:38.3199356Z 🔗 Supabase Connection Check:
+2025-09-17T13:38:38.3200610Z ✅ Supabase URL: https://whoszwxxwgmpdfckmcgh.s...
+2025-09-17T13:38:38.3201623Z ✅ Service Role: ***
+2025-09-17T13:38:38.3201995Z 
+2025-09-17T13:38:38.3202620Z ==================================================
+2025-09-17T13:38:38.3204680Z 🎉 All environment variables are properly configured!

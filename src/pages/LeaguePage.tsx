@@ -1,18 +1,21 @@
 // src/pages/LeaguePage.tsx
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
   fetchLeagueStats,
   fetchUpcomingFixtures,
   fetchTopScorers,
+  fetchTopAssists,
   fetchHistoricalChampions,
   type LeagueDetail, 
   type TeamStanding,
   type LeagueStats,
   type UpcomingFixture,
   type TopScorer,
+  type TopAssist,
   type HistoricalChampion,
 } from "@/lib/api";
 
@@ -257,38 +260,66 @@ function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
   );
 }
 
-function TopScorersCard({ scorers }: { scorers: TopScorer[] }) {
-  if (scorers.length === 0) {
-    return (
-      <div className="bg-slate-800 rounded-lg p-6">
-        <h3 className="text-white text-lg font-semibold mb-4">득점왕</h3>
-        <p className="text-slate-400 text-sm">득점 기록이 없습니다.</p>
-      </div>
-    );
-  }
+function TopPlayersCard({ scorers, assists }: { scorers: TopScorer[]; assists: TopAssist[] }) {
+  const [activeTab, setActiveTab] = useState<'scorers' | 'assists'>('scorers');
+
+  const currentData = activeTab === 'scorers' ? scorers : assists;
+  const isEmpty = currentData.length === 0;
 
   return (
     <div className="bg-slate-800 rounded-lg p-6">
-      <h3 className="text-white text-lg font-semibold mb-4">득점왕</h3>
-      <div className="space-y-3">
-        {scorers.map((scorer, index) => (
-          <div key={`${scorer.player_name}-${scorer.team_name}`} className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`
-                w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                ${index === 0 ? 'bg-yellow-500 text-black' : index === 1 ? 'bg-gray-400 text-black' : index === 2 ? 'bg-amber-600 text-black' : 'bg-slate-600 text-white'}
-              `}>
-                {index + 1}
+      {/* Tab Headers */}
+      <div className="flex border-b border-slate-700 mb-4">
+        <button
+          onClick={() => setActiveTab('scorers')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'scorers'
+              ? 'text-white border-b-2 border-blue-400'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          득점왕
+        </button>
+        <button
+          onClick={() => setActiveTab('assists')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'assists'
+              ? 'text-white border-b-2 border-blue-400'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          도움왕
+        </button>
+      </div>
+
+      {/* Content */}
+      {isEmpty ? (
+        <p className="text-slate-400 text-sm">
+          {activeTab === 'scorers' ? '득점 기록이 없습니다.' : '도움 기록이 없습니다.'}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {currentData.map((player, index) => (
+            <div key={`${player.player_name}-${player.team_name}`} className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className={`
+                  w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                  ${index === 0 ? 'bg-yellow-500 text-black' : index === 1 ? 'bg-gray-400 text-black' : index === 2 ? 'bg-amber-600 text-black' : 'bg-slate-600 text-white'}
+                `}>
+                  {index + 1}
+                </div>
+                <div>
+                  <div className="text-white text-sm font-medium">{player.player_name}</div>
+                  <div className="text-slate-400 text-xs">{player.team_name}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-white text-sm font-medium">{scorer.player_name}</div>
-                <div className="text-slate-400 text-xs">{scorer.team_name}</div>
+              <div className={`font-bold ${activeTab === 'scorers' ? 'text-green-400' : 'text-blue-400'}`}>
+                {activeTab === 'scorers' ? (player as TopScorer).goals : (player as TopAssist).assists}
               </div>
             </div>
-            <div className="text-green-400 font-bold">{scorer.goals}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -386,6 +417,12 @@ export default function LeaguePage() {
     enabled: !!league?.id,
   });
 
+  const { data: topAssists = [] } = useQuery({
+    queryKey: ["topAssists", league?.id],
+    queryFn: () => fetchTopAssists(league!.id),
+    enabled: !!league?.id,
+  });
+
   const { data: champions = [] } = useQuery({
     queryKey: ["historicalChampions", league?.id],
     queryFn: () => fetchHistoricalChampions(league!.id),
@@ -434,7 +471,7 @@ export default function LeaguePage() {
           <div className="space-y-6">
             {stats && <LeagueStatsCard stats={stats} />}
             <UpcomingFixturesCard fixtures={upcomingFixtures} />
-            <TopScorersCard scorers={topScorers} />
+            <TopPlayersCard scorers={topScorers} assists={topAssists} />
             <HistoricalChampionsCard champions={champions} />
           </div>
         </div>

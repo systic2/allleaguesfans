@@ -1,0 +1,69 @@
+﻿2025-09-17T13:38:09.6485636Z ##[group]Run actions/checkout@v4
+2025-09-17T13:38:09.6486609Z with:
+2025-09-17T13:38:09.6487141Z   repository: systic2/allleaguesfans
+2025-09-17T13:38:09.6487930Z   token: ***
+2025-09-17T13:38:09.6488396Z   ssh-strict: true
+2025-09-17T13:38:09.6488866Z   ssh-user: git
+2025-09-17T13:38:09.6489336Z   persist-credentials: true
+2025-09-17T13:38:09.6489842Z   clean: true
+2025-09-17T13:38:09.6490463Z   sparse-checkout-cone-mode: true
+2025-09-17T13:38:09.6491032Z   fetch-depth: 1
+2025-09-17T13:38:09.6491502Z   fetch-tags: false
+2025-09-17T13:38:09.6491966Z   show-progress: true
+2025-09-17T13:38:09.6492457Z   lfs: false
+2025-09-17T13:38:09.6492915Z   submodules: false
+2025-09-17T13:38:09.6493399Z   set-safe-directory: true
+2025-09-17T13:38:09.6494173Z ##[endgroup]
+2025-09-17T13:38:09.7567126Z Syncing repository: systic2/allleaguesfans
+2025-09-17T13:38:09.7569366Z ##[group]Getting Git version info
+2025-09-17T13:38:09.7570281Z Working directory is '/home/runner/work/allleaguesfans/allleaguesfans'
+2025-09-17T13:38:09.7571936Z [command]/usr/bin/git version
+2025-09-17T13:38:09.7633193Z git version 2.51.0
+2025-09-17T13:38:09.7659426Z ##[endgroup]
+2025-09-17T13:38:09.7673935Z Temporarily overriding HOME='/home/runner/work/_temp/26b610d3-ba47-4d1f-a0a3-4899f4c2861c' before making global git config changes
+2025-09-17T13:38:09.7675418Z Adding repository directory to the temporary git global config as a safe directory
+2025-09-17T13:38:09.7686159Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/allleaguesfans/allleaguesfans
+2025-09-17T13:38:09.7721836Z Deleting the contents of '/home/runner/work/allleaguesfans/allleaguesfans'
+2025-09-17T13:38:09.7725763Z ##[group]Initializing the repository
+2025-09-17T13:38:09.7730792Z [command]/usr/bin/git init /home/runner/work/allleaguesfans/allleaguesfans
+2025-09-17T13:38:09.7826054Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-09-17T13:38:09.7827327Z hint: is subject to change. To configure the initial branch name to use in all
+2025-09-17T13:38:09.7829033Z hint: of your new repositories, which will suppress this warning, call:
+2025-09-17T13:38:09.7830597Z hint:
+2025-09-17T13:38:09.7831702Z hint: 	git config --global init.defaultBranch <name>
+2025-09-17T13:38:09.7833169Z hint:
+2025-09-17T13:38:09.7834399Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-09-17T13:38:09.7836361Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-09-17T13:38:09.7837880Z hint:
+2025-09-17T13:38:09.7838740Z hint: 	git branch -m <name>
+2025-09-17T13:38:09.7839688Z hint:
+2025-09-17T13:38:09.7841265Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2025-09-17T13:38:09.7843567Z Initialized empty Git repository in /home/runner/work/allleaguesfans/allleaguesfans/.git/
+2025-09-17T13:38:09.7846854Z [command]/usr/bin/git remote add origin https://github.com/systic2/allleaguesfans
+2025-09-17T13:38:09.7884925Z ##[endgroup]
+2025-09-17T13:38:09.7886561Z ##[group]Disabling automatic garbage collection
+2025-09-17T13:38:09.7889761Z [command]/usr/bin/git config --local gc.auto 0
+2025-09-17T13:38:09.7921936Z ##[endgroup]
+2025-09-17T13:38:09.7923611Z ##[group]Setting up auth
+2025-09-17T13:38:09.7929925Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-09-17T13:38:09.7964533Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-09-17T13:38:09.8304754Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-09-17T13:38:09.8337426Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-09-17T13:38:09.8581588Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-09-17T13:38:09.8614823Z ##[endgroup]
+2025-09-17T13:38:09.8615848Z ##[group]Fetching the repository
+2025-09-17T13:38:09.8632120Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +0914f75156896b7e1e8feff287ac35ab6b26860f:refs/remotes/origin/main
+2025-09-17T13:38:10.5021665Z From https://github.com/systic2/allleaguesfans
+2025-09-17T13:38:10.5023205Z  * [new ref]         0914f75156896b7e1e8feff287ac35ab6b26860f -> origin/main
+2025-09-17T13:38:10.5053812Z ##[endgroup]
+2025-09-17T13:38:10.5055187Z ##[group]Determining the checkout info
+2025-09-17T13:38:10.5056715Z ##[endgroup]
+2025-09-17T13:38:10.5062174Z [command]/usr/bin/git sparse-checkout disable
+2025-09-17T13:38:10.5103305Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-09-17T13:38:10.5132940Z ##[group]Checking out the ref
+2025-09-17T13:38:10.5136470Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2025-09-17T13:38:10.5480863Z Switched to a new branch 'main'
+2025-09-17T13:38:10.5482657Z branch 'main' set up to track 'origin/main'.
+2025-09-17T13:38:10.5492773Z ##[endgroup]
+2025-09-17T13:38:10.5537934Z [command]/usr/bin/git log -1 --format=%H
+2025-09-17T13:38:10.5562336Z 0914f75156896b7e1e8feff287ac35ab6b26860f
