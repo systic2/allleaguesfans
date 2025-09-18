@@ -39,7 +39,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/lib/` - Utilities and API layer (Supabase client, common fetch functions)
 - `src/domain/` - Type definitions for core entities
 - `src/features/` - Feature-specific code and APIs
-- `src/components/` - Reusable UI components
+- `src/components/` - Reusable UI components (includes API-Football widgets)
+- `src/hooks/` - Custom React hooks (widget management, API utilities)
+- `src/styles/` - Global styles and third-party widget customizations
 - `src/tests/` - Test files and setup
 
 ### Key Patterns
@@ -116,6 +118,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Event Import Fix**: `scripts/fix-event-import-schema-mismatch.ts` - Resolves schema mismatches
 - **Environment Check**: `scripts/env-check.ts` - Validates all required environment variables
 - **Table Structure**: `scripts/check-events-table-structure.ts` - Database schema verification
+- **Clean Top Stats Import**: `scripts/clean-and-reimport-top-stats.ts` - API-Football only data import to resolve duplicates
+- **Player Name Fix**: `scripts/fix-missing-player-names.ts` - Resolves missing player name issues
 
 ### Environment Variables
 #### Required for Scripts
@@ -128,6 +132,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key               # For client operations
 
 # API-Football Configuration  
 API_FOOTBALL_KEY=your-api-football-key
+VITE_API_FOOTBALL_KEY=your-api-football-key      # For client-side widgets
 
 # Optional
 SEASON_YEAR=2025          # Target season for imports
@@ -320,6 +325,65 @@ console.log('Teams:', data, error);
 # Visit: https://github.com/your-repo/actions/workflows/data-sync.yml
 ```
 
+## API-Football Widget Integration
+
+### Widget Components
+- **APIFootballGamesWidget**: Main widget wrapper with error handling and loading states
+- **EnhancedFixturesSection**: Hybrid component with tabbed interface (Database vs Live data)
+- **useAPIFootballWidget**: Custom hooks for widget script loading and management
+
+### Widget Features
+- **Real-time Updates**: Auto-refresh every 15 seconds during live matches
+- **Dark Theme Integration**: Custom CSS to match existing Tailwind dark theme
+- **Security**: Client-side API key validation with domain restriction guidance
+- **Error Handling**: Comprehensive fallbacks for script loading failures
+- **Hybrid Interface**: Tab system preserving existing functionality while adding live widgets
+
+### Widget Setup
+```bash
+# 1. Environment variable (required for widgets)
+VITE_API_FOOTBALL_KEY=your-api-football-key
+
+# 2. Domain restriction in API-Football dashboard
+# Development: localhost:5173, localhost:3000
+# Production: your-actual-domain.com
+
+# 3. Widget styling automatically applied via imported CSS
+# File: src/styles/api-football-widget.css
+```
+
+### Widget Integration Pattern
+```tsx
+// Import widget components
+import APIFootballGamesWidget from '@/components/APIFootballGamesWidget';
+import { useAPIFootballWidget } from '@/hooks/useAPIFootballWidget';
+
+// Use in component
+<APIFootballGamesWidget 
+  leagueId={292}  // K League 1
+  season={2025}
+  className="additional-styles"
+/>
+```
+
+### Widget Files Structure
+```
+src/
+├── components/
+│   ├── APIFootballGamesWidget.tsx    # Games widget wrapper
+│   └── EnhancedFixturesSection.tsx   # Hybrid fixture component
+├── hooks/
+│   └── useAPIFootballWidget.ts       # Widget management hooks
+├── styles/
+│   └── api-football-widget.css       # Dark theme styling
+└── main.tsx                          # CSS import
+```
+
+### Data Quality Improvements
+- **Duplicate Resolution**: Clean API-Football-only imports prevent player name duplicates
+- **Data Source Consistency**: Single source of truth eliminates "Jeon Jin-woo" vs "Jinwoo" issues
+- **Verification Scripts**: Automated duplicate detection and data integrity checks
+
 ## Important Notes
 - **Never commit sensitive environment variables** to the repository
 - **Always test scripts in development** before running in production
@@ -327,3 +391,4 @@ console.log('Teams:', data, error);
 - **Database changes require schema updates** - Use SQL migration files
 - **Korean language support** - Preserve Korean text in UI components
 - **Environment compatibility** - Scripts support both local and CI/CD environments
+- **Widget domain restrictions** - Configure API-Football dashboard for security

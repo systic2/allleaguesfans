@@ -2,12 +2,32 @@ import { useState } from 'react';
 import APIFootballGamesWidget from './APIFootballGamesWidget';
 import type { UpcomingFixture } from '@/lib/api';
 
+/**
+ * Enhanced Fixtures Section Component
+ * 
+ * Provides a hybrid interface for displaying fixture information with two data sources:
+ * 1. Database-based fixtures from existing API layer
+ * 2. Live API-Football widget with real-time updates
+ * 
+ * Features:
+ * - Tab-based interface for seamless switching between data sources
+ * - Preserves existing functionality while adding real-time capabilities
+ * - Responsive design with consistent styling
+ * - Korean language support for UI text
+ */
 interface EnhancedFixturesSectionProps {
+  /** League ID for API-Football widget (K League 1: 292, K League 2: 293) */
   leagueId: number;
+  /** Season year for widget data */
   season: number;
+  /** Fixture data from database for traditional display */
   upcomingFixtures: UpcomingFixture[];
 }
 
+/**
+ * Traditional fixtures display component using database data
+ * @param fixtures - Array of upcoming fixtures from database
+ */
 function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
   if (fixtures.length === 0) {
     return (

@@ -1,25 +1,34 @@
-# API-Football Games 위젯 테스트 가이드
+# API-Football Games Widget Testing Guide
 
-## 🚀 구현 완료 사항
+## 🚀 Implementation Status
 
-### ✅ 새로 추가된 컴포넌트들:
+### ✅ Successfully Implemented Features
+
+### ✅ New Components Added
 
 1. **APIFootballGamesWidget.tsx**
-   - API-Football Games 위젯을 래핑하는 React 컴포넌트
-   - 스크립트 로딩 관리
-   - 에러 처리 및 로딩 상태
+   - React wrapper component for API-Football Games widget
+   - Script loading management
+   - Error handling and loading states
+   - Comprehensive JSDoc documentation
 
 2. **useAPIFootballWidget.ts**
-   - 위젯 스크립트 로딩을 관리하는 커스텀 훅
-   - API 키 안전성 검증 훅
+   - Custom hooks for widget script management
+   - API key security validation hooks
+   - Duplicate script prevention
+   - Detailed TypeScript interfaces
 
 3. **EnhancedFixturesSection.tsx**
-   - 기존 경기 정보 + 실시간 위젯을 탭으로 제공
-   - 사용자가 선택할 수 있는 하이브리드 접근
+   - Hybrid component providing database + live widget via tabs
+   - User-selectable data source approach
+   - Preserves existing functionality
+   - Responsive design integration
 
 4. **api-football-widget.css**
-   - 위젯을 기존 다크 테마에 맞게 스타일링
-   - Tailwind와 일관성 있는 디자인
+   - Custom styling for dark theme integration
+   - Consistent design with Tailwind CSS
+   - Responsive mobile optimizations
+   - Override styles for third-party widget
 
 ### 🔧 설정 필요사항:
 

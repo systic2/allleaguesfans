@@ -1,11 +1,42 @@
 import { useAPIFootballWidget, useAPIFootballKey } from '@/hooks/useAPIFootballWidget';
 
+/**
+ * API-Football Games Widget Component
+ * 
+ * A React wrapper for the API-Football Games widget that provides:
+ * - Real-time fixture updates every 15 seconds
+ * - Interactive modals for match details and standings
+ * - Dark theme integration with existing design
+ * - Comprehensive error handling and loading states
+ * - Secure API key management
+ * 
+ * @example
+ * ```tsx
+ * <APIFootballGamesWidget 
+ *   leagueId={292}  // K League 1
+ *   season={2025}
+ *   className="additional-styling"
+ * />
+ * ```
+ */
 interface APIFootballGamesWidgetProps {
+  /** League ID (K League 1: 292, K League 2: 293) */
   leagueId: number;
+  /** Season year (e.g., 2025) */
   season: number;
+  /** Additional CSS classes for styling */
   className?: string;
 }
 
+/**
+ * API-Football Games Widget wrapper component
+ * 
+ * Handles widget initialization, error states, and provides a seamless integration
+ * with the existing React application architecture.
+ * 
+ * @param props - Component props
+ * @returns JSX element containing the widget or appropriate error/loading state
+ */
 export default function APIFootballGamesWidget({ 
   leagueId, 
   season, 

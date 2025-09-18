@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
 
 /**
- * API-Football 위젯 스크립트를 관리하는 커스텀 훅
- * 여러 위젯이 같은 페이지에 있을 때 스크립트 중복 로딩을 방지
+ * API-Football Widget Script Management Hook
+ * 
+ * Manages the loading and initialization of API-Football widget scripts.
+ * Prevents duplicate script loading when multiple widgets are present on the same page.
+ * 
+ * @returns Object containing script loading state and error information
+ * @example
+ * ```tsx
+ * function MyWidget() {
+ *   const { scriptLoaded, error } = useAPIFootballWidget();
+ *   
+ *   if (error) return <div>Error: {error}</div>;
+ *   if (!scriptLoaded) return <div>Loading...</div>;
+ *   
+ *   return <div data-widget="games">Widget content</div>;
+ * }
+ * ```
  */
 export function useAPIFootballWidget() {
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -48,7 +63,25 @@ export function useAPIFootballWidget() {
 }
 
 /**
- * API-Football API 키를 안전하게 가져오는 함수
+ * API-Football API Key Management Hook
+ * 
+ * Securely manages the API-Football API key from environment variables.
+ * Provides validation and masked display for security purposes.
+ * 
+ * @returns Object containing API key information and validation state
+ * @example
+ * ```tsx
+ * function SecureWidget() {
+ *   const { apiKey, hasApiKey, keyMasked } = useAPIFootballKey();
+ *   
+ *   if (!hasApiKey) {
+ *     return <div>Please set VITE_API_FOOTBALL_KEY in environment</div>;
+ *   }
+ *   
+ *   console.log(`Using key: ${keyMasked}`); // Safe for logging
+ *   return <WidgetComponent apiKey={apiKey} />;
+ * }
+ * ```
  */
 export function useAPIFootballKey() {
   const apiKey = import.meta.env.VITE_API_FOOTBALL_KEY;
