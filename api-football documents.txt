@@ -1,3 +1,168 @@
+Widgets(https://www.api-football.com/documentation-v3#tag/Widgets)
+Our widgets are completely free and work with all our plans including the free plan.
+
+To integrate the widgets to your site you just have to copy/paste the code provided and fill in the tags needed for the widget to work properly. If you integrate several widgets on the same page a single theme will be applied for all widgets. Also you will only have to integrate the script tag once.
+
+For all widgets the following tags are needed :
+data-host : v3.football.api-sports.io or api-football-v1.p.rapidapi.com depending on whether you have subscribed with us or RapidApi.
+
+data-key : Indicate your API-KEY obtained on our Dashboard or on RapidApi.
+
+data-theme : If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark. It is also possible to indicate false which will not display any theme and lets you customize the widget with your own css.
+
+data-show-errors : By default false, used for debugging, with a value of true it allows to display the errors.
+
+Widgets use the requests associated with your account and therefore they will stop working if your daily limit is reached. You can track all requests made directly in the dashboard.
+
+Security :
+When using these widgets it is important to be aware that your API-KEY will be visible to the users of your site, it is possible to protect yourself from this by allowing only the desired domains in our dashboard. This way no one else can use your API-KEY for you. If you have already set up your widget and have not activated this option, you can reset your API-KEY and activate this option after.
+
+Debugging :
+If the widget does not display the requested information, it is possible to set the data-show-errors tag to true to display error messages directly in the widget and in the console. This can be due to several things like : (Non-exhaustive list)
+
+You have reached your daily number of requests
+Tags are incorrectly filled in
+Your API-KEY is incorrect
+Tutorials :
+HOW CUSTOM API-FOOTBALL WIDGETS
+HOW TO CHANGE WIDGET ATTRIBUTES DYNAMICALLY
+HOW TO ADD TWO WIDGETS ON THE SAME PAGE
+Changelog :
+2.0.3
+Merge of Livescore and Fixtures widgets in Games widget
+Add a date selector in the Games widget
+Add a status selector in the Games widget
+Add a modal to display standings in games widget
+Add the possibility to display or not the logos or images
+Add widgets for other sports (Baseball, Basketball, Handball, Hockey, Rugby and Volleyball).
+Rename Fixture widget in Game widget
+1.1.8
+Add the widget Fixture
+Add the possibility to load a modal containing the details of a fixture in the widgets Livescore and Fixtures
+1.0.0
+Starting version with widgets Livescore Fixtures and Standings
+Sources :
+All the sources to make your own CSS can be downloaded here :
+
+2.0.3 files
+1.1.8 files
+
+
+Games
+Display the list of matches grouped by competition according to the parameters used.
+
+The matches are automatically updated according to the selected frequency data-refresh.
+
+You can find all the leagues ids on our Dashboard.
+
+Example of the widget with the default theme image
+
+query Parameters
+data-host[required]		string Enum: "v3.football.api-sports.io" "api-football-v1.p.rapidapi.com"
+data-key[required]		string																																			Your Api Key
+data-refresh					integer >15																																	Number in seconds corresponding to the desired data update frequency. If you indicate 0 or leave this field empty the data will not be updated automatically
+data-date							stringYYYY-MM-DD																														Fill in the desired date. If empty the current date is automatically applied
+data-league						integer																																			Fill in the desired league id
+data-season						integer = 4 characters YYYY																									Fill in the desired season
+data-theme						string																																			If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark
+data-show-toolbar			string Enum: true false																											Displays the toolbar allowing to change the view between the current, finished or upcoming fixtures and to change the date
+data-show-logos				string Enum: true false																											If true display teams logos
+data-modal-game				string Enum: true false																											If true allows to load a modal containing all the details of the game
+data-modal-standings	string Enum: true false																											If true allows to load a modal containing the standings
+data-modal-show-logos	string Enum: true false																											If true display teams logos and players images in the modal
+data-show-errors			string Enum: true false																											By default false, used for debugging, with a value of true it allows to display the errors
+
+Request samples
+<div id="wg-api-football-games"
+     data-host="v3.football.api-sports.io"
+     data-key="Your-Api-Key-Here"
+     data-date=""
+     data-league=""
+     data-season=""
+     data-theme=""
+     data-refresh="15"
+     data-show-toolbar="true"
+     data-show-errors="false"
+     data-show-logos="true"
+     data-modal-game="true"
+     data-modal-standings="true"
+     data-modal-show-logos="true">
+</div>
+<script
+    type="module"
+    src="https://widgets.api-sports.io/2.0.3/widgets.js">
+</script>
+
+
+Game
+Display a specific fixture as well as events, statistics, lineups and players statistics if they are available.
+
+The fixture is automatically updated according to the selected frequency data-refresh.
+
+Example of the widget with the default theme image
+
+query Parameters
+data-host[required]	string Enum: "v3.football.api-sports.io" "api-football-v1.p.rapidapi.com"
+data-key[required]	string																																		Your Api Key
+data-refresh				integer >15																																Number in seconds corresponding to the desired data update frequency. If you indicate 0 or leave this field empty the data will not be updated automatically
+data-id							integer																																		Fill in the desired fixture id
+data-theme					string																																		If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark
+data-show-errors		string Enum: true false																										By default false, used for debugging, with a value of true it allows to display the errors
+data-show-logos			string Enum: true false																										If true display teams logos and players images
+
+Request samples
+<div id="wg-api-football-game"
+    data-host="v3.football.api-sports.io"
+    data-key="Your-Api-Key-Here"
+    data-id="718243"
+    data-theme=""
+    data-refresh="15"
+    data-show-errors="false"
+    data-show-logos="true">
+</div>
+<script
+    type="module"
+    src="https://widgets.api-sports.io/2.0.3/widgets.js">
+</script>
+
+
+Standings
+Display the ranking of a competition or a team according to the parameters used.
+
+You can find all the leagues and teams ids on our Dashboard.
+
+Example of the widget with the available themes image
+
+query Parameters
+data-host[required]		string Enum: "v3.football.api-sports.io" "api-football-v1.p.rapidapi.com"
+data-key[required]		string																																		Your Api Key
+data-league						integer																																		Fill in the desired league id
+data-team							integer																																		Fill in the desired team id
+data-season[required]	integer = 4 characters YYYY																								Fill in the desired season
+data-theme						string																																		If you leave the field empty, the default theme will be applied, otherwise the possible values are grey or dark
+data-show-errors			string Enum: true false																										By default false, used for debugging, with a value of true it allows to display the errors
+data-show-logos				string Enum: true false																										If true display teams logos
+
+Request samples
+<div id="wg-api-football-standings"
+    data-host="v3.football.api-sports.io"
+    data-key="Your-Api-Key-Here"
+    data-league="39"
+    data-team=""
+    data-season="2021"
+    data-theme=""
+    data-show-errors="false"
+    data-show-logos="true"
+    class="wg_loader">
+</div>
+<script
+    type="module"
+    src="https://widgets.api-sports.io/2.0.3/widgets.js">
+</script>
+
+
+=======================================================================
+
 0.Timezone
 Timezone
 Get the list of available timezone to be used in the fixtures endpoint.

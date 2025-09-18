@@ -2,6 +2,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import EnhancedFixturesSection from "@/components/EnhancedFixturesSection";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
@@ -470,7 +471,11 @@ export default function LeaguePage() {
           {/* 오른쪽: 사이드바 정보 */}
           <div className="space-y-6">
             {stats && <LeagueStatsCard stats={stats} />}
-            <UpcomingFixturesCard fixtures={upcomingFixtures} />
+            <EnhancedFixturesSection 
+              leagueId={league.id} 
+              season={league.season} 
+              upcomingFixtures={upcomingFixtures} 
+            />
             <TopPlayersCard scorers={topScorers} assists={topAssists} />
             <HistoricalChampionsCard champions={champions} />
           </div>
