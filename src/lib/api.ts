@@ -65,7 +65,7 @@ type ChampionWithTeam = {
   teams: {
     name: string;
     logo_url: string | null;
-  }[];
+  } | null;
 };
 
 // ---------- API ----------
@@ -555,28 +555,45 @@ export async function fetchTopAssists(leagueId: number, season: number = 2025, l
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
-  // 과거 시즌 우승팀 조회 (1위 팀들)
-  const { data, error } = await supabase
+  // 과거 시즌 우승팀 조회 (1위 팀들) - 관계형 쿼리 없이 단순하게
+  const { data: standingsData, error: standingsError } = await supabase
     .from("standings")
-    .select(`
-      season_year,
-      teams!inner(name, logo_url)
-    `)
+    .select("season_year, team_id")
     .eq("league_id", leagueId)
-    .eq("rank", 1)
+    .eq("rank_position", 1)
     .order("season_year", { ascending: false })
     .limit(15); // 최근 15년
 
-  if (error) {
-    console.warn("Failed to fetch historical champions:", error);
+  if (standingsError) {
+    console.warn("Failed to fetch historical champions standings:", standingsError);
     return [];
   }
 
-  return (data ?? []).map((champion: ChampionWithTeam) => ({
-    season_year: Number(champion.season_year),
-    champion_name: String(champion.teams[0]?.name || "Unknown"),
-    champion_logo: (champion.teams[0]?.logo_url ?? null) as string | null,
-  }));
+  if (!standingsData || standingsData.length === 0) {
+    return [];
+  }
+
+  // 팀 정보 별도 조회
+  const teamIds = standingsData.map(item => item.team_id);
+  const { data: teamsData, error: teamsError } = await supabase
+    .from("teams")
+    .select("id, name, logo_url")
+    .in("id", teamIds);
+
+  if (teamsError) {
+    console.warn("Failed to fetch teams data:", teamsError);
+    return [];
+  }
+
+  // 데이터 결합
+  return standingsData.map((standing: any) => {
+    const team = (teamsData || []).find(t => t.id === standing.team_id);
+    return {
+      season_year: Number(standing.season_year),
+      champion_name: String(team?.name || "Unknown"),
+      champion_logo: (team?.logo_url ?? null) as string | null,
+    };
+  });
 }
 
 // ---------- Team 상세 정보 ----------
