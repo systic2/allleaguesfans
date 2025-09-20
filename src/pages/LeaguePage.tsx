@@ -2,8 +2,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import EnhancedFixturesSection from "@/components/EnhancedFixturesSection";
-import EnhancedStandingsSection from "@/components/EnhancedStandingsSection";
+import FixturesSection from "@/components/EnhancedFixturesSection";
+import StandingsSection from "@/components/EnhancedStandingsSection";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
@@ -327,10 +327,8 @@ export default function LeaguePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 왼쪽: 하이브리드 순위표 */}
           <div className="lg:col-span-2">
-            <EnhancedStandingsSection 
+            <StandingsSection 
               standings={standings}
-              leagueId={league.id}
-              season={league.season}
               isLoading={standingsLoading}
               error={standingsError}
             />
@@ -339,9 +337,7 @@ export default function LeaguePage() {
           {/* 오른쪽: 사이드바 정보 */}
           <div className="space-y-6">
             {stats && <LeagueStatsCard stats={stats} />}
-            <EnhancedFixturesSection 
-              leagueId={league.id} 
-              season={league.season} 
+            <FixturesSection 
               upcomingFixtures={upcomingFixtures} 
             />
             <TopPlayersCard scorers={topScorers} assists={topAssists} />

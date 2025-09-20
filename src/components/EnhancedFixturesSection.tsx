@@ -1,34 +1,25 @@
-import { useState } from 'react';
-import APIFootballGamesWidget from './APIFootballGamesWidget';
 import type { UpcomingFixture } from '@/lib/api';
 
 /**
- * Enhanced Fixtures Section Component
+ * Fixtures Section Component
  * 
- * Provides a hybrid interface for displaying fixture information with two data sources:
- * 1. Database-based fixtures from existing API layer
- * 2. Live API-Football widget with real-time updates
+ * Displays fixture information from database with Korean UI
  * 
  * Features:
- * - Tab-based interface for seamless switching between data sources
- * - Preserves existing functionality while adding real-time capabilities
  * - Responsive design with consistent styling
  * - Korean language support for UI text
+ * - Comprehensive error handling and loading states
  */
-interface EnhancedFixturesSectionProps {
-  /** League ID for API-Football widget (K League 1: 292, K League 2: 293) */
-  leagueId: number;
-  /** Season year for widget data */
-  season: number;
-  /** Fixture data from database for traditional display */
+interface FixturesSectionProps {
+  /** Fixture data from database for display */
   upcomingFixtures: UpcomingFixture[];
 }
 
 /**
- * Traditional fixtures display component using database data
+ * Fixtures display component using database data
  * @param fixtures - Array of upcoming fixtures from database
  */
-function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
+function FixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
   if (fixtures.length === 0) {
     return (
       <div className="py-8 text-center">
@@ -68,63 +59,19 @@ function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
   );
 }
 
-export default function EnhancedFixturesSection({ 
-  leagueId, 
-  season, 
+export default function FixturesSection({ 
   upcomingFixtures 
-}: EnhancedFixturesSectionProps) {
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'live'>('upcoming');
-  
+}: FixturesSectionProps) {
   return (
     <div className="bg-slate-800 rounded-lg overflow-hidden">
-      {/* Tab Headers */}
+      {/* Header */}
       <div className="bg-slate-700 px-6 py-4 border-b border-slate-600">
-        <div className="flex items-center justify-between">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('upcoming')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'upcoming' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-600'
-              }`}
-            >
-              최근 경기
-            </button>
-            <button
-              onClick={() => setActiveTab('live')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
-                activeTab === 'live' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-600'
-              }`}
-            >
-              <span>실시간</span>
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            </button>
-          </div>
-          
-          {/* Tab 설명 */}
-          <div className="text-xs text-slate-400">
-            {activeTab === 'upcoming' 
-              ? '데이터베이스 기반' 
-              : 'API-Football 위젯'
-            }
-          </div>
-        </div>
+        <h2 className="text-white text-lg font-semibold">최근 경기</h2>
       </div>
 
       {/* Content */}
-      <div className={activeTab === 'live' ? '' : 'p-6'}>
-        {activeTab === 'upcoming' ? (
-          <UpcomingFixturesCard fixtures={upcomingFixtures} />
-        ) : (
-          <APIFootballGamesWidget 
-            leagueId={leagueId} 
-            season={season}
-            className="rounded-none border-none"
-          />
-        )}
+      <div className="p-6">
+        <FixturesCard fixtures={upcomingFixtures} />
       </div>
     </div>
   );
