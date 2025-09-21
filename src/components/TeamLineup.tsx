@@ -1,4 +1,3 @@
-import CrestImg from "@/app/components/CrestImg";
 import { type PlayerLite } from "@/lib/api";
 
 interface TeamLineupProps {

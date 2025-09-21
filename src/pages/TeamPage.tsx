@@ -14,7 +14,6 @@ import TeamLineup from "@/components/TeamLineup";
 import CrestImg from "@/app/components/CrestImg";
 import UpcomingFixtures from "@/components/UpcomingFixtures";
 
-type TabType = 'overview' | 'squad' | 'fixtures' | 'statistics';
 
 export default function TeamPage() {
   const { id = "0" } = useParams<{ id: string }>();

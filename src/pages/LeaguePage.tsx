@@ -12,7 +12,7 @@ import {
   fetchTopScorers,
   fetchTopAssists,
   fetchHistoricalChampions,
-  type LeagueDetail, 
+  type LeagueDetail,
   type TeamStanding,
   type LeagueStats,
   type UpcomingFixture,
@@ -100,49 +100,6 @@ function LeagueHeader({ league, stats }: { league: LeagueDetail; stats?: LeagueS
   );
 }
 
-function UpcomingFixturesCard({ fixtures }: { fixtures: UpcomingFixture[] }) {
-  if (fixtures.length === 0) {
-    return (
-      <div className="bg-slate-800 rounded-lg p-6">
-        <h3 className="text-white text-lg font-semibold mb-4">최근 경기</h3>
-        <p className="text-slate-400 text-sm">최근 경기가 없습니다.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-slate-800 rounded-lg p-6">
-      <h3 className="text-white text-lg font-semibold mb-4">최근 경기</h3>
-      <div className="space-y-3">
-        {fixtures.map((fixture) => (
-          <div key={fixture.id} className="flex items-center justify-between p-3 bg-slate-700 rounded">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                {fixture.home_team.logo_url && (
-                  <img src={fixture.home_team.logo_url} alt="" className="w-5 h-5 object-contain" />
-                )}
-                <span className="text-white text-sm">{fixture.home_team.name}</span>
-              </div>
-              <span className="text-slate-400 text-xs">vs</span>
-              <div className="flex items-center space-x-2">
-                {fixture.away_team.logo_url && (
-                  <img src={fixture.away_team.logo_url} alt="" className="w-5 h-5 object-contain" />
-                )}
-                <span className="text-white text-sm">{fixture.away_team.name}</span>
-              </div>
-            </div>
-            <div className="text-slate-400 text-xs">
-              {new Date(fixture.date_utc).toLocaleDateString('ko-KR', {
-                month: 'numeric',
-                day: 'numeric'
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function TopPlayersCard({ scorers, assists }: { scorers: TopScorer[]; assists: TopAssist[] }) {
   const [activeTab, setActiveTab] = useState<'scorers' | 'assists'>('scorers');
