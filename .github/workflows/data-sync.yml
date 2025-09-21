@@ -1,12 +1,41 @@
 # .github/workflows/data-sync.yml
-name: API Football Data Sync (New Schema)
+name: API Football Data Sync (Optimized Schedule)
+
+# API-Football 권장 호출 주기에 따른 최적화된 스케줄:
+# 
+# 📊 일반 데이터 (1 call per day):
+#   - Fixtures (non-live), Top scorers/assists, Team statistics, Standings
+#   - 매일 02:00 UTC (11:00 KST) 실행
+#
+# ⚡ 라이브 데이터 (1 call per minute for ongoing fixtures):
+#   - Live fixtures/events, Live player statistics
+#   - 수요일/토요일 18:00 KST (경기 시간대) 실행
+#
+# 🏟️ 라이브 라인업 (every 15 minutes for ongoing fixtures):
+#   - Live lineups (경기 20-40분 전부터 제공)
+#
+# 👥 선수 팀 이력 (1 call per week):
+#   - Player teams history
+#   - 매주 월요일 03:00 UTC 실행
+#
+# 🚑 부상자 정보 (1 call per day, updated every 4 hours):
+#   - Injuries/sidelined players
+#   - 일일 동기화에 포함
 
 on:
   schedule:
-    # 매일 오전 2시 (UTC) - 한국시간 오전 11시 (경기 결과 업데이트)
+    # 매일 오전 2시 (UTC) - 한국시간 오전 11시 (경기 결과, 순위표, 이벤트 업데이트)
+    # API-Football 권장: 1 call per day for non-live data
     - cron: '0 2 * * *'
-    # 매주 월요일 오전 3시 (전체 데이터 재동기화)
+    
+    # 매주 월요일 오전 3시 (전체 데이터 재동기화 + 선수 팀 이력)
+    # API-Football 권장: Player teams - 1 call per week
     - cron: '0 3 * * 1'
+    
+    # 매주 수요일/토요일 오후 6시 (KST) - 경기 시간대 라이브 업데이트
+    # API-Football 권장: Live fixtures - 1 call per minute during matches
+    - cron: '0 9 * * 3,6'  # UTC 9시 = KST 18시
+    
   workflow_dispatch: # 수동 실행 가능
 
 jobs:
@@ -44,7 +73,7 @@ jobs:
         echo "🔍 Checking environment configuration..."
         npx tsx scripts/env-check.ts
       
-    - name: Daily Incremental Sync
+    - name: Daily Data Sync (Non-Live)
       if: github.event.schedule == '0 2 * * *'
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -55,13 +84,17 @@ jobs:
         SEASON_YEAR: 2025
         NODE_ENV: production
       run: |
-        echo "🚀 Starting daily incremental sync..."
+        echo "🚀 Starting daily data sync (API-Football recommended: 1 call per day)..."
         echo "Environment check:"
         echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
         
-        # 새 스키마 기반 증분 업데이트 (경기 결과, 순위표, 이벤트)
+        # API-Football 권장 주기에 따른 데이터 업데이트
+        # - Fixtures (non-live): 1 call per day
+        # - Top scorers/assists: 1 call per day (updated several times a week)
+        # - Team statistics: 1 call per day
+        # - Standings: 1 call per day
         if npx tsx scripts/master-import-complete.ts; then
           echo "✅ Master import completed successfully"
         else
@@ -69,14 +102,41 @@ jobs:
           exit 1
         fi
         
-        # 예정 경기 업데이트 (next, TBD, NS 상태)
+        # 예정 경기 업데이트 (TBD, NS 상태) - API-Football 권장: 1 call per day
         if npx tsx scripts/import-upcoming-fixtures.ts; then
           echo "✅ Upcoming fixtures import completed"
         else
           echo "⚠️ Upcoming fixtures import failed (non-critical)"
         fi
         
-    - name: Weekly Full Sync
+    - name: Live Match Updates
+      if: github.event.schedule == '0 9 * * 3,6'
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        SEASON_YEAR: 2025
+        NODE_ENV: production
+      run: |
+        echo "⚡ Starting live match updates (API-Football recommended: 1 call per minute for live fixtures)..."
+        echo "Environment check:"
+        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
+        echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
+        
+        # 라이브 경기 데이터 업데이트 (경기 진행 중일 때만)
+        # - Live fixtures/events: 1 call per minute for ongoing fixtures
+        # - Live lineups: every 15 minutes for ongoing fixtures  
+        # - Live player statistics: every minute for ongoing fixtures
+        if npx tsx scripts/import-live-matches.ts; then
+          echo "✅ Live match updates completed"
+        else
+          echo "⚠️ Live match updates failed (non-critical - no live matches may be ongoing)"
+        fi
+        
+    - name: Weekly Full Sync & Player Teams
       if: github.event.schedule == '0 3 * * 1'
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -87,13 +147,13 @@ jobs:
         SEASON_YEAR: 2025
         NODE_ENV: production
       run: |
-        echo "🚀 Starting weekly full sync..."
+        echo "🚀 Starting weekly full sync + player teams (API-Football recommended: 1 call per week for player teams)..."
         echo "Environment check:"
         echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
         
-        # 새 스키마 기반 전체 동기화 (모든 데이터 재검증)
+        # 전체 데이터 재검증 및 동기화
         if npx tsx scripts/master-import-complete.ts; then
           echo "✅ Master import completed successfully"
         else
@@ -101,14 +161,21 @@ jobs:
           exit 1
         fi
         
-        # 예정 경기 업데이트 (next, TBD, NS 상태)
+        # 선수 팀 이력 업데이트 - API-Football 권장: 1 call per week
+        if npx tsx scripts/import-player-teams.ts; then
+          echo "✅ Player teams import completed"
+        else
+          echo "⚠️ Player teams import failed (non-critical)"
+        fi
+        
+        # 예정 경기 업데이트
         if npx tsx scripts/import-upcoming-fixtures.ts; then
           echo "✅ Upcoming fixtures import completed"
         else
           echo "⚠️ Upcoming fixtures import failed (non-critical)"
         fi
         
-    - name: Manual Full Sync
+    - name: Manual Full Sync (All Data Types)
       if: github.event_name == 'workflow_dispatch'
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -119,13 +186,13 @@ jobs:
         SEASON_YEAR: 2025
         NODE_ENV: production
       run: |
-        echo "🚀 Starting manual full sync..."
+        echo "🚀 Starting manual full sync (all data types)..."
         echo "Environment check:"
         echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "API_FOOTBALL_KEY: $([[ -n "$API_FOOTBALL_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
         
-        # 수동 실행 시 전체 동기화
+        # 수동 실행 시 모든 데이터 타입 동기화 (API-Football 권장 주기 무시하고 즉시 실행)
         if npx tsx scripts/master-import-complete.ts; then
           echo "✅ Master import completed successfully"
         else
@@ -133,7 +200,21 @@ jobs:
           exit 1
         fi
         
-        # 예정 경기 업데이트 (next, TBD, NS 상태)
+        # 선수 팀 이력 업데이트 (수동 실행 시에만)
+        if npx tsx scripts/import-player-teams.ts; then
+          echo "✅ Player teams import completed"
+        else
+          echo "⚠️ Player teams import failed (non-critical)"
+        fi
+        
+        # 라이브 경기 체크 및 업데이트 (수동 실행 시에만)
+        if npx tsx scripts/import-live-matches.ts; then
+          echo "✅ Live match check completed"
+        else
+          echo "⚠️ Live match check failed (non-critical)"
+        fi
+        
+        # 예정 경기 업데이트
         if npx tsx scripts/import-upcoming-fixtures.ts; then
           echo "✅ Upcoming fixtures import completed"
         else
