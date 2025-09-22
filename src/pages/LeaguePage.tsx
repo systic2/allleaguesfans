@@ -1,21 +1,18 @@
 // src/pages/LeaguePage.tsx
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import FixturesSection from "@/components/EnhancedFixturesSection";
+import RoundBasedFixturesSection from "@/components/RoundBasedFixturesSection";
 import StandingsSection from "@/components/EnhancedStandingsSection";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
   fetchLeagueStats,
-  fetchUpcomingFixtures,
   fetchTopScorers,
   fetchTopAssists,
   fetchHistoricalChampions,
   type LeagueDetail,
-  type TeamStanding,
   type LeagueStats,
-  type UpcomingFixture,
   type TopScorer,
   type TopAssist,
   type HistoricalChampion,
@@ -246,11 +243,6 @@ export default function LeaguePage() {
     enabled: !!league?.id,
   });
 
-  const { data: upcomingFixtures = [] } = useQuery({
-    queryKey: ["upcomingFixtures", league?.id],
-    queryFn: () => fetchUpcomingFixtures(league!.id),
-    enabled: !!league?.id,
-  });
 
   const { data: topScorers = [] } = useQuery({
     queryKey: ["topScorers", league?.id],
@@ -294,8 +286,9 @@ export default function LeaguePage() {
           {/* 오른쪽: 사이드바 정보 */}
           <div className="space-y-6">
             {stats && <LeagueStatsCard stats={stats} />}
-            <FixturesSection 
-              upcomingFixtures={upcomingFixtures} 
+            <RoundBasedFixturesSection 
+              leagueId={league.id}
+              season={league.season}
             />
             <TopPlayersCard scorers={topScorers} assists={topAssists} />
             <HistoricalChampionsCard champions={champions} />

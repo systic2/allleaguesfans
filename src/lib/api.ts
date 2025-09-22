@@ -936,6 +936,144 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
   }));
 }
 
+// ====== ROUND-BASED FIXTURES API ======
+
+export interface RoundFixture {
+  id: number;
+  date_utc: string;
+  status_short: string;
+  round: string;
+  home_team: {
+    id: number;
+    name: string;
+    logo_url: string | null;
+  };
+  away_team: {
+    id: number;
+    name: string;
+    logo_url: string | null;
+  };
+  home_goals: number | null;
+  away_goals: number | null;
+  venue?: string;
+  league_id: number;
+}
+
+/**
+ * Get the latest completed round number for a league
+ */
+export async function getLatestCompletedRound(leagueId: number, season: number = 2025): Promise<string | null> {
+  // Get completed fixtures and sort by date to find the most recent round
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select("round, date_utc")
+    .eq("league_id", leagueId)
+    .eq("season_year", season)
+    .in("status_short", ["FT", "AET", "PEN"]) // Finished statuses
+    .not("home_goals", "is", null)
+    .not("away_goals", "is", null)
+    .order("date_utc", { ascending: false })
+    .limit(1);
+
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+
+  return data[0].round;
+}
+
+/**
+ * Get the next upcoming round number for a league
+ */
+export async function getNextUpcomingRound(leagueId: number, season: number = 2025): Promise<string | null> {
+  // Get upcoming fixtures and sort by date to find the earliest round
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select("round, date_utc")
+    .eq("league_id", leagueId)
+    .eq("season_year", season)
+    .in("status_short", ["TBD", "NS", "PST"])
+    .order("date_utc", { ascending: true })
+    .limit(1);
+
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+
+  return data[0].round;
+}
+
+/**
+ * Fetch all fixtures from a specific round
+ */
+export async function fetchFixturesByRound(
+  leagueId: number, 
+  round: string, 
+  season: number = 2025
+): Promise<RoundFixture[]> {
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select(`
+      id, date_utc, status_short, round, home_team_id, away_team_id, league_id,
+      home_goals, away_goals,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
+      venues(name)
+    `)
+    .eq("league_id", leagueId)
+    .eq("round", round)
+    .eq("season_year", season)
+    .order("date_utc", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching fixtures by round:", error);
+    return [];
+  }
+
+  if (!data) return [];
+
+  return data.map(fixture => ({
+    id: Number(fixture.id),
+    date_utc: String(fixture.date_utc),
+    status_short: String(fixture.status_short),
+    round: String(fixture.round),
+    home_team: {
+      id: Number(fixture.home_team_id),
+      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
+    },
+    away_team: {
+      id: Number(fixture.away_team_id),
+      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
+      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
+    },
+    home_goals: fixture.home_goals,
+    away_goals: fixture.away_goals,
+    venue: Array.isArray(fixture.venues) ? (fixture.venues as any)[0]?.name : (fixture.venues as any)?.name || undefined,
+    league_id: Number(fixture.league_id),
+  }));
+}
+
+/**
+ * Fetch recent completed fixtures from the latest completed round
+ */
+export async function fetchRecentRoundFixtures(leagueId: number, season: number = 2025): Promise<RoundFixture[]> {
+  const latestRound = await getLatestCompletedRound(leagueId, season);
+  if (!latestRound) return [];
+  
+  return fetchFixturesByRound(leagueId, latestRound, season);
+}
+
+/**
+ * Fetch upcoming fixtures from the next round
+ */
+export async function fetchUpcomingRoundFixtures(leagueId: number, season: number = 2025): Promise<RoundFixture[]> {
+  const nextRound = await getNextUpcomingRound(leagueId, season);
+  if (!nextRound) return [];
+  
+  return fetchFixturesByRound(leagueId, nextRound, season);
+}
+
 // API Football 호출 함수 (향후 사용)
 export async function fetchAPIFootballUpcomingFixtures(leagueId: number, count: number = 5) {
   const API_KEY = process.env.API_FOOTBALL_KEY;

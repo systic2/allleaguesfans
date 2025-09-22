@@ -582,7 +582,7 @@ export class ValidationEndpoints {
 
       // Test API-Football availability (lightweight request)
       let apiFootballAvailable = false;
-      let rateLimitStatus = { remaining: 0, reset: 0, limit: 0 };
+      const rateLimitStatus = { remaining: 0, reset: 0, limit: 0 };
       
       try {
         const testValidation = await lineupValidationAPI.validateTeam(2762, 2025); // Jeonbuk test

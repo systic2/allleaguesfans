@@ -97,7 +97,7 @@ async function importStandingsOnly() {
             team_id: standing.team.id,
             rank_position: standing.rank,
             points: standing.points,
-            goalsDiff: standing.goalsDiff,
+            goals_diff: standing.goalsDiff,
             group_name: standing.group,
             form: standing.form,
             status: standing.status,
@@ -120,6 +120,8 @@ async function importStandingsOnly() {
             away_lose: standing.away.lose,
             away_goals_for: standing.away.goals.for,
             away_goals_against: standing.away.goals.against
+          }, {
+            onConflict: 'league_id,season_year,team_id'
           });
 
         if (error) {

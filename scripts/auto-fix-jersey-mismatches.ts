@@ -72,7 +72,7 @@ function calculateNameConfidence(apiName: string, dbName: string): number {
   const dbParts = normalizedDb.split(' ');
   
   let matchCount = 0;
-  let totalParts = Math.max(apiParts.length, dbParts.length);
+  const totalParts = Math.max(apiParts.length, dbParts.length);
   
   for (const apiPart of apiParts) {
     for (const dbPart of dbParts) {

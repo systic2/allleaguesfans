@@ -67,10 +67,10 @@ async function analyzePlayerStatus(): Promise<PlayerStatusAnalysis> {
   // 3. 상태 분석
   let active = 0;
   let transferred = 0;
-  let retired = 0;
+  const retired = 0;
   let newPlayers = 0;
-  let jerseyChanges = 0;
-  let teamChanges = 0;
+  const jerseyChanges = 0;
+  const teamChanges = 0;
 
   // DB에 있지만 API에 없는 선수 (이적/은퇴)
   const missingFromAPI = dbPlayers?.filter(dbPlayer => 
