@@ -30,21 +30,21 @@ export default function UpcomingFixtures({
 
   if (isLoading) {
     return (
-      <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">{title}</h2>
+      <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
+        <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
         <div className="animate-pulse">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+            <div key={i} className="flex items-center justify-between py-3 border-b border-slate-700 last:border-0">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gray-200 rounded"></div>
+                <div className="w-8 h-8 bg-slate-600 rounded"></div>
                 <div>
-                  <div className="w-32 h-4 bg-gray-200 rounded mb-1"></div>
-                  <div className="w-24 h-3 bg-gray-200 rounded"></div>
+                  <div className="w-32 h-4 bg-slate-600 rounded mb-1"></div>
+                  <div className="w-24 h-3 bg-slate-600 rounded"></div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="w-16 h-4 bg-gray-200 rounded mb-1"></div>
-                <div className="w-12 h-3 bg-gray-200 rounded"></div>
+                <div className="w-16 h-4 bg-slate-600 rounded mb-1"></div>
+                <div className="w-12 h-3 bg-slate-600 rounded"></div>
               </div>
             </div>
           ))}
@@ -55,9 +55,9 @@ export default function UpcomingFixtures({
 
   if (error) {
     return (
-      <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">{title}</h2>
-        <div className="text-center text-gray-500 py-8">
+      <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
+        <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
+        <div className="text-center text-slate-400 py-8">
           <p>예정된 경기를 불러오는데 실패했습니다.</p>
         </div>
       </div>
@@ -66,9 +66,9 @@ export default function UpcomingFixtures({
 
   if (!fixtures || fixtures.length === 0) {
     return (
-      <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">{title}</h2>
-        <div className="text-center text-gray-500 py-8">
+      <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
+        <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
+        <div className="text-center text-slate-400 py-8">
           <div className="w-16 h-16 mx-auto mb-4 opacity-50">
             📅
           </div>
@@ -80,8 +80,8 @@ export default function UpcomingFixtures({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
-      <h2 className="text-xl font-bold text-gray-900 mb-4">{title}</h2>
+    <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
+      <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
       <div className="space-y-4">
         {fixtures.map((fixture) => (
           <FixtureCard key={fixture.id} fixture={fixture} showTeams={!teamId} />
@@ -124,24 +124,24 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
   }[fixture.status] || fixture.status;
 
   const statusColor = {
-    'TBD': 'bg-yellow-100 text-yellow-800',
-    'NS': 'bg-green-100 text-green-800',
-    'PST': 'bg-red-100 text-red-800'
-  }[fixture.status] || 'bg-gray-100 text-gray-800';
+    'TBD': 'bg-yellow-900/50 text-yellow-300 border border-yellow-700',
+    'NS': 'bg-green-900/50 text-green-300 border border-green-700',
+    'PST': 'bg-red-900/50 text-red-300 border border-red-700'
+  }[fixture.status] || 'bg-slate-700 text-slate-300 border border-slate-600';
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+    <div className="border border-slate-600 rounded-lg p-4 hover:border-blue-400 transition-colors bg-slate-700/50">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
             {statusDisplay}
           </span>
-          <span className="text-sm text-gray-500">{fixture.round}</span>
+          <span className="text-sm text-slate-400">{fixture.round}</span>
         </div>
         <div className="text-right">
-          <div className="text-sm font-medium text-gray-900">{dateDisplay}</div>
+          <div className="text-sm font-medium text-white">{dateDisplay}</div>
           {fixture.venue && (
-            <div className="text-xs text-gray-500">{fixture.venue}</div>
+            <div className="text-xs text-slate-400">{fixture.venue}</div>
           )}
         </div>
       </div>
@@ -157,15 +157,15 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
                   className="w-6 h-6 object-contain"
                 />
               )}
-              <span className="font-medium text-gray-900">{fixture.home_team.name}</span>
+              <span className="font-medium text-white">{fixture.home_team.name}</span>
             </div>
           </div>
           
-          <div className="px-4 text-gray-400 font-bold">VS</div>
+          <div className="px-4 text-slate-400 font-bold">VS</div>
           
           <div className="flex items-center space-x-3 flex-1 justify-end">
             <div className="flex items-center space-x-2">
-              <span className="font-medium text-gray-900">{fixture.away_team.name}</span>
+              <span className="font-medium text-white">{fixture.away_team.name}</span>
               {fixture.away_team.logo_url && (
                 <img 
                   src={fixture.away_team.logo_url} 

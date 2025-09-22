@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { 
   fetchPlayersByTeam, 
   fetchTeamDetails, 
@@ -14,40 +14,150 @@ import TeamLineup from "@/components/TeamLineup";
 import CrestImg from "@/app/components/CrestImg";
 import UpcomingFixtures from "@/components/UpcomingFixtures";
 
+// Loading component for consistent loading states
+function LoadingSection({ title }: { title: string }) {
+  return (
+    <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
+      <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
+        {title}
+      </h2>
+      <div className="animate-pulse space-y-3">
+        <div className="h-4 bg-white/10 rounded w-3/4"></div>
+        <div className="h-4 bg-white/10 rounded w-1/2"></div>
+        <div className="h-4 bg-white/10 rounded w-2/3"></div>
+      </div>
+    </section>
+  );
+}
 
 export default function TeamPage() {
   const { id = "0" } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const teamId = Number(id);
   const currentSeason = 2025;
 
-  const { data: teamDetails } = useQuery<TeamDetails | null>({
+  // Enhanced queries with better error handling
+  const { 
+    data: teamDetails, 
+    isLoading: teamLoading, 
+    error: teamError 
+  } = useQuery<TeamDetails | null>({
     queryKey: ["team-details", teamId],
     queryFn: () => fetchTeamDetails(teamId, currentSeason),
     enabled: Number.isFinite(teamId) && teamId > 0,
+    retry: 3,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const { data: players } = useQuery<PlayerLite[]>({
+  const { 
+    data: players, 
+    isLoading: playersLoading 
+  } = useQuery<PlayerLite[]>({
     queryKey: ["team-players", teamId],
     queryFn: () => fetchPlayersByTeam(teamId),
     enabled: Number.isFinite(teamId) && teamId > 0,
+    retry: 2,
   });
 
-  const { data: fixtures } = useQuery<TeamFixture[]>({
+  const { 
+    data: fixtures, 
+    isLoading: fixturesLoading 
+  } = useQuery<TeamFixture[]>({
     queryKey: ["team-fixtures", teamId],
-    queryFn: () => fetchTeamFixtures(teamId, currentSeason, 8),
+    queryFn: () => fetchTeamFixtures(teamId, currentSeason, 20), // Increased to ensure 5 completed matches
     enabled: Number.isFinite(teamId) && teamId > 0,
+    retry: 2,
   });
 
-  const { data: statistics } = useQuery<TeamStatistics | null>({
+  const { 
+    data: statistics, 
+    isLoading: statisticsLoading 
+  } = useQuery<TeamStatistics | null>({
     queryKey: ["team-statistics", teamId],
     queryFn: () => fetchTeamStatistics(teamId, currentSeason),
     enabled: Number.isFinite(teamId) && teamId > 0,
+    retry: 2,
   });
 
+  // Invalid team ID check
+  if (!Number.isFinite(teamId) || teamId <= 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">잘못된 팀 ID</h1>
+          <p className="text-white/70 mb-6">올바른 팀 페이지로 이동해주세요.</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            홈으로 이동
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (teamError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">팀 정보 로딩 오류</h1>
+          <p className="text-white/70 mb-6">팀 정보를 불러오는 중 오류가 발생했습니다.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors mr-3"
+          >
+            다시 시도
+          </button>
+          <button 
+            onClick={() => navigate('/')}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            홈으로 이동
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (teamLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="animate-pulse">
+            <div className="h-32 bg-white/10 rounded-xl mb-8"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-8">
+                <div className="h-64 bg-white/10 rounded-xl"></div>
+                <div className="h-48 bg-white/10 rounded-xl"></div>
+              </div>
+              <div className="space-y-6">
+                <div className="h-48 bg-white/10 rounded-xl"></div>
+                <div className="h-32 bg-white/10 rounded-xl"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No team data found
   if (!teamDetails) {
     return (
-      <div className="p-6">
-        <div className="text-white/70">팀 정보를 불러오는 중...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">팀을 찾을 수 없습니다</h1>
+          <p className="text-white/70 mb-6">요청하신 팀 정보가 존재하지 않습니다.</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            홈으로 이동
+          </button>
+        </div>
       </div>
     );
   }
@@ -120,24 +230,33 @@ export default function TeamPage() {
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-8">
             {/* Squad Section */}
-            <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
-              <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
-                🔥 선발 라인업
-              </h2>
-              <TeamLineup 
-                teamId={teamId}
-                players={players ?? []}
-              />
-            </section>
+            {playersLoading ? (
+              <LoadingSection title="🔥 선발 라인업" />
+            ) : (
+              <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
+                <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
+                  🔥 선발 라인업
+                </h2>
+                <TeamLineup 
+                  teamId={teamId}
+                  players={players ?? []}
+                />
+              </section>
+            )}
 
             {/* Recent Fixtures */}
-            {fixtures && fixtures.length > 0 && (
+            {fixturesLoading ? (
+              <LoadingSection title="📅 최근 경기 결과" />
+            ) : fixtures && fixtures.filter(f => f.result !== null).length > 0 ? (
               <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
                 <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
                   📅 최근 경기 결과
                 </h2>
                 <div className="space-y-3">
-                  {fixtures.slice(0, 6).map((fixture) => (
+                  {fixtures
+                    .filter((fixture) => fixture.result !== null) // Only show completed matches
+                    .slice(0, 5) // Show 5 completed matches
+                    .map((fixture) => (
                     <div key={fixture.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
                       <div className="flex items-center gap-3">
                         <div className={`w-6 h-6 rounded text-xs font-bold flex items-center justify-center text-white ${getResultColor(fixture.result)}`}>
@@ -163,7 +282,7 @@ export default function TeamPage() {
                   ))}
                 </div>
               </section>
-            )}
+            ) : null}
 
             {/* Upcoming Fixtures */}
             <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
@@ -211,7 +330,9 @@ export default function TeamPage() {
           {/* Right Column - Statistics */}
           <div className="space-y-6">
             {/* Current Season Stats */}
-            {statistics && (
+            {statisticsLoading ? (
+              <LoadingSection title="📊 2025 시즌 기록" />
+            ) : statistics ? (
               <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
                 <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">
                   📊 2025 시즌 기록
@@ -284,7 +405,7 @@ export default function TeamPage() {
                   )}
                 </div>
               </section>
-            )}
+            ) : null}
 
             {/* Club Info */}
             <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
@@ -324,7 +445,9 @@ export default function TeamPage() {
             </section>
 
             {/* Home/Away Record */}
-            {statistics && (
+            {statisticsLoading ? (
+              <LoadingSection title="🏠 홈/원정 기록" />
+            ) : statistics ? (
               <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
                 <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">
                   🏠 홈/원정 기록
@@ -348,7 +471,7 @@ export default function TeamPage() {
                   </div>
                 </div>
               </section>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

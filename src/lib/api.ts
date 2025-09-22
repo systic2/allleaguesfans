@@ -132,8 +132,40 @@ export async function fetchPlayersByTeam(teamId: number): Promise<PlayerLite[]> 
       }
     }
     
-    // Fallback to database + events approach with improved jersey assignment
-    console.log(`🔄 Fallback: Using database players with events for team ${teamId}...`);
+    // Fallback to database: try direct team query first, then events approach
+    console.log(`🔄 Fallback: Using database players for team ${teamId}...`);
+    
+    // Try to get players directly by team_id first
+    const { data: directPlayers, error: directError } = await supabase
+      .from("players")
+      .select("id, name, photo, position, jersey_number")
+      .eq("team_id", teamId);
+      
+    if (!directError && directPlayers && directPlayers.length > 0) {
+      console.log(`✅ Found ${directPlayers.length} players directly from team_id`);
+      
+      const playersData = directPlayers.map((player) => ({
+        id: Number(player.id),
+        name: String(player.name),
+        position: player.position || 'MF',
+        photo_url: (player.photo ?? null) as string | null,
+        team_id: teamId,
+        jersey_number: player.jersey_number || null
+      })).sort((a, b) => {
+        // Sort by jersey number first, then by name
+        if (a.jersey_number && b.jersey_number) {
+          return a.jersey_number - b.jersey_number;
+        }
+        if (a.jersey_number && !b.jersey_number) return -1;
+        if (!a.jersey_number && b.jersey_number) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      
+      return playersData;
+    }
+    
+    // If direct team query didn't work, fall back to events approach
+    console.log(`🔄 Fallback 2: Using events data for team ${teamId}...`);
     
     const { data, error } = await supabase
       .from("events")
@@ -152,22 +184,27 @@ export async function fetchPlayersByTeam(teamId: number): Promise<PlayerLite[]> 
     // Get player details
     const { data: playersData, error: playersError } = await supabase
       .from("players")
-      .select("id, name, photo_url")
+      .select("id, name, photo, position, jersey_number")
       .in("id", uniquePlayerIds);
       
     if (playersError) throw playersError;
     
-    // Assign jersey numbers and positions based on player data and traditional formations
+    // Use database data if available, with fallback for missing fields
     const playersWithJersey = (playersData ?? []).map((player, index) => {
+      // Use database position and jersey_number if available, otherwise generate
+      const dbPosition = player.position;
+      const dbJerseyNumber = player.jersey_number;
+      
+      // Fallback generation if database doesn't have position/jersey
       const { jerseyNumber, position } = assignJerseyAndPosition(player.name, index, Number(player.id));
       
       return {
         id: Number(player.id),
         name: String(player.name),
-        position,
-        photo_url: (player.photo_url ?? null) as string | null,
+        position: dbPosition || position, // Use database position if available
+        photo_url: (player.photo ?? null) as string | null,
         team_id: teamId,
-        jersey_number: jerseyNumber
+        jersey_number: dbJerseyNumber || jerseyNumber // Use database jersey if available
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
     
@@ -654,8 +691,7 @@ export async function fetchTeamDetails(teamId: number, season: number = 2025): P
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .select(`
-      id, name, code, country_name, founded, logo_url,
-      venues (name, capacity, city)
+      id, name, code, country_name, founded, logo_url
     `)
     .eq("id", teamId)
     .maybeSingle();
@@ -665,12 +701,10 @@ export async function fetchTeamDetails(teamId: number, season: number = 2025): P
   // 현재 시즌 순위 정보
   const { data: standings } = await supabase
     .from("standings")
-    .select("rank, points, played, win, draw, lose, goals_for, goals_against")
+    .select("rank_position, points, all_played, all_win, all_draw, all_lose, all_goals_for, all_goals_against")
     .eq("team_id", teamId)
     .eq("season_year", season)
     .maybeSingle();
-
-  const venue = Array.isArray(team.venues) ? team.venues[0] : team.venues;
 
   return {
     id: Number(team.id),
@@ -679,17 +713,17 @@ export async function fetchTeamDetails(teamId: number, season: number = 2025): P
     country: String(team.country_name || 'South Korea'),
     founded: team.founded ? Number(team.founded) : null,
     logo_url: team.logo_url,
-    venue_name: venue?.name || null,
-    venue_capacity: venue?.capacity ? Number(venue.capacity) : null,
-    venue_city: venue?.city || null,
-    current_position: standings?.rank || null,
+    venue_name: null, // No venue data available in current schema
+    venue_capacity: null,
+    venue_city: null,
+    current_position: standings?.rank_position || null,
     points: standings?.points || null,
-    matches_played: standings?.played || null,
-    wins: standings?.win || null,
-    draws: standings?.draw || null,
-    losses: standings?.lose || null,
-    goals_for: standings?.goals_for || null,
-    goals_against: standings?.goals_against || null,
+    matches_played: standings?.all_played || null,
+    wins: standings?.all_win || null,
+    draws: standings?.all_draw || null,
+    losses: standings?.all_lose || null,
+    goals_for: standings?.all_goals_for || null,
+    goals_against: standings?.all_goals_against || null,
   };
 }
 
@@ -757,31 +791,31 @@ export async function fetchTeamStatistics(teamId: number, season: number = 2025)
   if (error || !standings) return null;
 
   // 최근 경기 결과로 폼 계산
-  const recentFixtures = await fetchTeamFixtures(teamId, season, 5);
+  const recentFixtures = await fetchTeamFixtures(teamId, season, 15);
   const form = recentFixtures
-    .slice(0, 5)
+    .filter(f => f.result !== null) // Filter completed matches first
+    .slice(0, 5) // Then take 5 completed matches
     .map(f => f.result)
-    .filter(r => r !== null)
     .join('');
 
   // 홈/원정 기록 계산 (실제 구현시에는 fixtures 데이터에서 계산)
-  const homeRecord = { wins: Math.floor(standings.win * 0.6), draws: Math.floor(standings.draw * 0.5), losses: Math.floor(standings.lose * 0.4) };
-  const awayRecord = { wins: standings.win - homeRecord.wins, draws: standings.draw - homeRecord.draws, losses: standings.lose - homeRecord.losses };
+  const homeRecord = { wins: Math.floor(standings.all_win * 0.6), draws: Math.floor(standings.all_draw * 0.5), losses: Math.floor(standings.all_lose * 0.4) };
+  const awayRecord = { wins: standings.all_win - homeRecord.wins, draws: standings.all_draw - homeRecord.draws, losses: standings.all_lose - homeRecord.losses };
 
   return {
-    position: Number(standings.rank),
+    position: Number(standings.rank_position),
     points: Number(standings.points),
-    played: Number(standings.played),
-    wins: Number(standings.win),
-    draws: Number(standings.draw),
-    losses: Number(standings.lose),
-    goals_for: Number(standings.goals_for),
-    goals_against: Number(standings.goals_against),
+    played: Number(standings.all_played),
+    wins: Number(standings.all_win),
+    draws: Number(standings.all_draw),
+    losses: Number(standings.all_lose),
+    goals_for: Number(standings.all_goals_for),
+    goals_against: Number(standings.all_goals_against),
     goal_difference: Number(standings.goals_diff),
-    clean_sheets: Math.floor(standings.played * 0.3), // 임시 계산
-    failed_to_score: Math.floor(standings.played * 0.2), // 임시 계산
-    avg_goals_scored: standings.played > 0 ? Number((standings.goals_for / standings.played).toFixed(2)) : 0,
-    avg_goals_conceded: standings.played > 0 ? Number((standings.goals_against / standings.played).toFixed(2)) : 0,
+    clean_sheets: Math.floor(standings.all_played * 0.3), // 임시 계산
+    failed_to_score: Math.floor(standings.all_played * 0.2), // 임시 계산
+    avg_goals_scored: standings.all_played > 0 ? Number((standings.all_goals_for / standings.all_played).toFixed(2)) : 0,
+    avg_goals_conceded: standings.all_played > 0 ? Number((standings.all_goals_against / standings.all_played).toFixed(2)) : 0,
     form_last_5: form || 'N/A',
     home_record: homeRecord,
     away_record: awayRecord,
