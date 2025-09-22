@@ -80,8 +80,8 @@ export function useLineupValidation(
     refreshing: false
   });
 
-  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
-  const abortControllerRef = useRef<AbortController>();
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Cleanup function
   const cleanup = useCallback(() => {

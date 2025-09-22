@@ -21,7 +21,11 @@ export interface ValidationEndpointResponse extends APIResponse<TeamLineupValida
   };
 }
 
-export interface MultiTeamValidationResponse extends APIResponse<TeamLineupValidation[]> {
+export interface MultiTeamValidationResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  timestamp: string;
   data?: {
     validations: TeamLineupValidation[];
     summary: {
@@ -33,7 +37,11 @@ export interface MultiTeamValidationResponse extends APIResponse<TeamLineupValid
   };
 }
 
-export interface TransferDetectionResponse extends APIResponse<PlayerStatusUpdate[]> {
+export interface TransferDetectionResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  timestamp: string;
   data?: {
     transfers: PlayerStatusUpdate[];
     summary: {
@@ -45,15 +53,23 @@ export interface TransferDetectionResponse extends APIResponse<PlayerStatusUpdat
   };
 }
 
-export interface CorrectionResponse extends APIResponse<{ applied: number; errors: string[] }> {
+export interface CorrectionResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  timestamp: string;
   data?: {
-    corrections_applied: number;
+    applied: number;
     errors: string[];
     success_rate: number;
   };
 }
 
-export interface AlertResponse extends APIResponse<ValidationAlert[]> {
+export interface AlertResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  timestamp: string;
   data?: {
     alerts: ValidationAlert[];
     summary: {
@@ -322,7 +338,7 @@ export class ValidationEndpoints {
       
       if (validation.issues_detected === 0) {
         return {
-          corrections_applied: 0,
+          applied: 0,
           errors: [],
           success_rate: 1.0
         };
@@ -334,7 +350,7 @@ export class ValidationEndpoints {
       const success_rate = result.applied / (result.applied + result.errors.length);
       
       return {
-        corrections_applied: result.applied,
+        applied: result.applied,
         errors: result.errors,
         success_rate: Number(success_rate.toFixed(2))
       };
@@ -558,8 +574,8 @@ export class ValidationEndpoints {
       // Test database connection
       let databaseConnected = false;
       try {
-        const { data } = await ValidationUtils.getKLeagueTeams(292, 2025);
-        databaseConnected = true;
+        const teams = await ValidationUtils.getKLeagueTeams(292, 2025);
+        databaseConnected = teams.length > 0;
       } catch (error) {
         console.error('Database health check failed:', error);
       }
