@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { 
   fetchPlayersByTeam, 
   fetchTeamDetails, 
@@ -10,6 +11,7 @@ import {
   type TeamFixture, 
   type TeamStatistics 
 } from "@/lib/api";
+import { shouldRedirectTeamId, getTeamIdErrorMessage } from "@/lib/team-id-mapping";
 import TeamLineup from "@/components/TeamLineup";
 import CrestImg from "@/app/components/CrestImg";
 import UpcomingFixtures from "@/components/UpcomingFixtures";
@@ -33,8 +35,28 @@ function LoadingSection({ title }: { title: string }) {
 export default function TeamPage() {
   const { id = "0" } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const teamId = Number(id);
+  const originalTeamId = Number(id);
   const currentSeason = 2025;
+  const [redirecting, setRedirecting] = useState(false);
+
+  // Check for team ID redirect and handle it
+  useEffect(() => {
+    const redirectInfo = shouldRedirectTeamId(originalTeamId);
+    
+    if (redirectInfo.shouldRedirect && redirectInfo.newTeamId) {
+      setRedirecting(true);
+      console.log(`🔄 Redirecting team ${originalTeamId} → ${redirectInfo.newTeamId}`);
+      
+      // Show brief message then redirect
+      setTimeout(() => {
+        navigate(`/teams/${redirectInfo.newTeamId}`, { replace: true });
+      }, 2000);
+    }
+  }, [originalTeamId, navigate]);
+
+  // Use redirected team ID if available, otherwise use original
+  const redirectInfo = shouldRedirectTeamId(originalTeamId);
+  const teamId = redirectInfo.newTeamId || originalTeamId;
 
   // Enhanced queries with better error handling
   const { 
@@ -78,6 +100,22 @@ export default function TeamPage() {
     enabled: Number.isFinite(teamId) && teamId > 0,
     retry: 2,
   });
+
+  // Show redirect message if redirecting
+  if (redirecting && redirectInfo.shouldRedirect) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-white mb-4">팀 페이지 이동 중</h1>
+          <p className="text-white/70 mb-6">{redirectInfo.message}</p>
+          <p className="text-sm text-white/50">
+            팀 ID {originalTeamId} → {redirectInfo.newTeamId}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Invalid team ID check
   if (!Number.isFinite(teamId) || teamId <= 0) {
@@ -146,17 +184,46 @@ export default function TeamPage() {
 
   // No team data found
   if (!teamDetails) {
+    const errorMessage = getTeamIdErrorMessage(originalTeamId);
+    const isKnownOldId = shouldRedirectTeamId(originalTeamId).shouldRedirect;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto px-6">
           <h1 className="text-2xl font-bold text-white mb-4">팀을 찾을 수 없습니다</h1>
-          <p className="text-white/70 mb-6">요청하신 팀 정보가 존재하지 않습니다.</p>
-          <button 
-            onClick={() => navigate('/')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            홈으로 이동
-          </button>
+          <p className="text-white/70 mb-6">{errorMessage}</p>
+          
+          {!isKnownOldId && (
+            <div className="bg-black/20 rounded-lg p-4 mb-6 border border-white/10">
+              <p className="text-sm text-white/60 mb-3">💡 도움말:</p>
+              <ul className="text-sm text-white/70 text-left space-y-1">
+                <li>• 검색 기능을 사용해 팀을 찾아보세요</li>
+                <li>• 리그 페이지에서 팀 목록을 확인하세요</li>
+                <li>• 팀 ID는 2745-2768 범위에 있습니다</li>
+              </ul>
+            </div>
+          )}
+          
+          <div className="space-x-3">
+            <button 
+              onClick={() => navigate('/search')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              팀 검색
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              홈으로 이동
+            </button>
+          </div>
+          
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-xs text-white/40 mt-4">
+              Debug: teamId={teamId}, originalId={originalTeamId}
+            </p>
+          )}
         </div>
       </div>
     );
