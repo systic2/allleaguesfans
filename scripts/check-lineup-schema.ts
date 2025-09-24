@@ -19,7 +19,7 @@ async function checkLineupSchema() {
       console.log("테이블 목록을 직접 확인해보겠습니다...");
       
       // lineups 테이블 존재 여부 확인
-      const { data: lineupsTest, error: lineupsError } = await supabase
+      const { data: _lineupsTest, error: lineupsError } = await supabase
         .from('lineups')
         .select('count')
         .limit(1);

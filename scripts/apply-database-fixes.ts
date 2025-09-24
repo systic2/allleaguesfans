@@ -24,7 +24,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 /**
  * Execute SQL file
  */
-async function executeSqlFile(filename: string) {
+async function _executeSqlFile(filename: string) {
   try {
     console.log(`📄 Executing ${filename}...`);
     const sqlPath = path.join(__dirname, filename);
@@ -68,7 +68,7 @@ async function executeSqlFile(filename: string) {
 async function executeSQL(sql: string, description: string) {
   try {
     console.log(`🔧 ${description}...`);
-    const { data, error } = await supabase.from('__temp__').select('1').limit(0);
+    const { data: _data, error: _error } = await supabase.from('__temp__').select('1').limit(0);
     
     // Use raw SQL execution
     const { error: sqlError } = await supabase.rpc('exec_raw_sql', { 
@@ -124,7 +124,7 @@ async function createSQLExecutor() {
     
     console.log('✅ SQL executor created');
     return true;
-  } catch (error: any) {
+  } catch (_error: any) {
     console.warn('⚠️ Could not create SQL executor, using direct method');
     return true;
   }
@@ -272,7 +272,7 @@ async function runValidationTests() {
 
     // Test 2: Check venue references
     console.log('  → Testing venue references...');
-    const { data: venueTest, error: venueError } = await supabase
+    const { data: venueTest, error: _venueError } = await supabase
       .from('venues')
       .select('id')
       .in('id', [1005, 1009, 1010]);
@@ -281,7 +281,7 @@ async function runValidationTests() {
 
     // Test 3: Check league references
     console.log('  → Testing league references...');
-    const { data: leagueTest, error: leagueError } = await supabase
+    const { data: leagueTest, error: _leagueError } = await supabase
       .from('leagues')
       .select('id')
       .in('id', [15, 294])
@@ -291,7 +291,7 @@ async function runValidationTests() {
 
     // Test 4: Check squad_memberships view
     console.log('  → Testing squad_memberships view...');
-    const { data: squadTest, error: squadError } = await supabase
+    const { data: _squadTest, error: squadError } = await supabase
       .from('squad_memberships')
       .select('id')
       .limit(1);
@@ -328,7 +328,7 @@ async function showFinalStats() {
 
         const count = data ? 0 : (error as any)?.count || 0;
         console.log(`📋 ${table}: ${count} records`);
-      } catch (err) {
+      } catch (_err) {
         console.log(`📋 ${table}: Error counting records`);
       }
     }

@@ -34,7 +34,7 @@ async function clearEventsTable() {
       console.log(`🔄 ${batchToDelete.length}개 레코드 삭제 중...`);
       
       const ids = batchToDelete.map(row => row.id);
-      const { error, count } = await supabase
+      const { error, count: _count } = await supabase
         .from('events')
         .delete()
         .in('id', ids);

@@ -98,7 +98,7 @@ function calculateNameConfidence(apiName: string, dbName: string): number {
   return confidence;
 }
 
-async function findJerseyMismatches(teamId: number, season: number): Promise<JerseyMismatch[]> {
+async function findJerseyMismatches(teamId: number, _season: number): Promise<JerseyMismatch[]> {
   console.log(`\n🔍 팀 ${teamId} 등번호 불일치 분석...`);
   
   // 1. 데이터베이스에서 팀 선수 조회
@@ -301,7 +301,7 @@ async function generateFixReport(allMismatches: JerseyMismatch[]): Promise<void>
   }, {} as Record<number, { name: string; total: number; updates: number; flags: number }>);
 
   console.log('\n🏈 팀별 상세:');
-  Object.entries(teamSummary).forEach(([teamId, summary]) => {
+  Object.entries(teamSummary).forEach(([_teamId, summary]) => {
     console.log(`  ${summary.name}: ${summary.total}건 (수정: ${summary.updates}, 확인: ${summary.flags})`);
   });
   

@@ -74,7 +74,7 @@ async function analyzeExistingLineup() {
             });
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // 테이블이 없으면 무시
       }
     }

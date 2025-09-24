@@ -21,7 +21,7 @@ async function checkProductionTopStats() {
   try {
     // Check top_scorers data
     console.log('\n📊 Checking top_scorers table...');
-    const { data: scorers, error: scorersError, count: scorersCount } = await supabase
+    const { data: _scorers, error: scorersError, count: scorersCount } = await supabase
       .from('top_scorers')
       .select('*', { count: 'exact', head: true });
 
@@ -35,7 +35,7 @@ async function checkProductionTopStats() {
 
     // Check top_assists data  
     console.log('\n📊 Checking top_assists table...');
-    const { data: assists, error: assistsError, count: assistsCount } = await supabase
+    const { data: _assists, error: assistsError, count: assistsCount } = await supabase
       .from('top_assists')  
       .select('*', { count: 'exact', head: true });
 
@@ -72,7 +72,7 @@ async function checkProductionTopStats() {
     // Check for specific league data (K League 1 = 292, K League 2 = 293)
     console.log('\n🔍 Checking for K League data specifically...');
     
-    const { data: kLeagueScorers, count: kLeagueScorerCount } = await supabase
+    const { data: _kLeagueScorers, count: kLeagueScorerCount } = await supabase
       .from('top_scorers')
       .select('*', { count: 'exact', head: true })
       .in('league_id', [292, 293])
@@ -80,7 +80,7 @@ async function checkProductionTopStats() {
 
     console.log('🏆 K League top_scorers (2025):', kLeagueScorerCount || 0);
 
-    const { data: kLeagueAssists, count: kLeagueAssistCount } = await supabase
+    const { data: _kLeagueAssists, count: kLeagueAssistCount } = await supabase
       .from('top_assists')
       .select('*', { count: 'exact', head: true })
       .in('league_id', [292, 293])

@@ -253,7 +253,7 @@ export class LineupValidationEngine {
   async validateTeamLineup(
     teamId: number, 
     season: number = 2025,
-    options: { includeTransferDetection?: boolean; forceRefresh?: boolean } = {}
+    _options: { includeTransferDetection?: boolean; forceRefresh?: boolean } = {}
   ): Promise<TeamLineupValidation> {
     const startTime = Date.now();
     
@@ -608,9 +608,9 @@ export class TransferDetectionEngine {
   }
 
   private async findPlayerInOtherTeams(
-    playerId: number,
-    excludeTeamId: number,
-    season: number
+    _playerId: number,
+    _excludeTeamId: number,
+    _season: number
   ): Promise<{ team_id: number; previous_team_name: string; current_team_name: string } | null> {
     // This would require checking player across all teams in the league
     // For now, return null - in production, implement squad-wide search

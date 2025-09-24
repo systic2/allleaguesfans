@@ -10,7 +10,7 @@ async function checkFixtureEventsTable() {
   console.log('🔍 fixture_events 테이블 존재 확인...');
   
   try {
-    const { data, error } = await supabase
+    const { data: _data, error } = await supabase
       .from('fixture_events')
       .select('*')
       .limit(1);

@@ -38,7 +38,7 @@ async function clearEventsTable() {
     console.log(`📊 정리 전: ${beforeCount?.toLocaleString()}개 레코드`);
     
     // 모든 events 삭제
-    const { error, count } = await supabase
+    const { error, count: _count } = await supabase
       .from('events')
       .delete()
       .gte('id', 0); // 모든 레코드 삭제

@@ -157,7 +157,7 @@ export class ValidationEndpoints {
   static async validateTeam(
     teamId: number,
     season: number = 2025,
-    options?: { forceRefresh?: boolean }
+    _options?: { forceRefresh?: boolean }
   ): Promise<ValidationEndpointResponse> {
     return wrapEndpoint(async () => {
       if (!teamId || teamId <= 0) {
@@ -182,7 +182,7 @@ export class ValidationEndpoints {
   static async validateLeague(
     leagueId: number = 292,
     season: number = 2025,
-    options?: { batchSize?: number; maxConcurrent?: number }
+    _options?: { batchSize?: number; maxConcurrent?: number }
   ): Promise<MultiTeamValidationResponse> {
     return wrapEndpoint(async () => {
       if (!leagueId || leagueId <= 0) {
@@ -585,7 +585,7 @@ export class ValidationEndpoints {
       const rateLimitStatus = { remaining: 0, reset: 0, limit: 0 };
       
       try {
-        const testValidation = await lineupValidationAPI.validateTeam(2762, 2025); // Jeonbuk test
+        const _testValidation = await lineupValidationAPI.validateTeam(2762, 2025); // Jeonbuk test
         apiFootballAvailable = true;
         
         // Get rate limit info from API client

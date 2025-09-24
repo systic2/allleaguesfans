@@ -5,7 +5,7 @@ async function checkProductionTopStats() {
 
   try {
     // Check top_scorers data
-    const { data: scorers, error: scorersError, count: scorersCount } = await supabase
+    const { data: _scorers, error: scorersError, count: scorersCount } = await supabase
       .from('top_scorers')
       .select('*', { count: 'exact', head: true });
 
@@ -18,7 +18,7 @@ async function checkProductionTopStats() {
     }
 
     // Check top_assists data  
-    const { data: assists, error: assistsError, count: assistsCount } = await supabase
+    const { data: _assists, error: assistsError, count: assistsCount } = await supabase
       .from('top_assists')  
       .select('*', { count: 'exact', head: true });
 
