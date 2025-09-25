@@ -1,13 +1,12 @@
 name: Data Quality Automation
 
 on:
-  # 일일 데이터 품질 검사 (매일 오전 9시 KST)
+  # 스케줄 기반 실행
   schedule:
+    # 일일 데이터 품질 검사 (매일 오전 9시 KST)
     - cron: '0 0 * * *'  # UTC 0시 = KST 9시
-  
-  # 이적시장 활성기 집중 모니터링 (1월, 7월)
-  schedule:
-    - cron: '0 */6 * 1,7 *'  # 1월, 7월에 6시간마다
+    # 이적시장 활성기 집중 모니터링 (1월, 7월에 6시간마다)
+    - cron: '0 */6 * 1,7 *'
   
   # 수동 실행
   workflow_dispatch:
@@ -40,8 +39,9 @@ env:
   SEASON_YEAR: 2025
   NODE_ENV: production
   
-  # API Keys (Secrets에서 가져옴)
-  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+  # API Keys (Secrets에서 가져옴) - 3-API 통합 시스템
+  THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }}
+  HIGHLIGHTLY_API_KEY: ${{ secrets.HIGHLIGHTLY_API_KEY }}
   VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
   SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
   
@@ -80,14 +80,14 @@ jobs:
           echo "🔍 환경 변수 검증..."
           npx tsx scripts/env-check.ts
           
-          # API 연결 테스트
-          echo "🌐 API 연결 테스트..."
+          # Supabase 연결 테스트
+          echo "🌐 Supabase 연결 테스트..."
           if npx tsx -e "
-            const response = await fetch('https://v3.football.api-sports.io/status', {
-              headers: { 'x-apisports-key': '${{ env.API_FOOTBALL_KEY }}' }
-            });
-            if (!response.ok) throw new Error('API 연결 실패');
-            console.log('✅ API 연결 성공');
+            import { createClient } from '@supabase/supabase-js';
+            const supabase = createClient('${{ env.VITE_SUPABASE_URL }}', '${{ env.SUPABASE_SERVICE_ROLE }}');
+            const { data, error } = await supabase.from('teams').select('count');
+            if (error) throw new Error('Supabase 연결 실패: ' + error.message);
+            console.log('✅ Supabase 연결 성공');
           "; then
             echo "continue=true" >> $GITHUB_OUTPUT
           else
