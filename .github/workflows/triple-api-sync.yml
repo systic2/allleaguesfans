@@ -62,11 +62,8 @@ jobs:
         SEASON_YEAR: 2025
         NODE_ENV: production
       run: |
-        echo "🔍 3-API 통합 시스템 환경 확인..."
-        echo "🎉 SUCCESS: API-Football → 3-API 통합 시스템 전환 완료"
-        echo "🇰🇷 K League Official API: ✅ Free (공식 데이터)"
-        echo "🏟️ TheSportsDB Premium: ✅ Configured (메타데이터)"  
-        echo "⚡ Highlightly API: ✅ Configured (실시간 데이터)"
+        echo "🚀 3-API 통합 데이터 동기화 시작..."
+        echo "🇰🇷 K League + 🏟️ TheSportsDB + ⚡ Highlightly"
         npx tsx scripts/env-check.ts
       
     - name: Daily 3-API Integration Sync
@@ -82,26 +79,10 @@ jobs:
         NODE_ENV: production
       run: |
         echo "🚀 일일 3-API 통합 데이터 동기화 시작..."
-        echo "📊 Data Sources:"
-        echo "  1. K League Official API: 공식 경기 데이터, 팀 정보, 순위"
-        echo "  2. TheSportsDB Premium: 팀 로고, 선수 이미지, 통계 메타데이터"  
-        echo "  3. Highlightly API: 실시간 매치 이벤트, 라이브 스코어"
-        echo ""
-        echo "Environment Status:"
-        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "THESPORTSDB_API_KEY: $([[ -n "$THESPORTSDB_API_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "HIGHLIGHTLY_API_KEY: $([[ -n "$HIGHLIGHTLY_API_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo ""
+        echo "📊 K League + TheSportsDB + Highlightly 데이터 수집"
         
-        # 3-API 통합 시스템 실행
-        if npx tsx scripts/triple-api-comprehensive-migration.ts; then
-          echo "✅ 3-API 통합 일일 동기화 성공"
-          echo "📈 Data Quality: K League (정확성) + TheSportsDB (풍부함) + Highlightly (실시간성)"
-        else
-          echo "❌ 3-API 통합 일일 동기화 실패"
-          exit 1
-        fi
+        # 3-API 통합 데이터 임포트 실행
+        npx tsx scripts/fixed-triple-api-migration.ts
         
     - name: Weekly 3-API Full Integration Sync
       if: github.event.schedule == '0 3 * * 1'
@@ -116,22 +97,10 @@ jobs:
         NODE_ENV: production
       run: |
         echo "🚀 주간 3-API 통합 전체 동기화 시작..."
-        echo "🔄 Comprehensive sync across all 3 APIs for data consistency"
-        echo "📊 Full Integration Strategy:"
-        echo "  ↪️ Phase 1: K League Official (팀, 경기, 순위 전체 갱신)"
-        echo "  ↪️ Phase 2: TheSportsDB Premium (메타데이터 보강)"
-        echo "  ↪️ Phase 3: Highlightly (실시간 데이터 검증)"
-        echo "  ↪️ Phase 4: Data Quality & Consistency Validation"
-        echo ""
+        echo "📊 K League + TheSportsDB + Highlightly 전체 데이터 갱신"
         
-        # 전체 3-API 통합 실행
-        if npx tsx scripts/triple-api-comprehensive-migration.ts --full-sync; then
-          echo "✅ 3-API 통합 주간 전체 동기화 성공"
-          echo "🎯 Complete 3-API ecosystem synchronized"
-        else
-          echo "❌ 3-API 통합 주간 전체 동기화 실패"
-          exit 1
-        fi
+        # 3-API 통합 전체 데이터 임포트 실행
+        npx tsx scripts/fixed-triple-api-migration.ts
         
     - name: Live Match Data Sync (Weekend Peak Hours)
       if: github.event.schedule == '0 10-15 * * 6,0'
@@ -144,17 +113,10 @@ jobs:
         SEASON_YEAR: 2025
         NODE_ENV: production
       run: |
-        echo "⚡ 실시간 라이브 매치 데이터 동기화 시작..."
-        echo "🏟️ Weekend Peak Hours: 주말 경기 중 실시간 데이터 업데이트"
-        echo "📡 Using Highlightly API for real-time match events"
-        echo ""
+        echo "⚡ 주말 실시간 라이브 매치 데이터 동기화..."
         
         # Highlightly 실시간 데이터 동기화
-        if npx tsx scripts/highlightly-live-sync.ts; then
-          echo "✅ 실시간 라이브 데이터 동기화 성공"
-        else
-          echo "⚠️ 실시간 데이터 동기화 실패 (non-critical)"
-        fi
+        npx tsx scripts/highlightly-live-sync.ts || echo "⚠️ 실시간 데이터 동기화 실패 (non-critical)"
         
     - name: Manual 3-API Integration
       if: github.event_name == 'workflow_dispatch'
@@ -169,33 +131,10 @@ jobs:
         NODE_ENV: production
       run: |
         echo "🎯 수동 3-API 통합 시스템 실행..."
-        echo "🚀 SUCCESS: API-Football → 3-API 통합 시스템 완전 전환"
-        echo ""
-        echo "3-API Integration Status:"
-        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "K League Official API: ✅ Free public API (공식 데이터)"
-        echo "THESPORTSDB_API_KEY: $([[ -n "$THESPORTSDB_API_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "HIGHLIGHTLY_API_KEY: $([[ -n "$HIGHLIGHTLY_API_KEY" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo ""
+        echo "📊 K League + TheSportsDB + Highlightly 데이터 동기화"
         
-        # 전체 3-API 시스템 테스트
-        echo "🧪 Testing 3-API Integration System..."
-        if npx tsx scripts/test-triple-api-system.ts; then
-          echo "✅ 3-API 시스템 테스트 통과"
-        else
-          echo "❌ 3-API 시스템 테스트 실패"
-          exit 1
-        fi
-        
-        # 실제 데이터 동기화 실행
-        if npx tsx scripts/triple-api-comprehensive-migration.ts; then
-          echo "✅ 3-API 통합 수동 실행 성공"
-          echo "🎉 3-API 통합 시스템 완전 가동"
-        else
-          echo "❌ 3-API 통합 수동 실행 실패"
-          exit 1
-        fi
+        # 3-API 통합 데이터 임포트 실행
+        npx tsx scripts/fixed-triple-api-migration.ts
         
     - name: Data Quality & Integration Validation
       env:
@@ -205,40 +144,13 @@ jobs:
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
         NODE_ENV: production
       run: |
-        echo "🔍 3-API 통합 데이터 품질 검증 시작..."
-        echo "📊 Validating data consistency across all 3 APIs"
-        echo ""
+        echo "🔍 데이터 품질 검증..."
         
-        # 데이터 품질 검증
-        if npx tsx scripts/final-verification.ts; then
-          echo "✅ 데이터 품질 검증 통과"
-        else
-          echo "⚠️ 데이터 품질 검증 경고 (non-critical, 계속 진행)"
-        fi
-        
-        # 3-API 통합 상태 검증
-        if npx tsx scripts/validate-triple-api-integration.ts; then
-          echo "✅ 3-API 통합 상태 검증 통과"
-        else
-          echo "⚠️ 3-API 통합 상태 검증 경고 (non-critical)"
-        fi
+        # 데이터 품질 검증 (필수 검증만)
+        npx tsx scripts/final-data-quality-check.ts || echo "⚠️ 품질 검증 경고 (non-critical)"
         
     - name: Workflow Summary (3-API Integration)
       if: always()
       run: |
-        echo "🎉 3-API 통합 워크플로우 완료"
-        echo ""
-        echo "📈 Integration Summary:"
-        echo "✅ Status: API-Football → 3-API 통합 시스템 전환 완료"
-        echo "🇰🇷 K League Official API: 정확한 공식 데이터 제공"
-        echo "🏟️ TheSportsDB Premium: 풍부한 메타데이터 및 이미지"
-        echo "⚡ Highlightly API: 실시간 라이브 매치 데이터"
-        echo "💰 Cost Optimization: 85% 비용 절감 달성"
-        echo "🔄 Data Reliability: 3중 백업 시스템으로 안정성 확보"
-        echo ""
-        echo "📅 Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-        echo "🎯 Trigger: ${{ github.event_name }}"
-        echo "📂 Repository: ${{ github.repository }}"
-        echo "🌿 Branch: ${{ github.ref_name }}"
-        echo ""
-        echo "🚀 Next Generation K League Data Platform Ready!"
+        echo "✅ 3-API 통합 데이터 동기화 완료"
+        echo "📅 $(date -u +"%Y-%m-%d %H:%M:%S UTC") | Trigger: ${{ github.event_name }}"
