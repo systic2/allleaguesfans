@@ -17,7 +17,8 @@ function checkEnvironmentVariables(): EnvCheckResult[] {
     { name: 'VITE_SUPABASE_URL', value: process.env.VITE_SUPABASE_URL, required: false },
     { name: 'SUPABASE_SERVICE_ROLE', value: process.env.SUPABASE_SERVICE_ROLE, required: true, masked: true },
     { name: 'VITE_SUPABASE_ANON_KEY', value: process.env.VITE_SUPABASE_ANON_KEY, required: false, masked: true },
-    { name: 'API_FOOTBALL_KEY', value: process.env.API_FOOTBALL_KEY, required: true, masked: true },
+    { name: 'THESPORTSDB_API_KEY', value: process.env.THESPORTSDB_API_KEY, required: false, masked: true },
+    { name: 'HIGHLIGHTLY_API_KEY', value: process.env.HIGHLIGHTLY_API_KEY, required: false, masked: true },
     { name: 'SEASON_YEAR', value: process.env.SEASON_YEAR, required: false },
     { name: 'NODE_ENV', value: process.env.NODE_ENV, required: false },
     { name: 'CI', value: process.env.CI, required: false }
