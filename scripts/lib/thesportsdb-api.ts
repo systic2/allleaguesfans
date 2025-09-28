@@ -1,6 +1,6 @@
 /**
  * TheSportsDB API Client
- * Free alternative to API-Football for Korean football data
+ * Free solution for Korean football data
  * Emergency replacement before October 2nd deadline
  */
 

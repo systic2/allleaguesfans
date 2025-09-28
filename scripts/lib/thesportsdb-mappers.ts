@@ -1,7 +1,7 @@
 /**
  * TheSportsDB Data Mappers
  * Maps TheSportsDB API responses to standardized database formats
- * Emergency replacement for API-Football mappers
+ * TheSportsDB mappers
  */
 
 import { 

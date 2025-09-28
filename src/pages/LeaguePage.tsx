@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import RoundBasedFixturesSection from "@/components/RoundBasedFixturesSection";
+import TheSportsDBFixturesSection from "@/components/TheSportsDBFixturesSection";
 import StandingsSection from "@/components/EnhancedStandingsSection";
 import { 
   fetchLeagueBySlug, 
@@ -197,10 +198,16 @@ function HistoricalChampionsCard({ champions }: { champions: HistoricalChampion[
 }
 
 function LeagueStatsCard({ stats }: { stats: LeagueStats }) {
+  // Calculate expected total matches for full season
+  const expectedMatchesPerRound = stats.total_teams ? (stats.total_teams / 2) : 6;
+  const currentRound = 31; // User mentioned round 31 in progress
+  const expectedTotalMatches = Math.floor(expectedMatchesPerRound * currentRound);
+  const dataCompleteness = expectedTotalMatches > 0 ? (stats.total_matches / expectedTotalMatches * 100) : 0;
+
   return (
     <div className="bg-slate-800 rounded-lg p-6">
       <h3 className="text-white text-lg font-semibold mb-4">리그 통계</h3>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-blue-400">{stats.total_teams}</div>
           <div className="text-slate-400 text-xs">팀</div>
@@ -211,11 +218,69 @@ function LeagueStatsCard({ stats }: { stats: LeagueStats }) {
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-yellow-400">{stats.total_matches}</div>
-          <div className="text-slate-400 text-xs">경기</div>
+          <div className="text-slate-400 text-xs">완료된 경기</div>
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-purple-400">{stats.avg_goals_per_match}</div>
           <div className="text-slate-400 text-xs">경기당 골</div>
+        </div>
+      </div>
+      
+      {/* Data limitation notice */}
+      <div className="bg-slate-700 rounded-lg p-3 border-l-4 border-yellow-500">
+        <div className="text-yellow-400 text-sm font-medium mb-1">
+          ⚠️ 데이터 제한 안내
+        </div>
+        <div className="text-slate-300 text-xs space-y-1">
+          <div>• 현재 데이터: {stats.total_matches}경기 (최근 라운드만)</div>
+          <div>• 31라운드 예상: ~{expectedTotalMatches}경기</div>
+          <div>• 데이터 완성도: {dataCompleteness.toFixed(1)}%</div>
+          <div className="text-slate-400 mt-2">
+            K League API 한계로 전체 시즌 데이터 제공 불가
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FixturesToggle({ 
+  useTheSportsDB, 
+  setUseTheSportsDB 
+}: { 
+  useTheSportsDB: boolean; 
+  setUseTheSportsDB: (value: boolean) => void; 
+}) {
+  return (
+    <div className="bg-slate-800 rounded-lg p-4 mb-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-white text-sm font-medium">경기 정보 소스</h3>
+          <p className="text-slate-400 text-xs mt-1">
+            {useTheSportsDB ? 'TheSportsDB 실시간 데이터' : '내부 데이터베이스'}
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setUseTheSportsDB(false)}
+            className={`px-3 py-2 text-xs font-medium rounded transition-colors ${
+              !useTheSportsDB
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-700 text-slate-400 hover:text-white'
+            }`}
+          >
+            데이터베이스
+          </button>
+          <button
+            onClick={() => setUseTheSportsDB(true)}
+            className={`px-3 py-2 text-xs font-medium rounded transition-colors ${
+              useTheSportsDB
+                ? 'bg-green-600 text-white'
+                : 'bg-slate-700 text-slate-400 hover:text-white'
+            }`}
+          >
+            TheSportsDB
+          </button>
         </div>
       </div>
     </div>
@@ -224,6 +289,7 @@ function LeagueStatsCard({ stats }: { stats: LeagueStats }) {
 
 export default function LeaguePage() {
   const { slug } = useParams<{ slug: string }>();
+  const [useTheSportsDB, setUseTheSportsDB] = useState(true); // Default to TheSportsDB
 
   const { data: league, isLoading: leagueLoading, error: leagueError } = useQuery({
     queryKey: ["league", slug],
@@ -280,16 +346,32 @@ export default function LeaguePage() {
               standings={standings}
               isLoading={standingsLoading}
               error={standingsError}
+              leagueId={league.id}
+              season={league.season}
             />
           </div>
 
           {/* 오른쪽: 사이드바 정보 */}
           <div className="space-y-6">
             {stats && <LeagueStatsCard stats={stats} />}
-            <RoundBasedFixturesSection 
-              leagueId={league.id}
-              season={league.season}
+            
+            {/* Fixtures Section with Toggle */}
+            <FixturesToggle 
+              useTheSportsDB={useTheSportsDB} 
+              setUseTheSportsDB={setUseTheSportsDB} 
             />
+            
+            {useTheSportsDB ? (
+              <TheSportsDBFixturesSection 
+                leagueId={league.id}
+              />
+            ) : (
+              <RoundBasedFixturesSection 
+                leagueId={league.id}
+                season={league.season}
+              />
+            )}
+            
             <TopPlayersCard scorers={topScorers} assists={topAssists} />
             <HistoricalChampionsCard champions={champions} />
           </div>

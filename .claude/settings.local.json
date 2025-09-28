@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(API_FOOTBALL_KEY=4970b271c2989a1bd26b32b7518692b7 VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/fix-missing-player-names.ts)"
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/sync-kleague-final.ts)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,299 @@
+// src/lib/thesportsdb-api.ts
+// TheSportsDB Schedule API Implementation
+
+const API_BASE_URL = '/api/thesportsdb';
+const API_KEY = import.meta.env.VITE_THESPORTSDB_KEY || '460915';
+
+// Types for TheSportsDB API responses
+export interface TheSportsDBEvent {
+  idEvent: string;
+  strEvent: string;
+  idLeague: string;
+  strLeague: string;
+  strSport: string;
+  strHomeTeam: string;
+  strAwayTeam: string;
+  idHomeTeam: string;
+  idAwayTeam: string;
+  intRound: string;
+  intHomeScore: string | null;
+  intAwayScore: string | null;
+  strTimestamp: string; // ISO format: "2025-09-27T07:30:00"
+  dateEvent: string; // "2025-09-27"
+  dateEventLocal: string;
+  strTime: string; // "07:30:00"
+  strTimeLocal: string;
+  strHomeTeamBadge: string;
+  strAwayTeamBadge: string;
+  strVenue: string;
+  strCountry: string;
+  strThumb: string;
+  strPoster: string;
+  strVideo: string;
+  strPostponed: string;
+  strFilename: string;
+  strStatus: string; // "Not Started", "Match Finished", etc.
+}
+
+export interface TheSportsDBScheduleResponse {
+  schedule: TheSportsDBEvent[];
+}
+
+// Our normalized fixture type for the application
+export interface TheSportsDBFixture {
+  id: string;
+  event_name: string;
+  league_id: string;
+  league_name: string;
+  home_team: {
+    id: string;
+    name: string;
+    badge_url: string;
+  };
+  away_team: {
+    id: string;
+    name: string;
+    badge_url: string;
+  };
+  round: string;
+  home_score: number | null;
+  away_score: number | null;
+  date_utc: string; // ISO timestamp
+  date_local: string;
+  time_utc: string;
+  time_local: string;
+  venue: string;
+  status: string;
+  is_finished: boolean;
+  is_upcoming: boolean;
+  thumb_url: string;
+}
+
+// Utility function to make API calls with proper headers
+async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(API_KEY ? {
+        'X-API-KEY': API_KEY,
+      } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`TheSportsDB API error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// Transform TheSportsDB event to our normalized format
+function transformTheSportsDBEvent(event: TheSportsDBEvent): TheSportsDBFixture {
+  const isFinished = event.strStatus === 'Match Finished';
+  const isUpcoming = event.strStatus === 'Not Started' || event.strStatus === 'TBD';
+  
+  return {
+    id: event.idEvent,
+    event_name: event.strEvent,
+    league_id: event.idLeague,
+    league_name: event.strLeague,
+    home_team: {
+      id: event.idHomeTeam,
+      name: event.strHomeTeam,
+      badge_url: event.strHomeTeamBadge || '',
+    },
+    away_team: {
+      id: event.idAwayTeam,
+      name: event.strAwayTeam,
+      badge_url: event.strAwayTeamBadge || '',
+    },
+    round: event.intRound,
+    home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
+    away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
+    date_utc: event.strTimestamp,
+    date_local: event.dateEventLocal,
+    time_utc: event.strTime,
+    time_local: event.strTimeLocal,
+    venue: event.strVenue || '',
+    status: event.strStatus,
+    is_finished: isFinished,
+    is_upcoming: isUpcoming,
+    thumb_url: event.strThumb || '',
+  };
+}
+
+// API Functions
+
+/**
+ * Fetch upcoming fixtures for a specific league
+ */
+export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
+  try {
+    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
+      `/schedule/next/league/${leagueId}`
+    );
+    
+    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+      console.warn(`No upcoming fixtures data for league ${leagueId}`);
+      return [];
+    }
+    
+    return response.schedule.map(transformTheSportsDBEvent);
+  } catch (error) {
+    console.error('Error fetching league upcoming fixtures:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch previous/completed fixtures for a specific league
+ */
+export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
+  try {
+    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
+      `/schedule/previous/league/${leagueId}`
+    );
+    
+    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+      console.warn(`No previous fixtures data for league ${leagueId}`);
+      return [];
+    }
+    
+    return response.schedule.map(transformTheSportsDBEvent);
+  } catch (error) {
+    console.error('Error fetching league previous fixtures:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch upcoming fixtures for a specific team
+ */
+export async function fetchTeamUpcomingFixtures(teamId: string): Promise<TheSportsDBFixture[]> {
+  try {
+    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
+      `/schedule/next/team/${teamId}`
+    );
+    
+    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+      console.warn(`No upcoming fixtures data for team ${teamId}`);
+      return [];
+    }
+    
+    return response.schedule.map(transformTheSportsDBEvent);
+  } catch (error) {
+    console.error('Error fetching team upcoming fixtures:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch previous/completed fixtures for a specific team
+ */
+export async function fetchTeamPreviousFixtures(teamId: string): Promise<TheSportsDBFixture[]> {
+  try {
+    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
+      `/schedule/previous/team/${teamId}`
+    );
+    
+    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+      console.warn(`No previous fixtures data for team ${teamId}`);
+      return [];
+    }
+    
+    return response.schedule.map(transformTheSportsDBEvent);
+  } catch (error) {
+    console.error('Error fetching team previous fixtures:', error);
+    return [];
+  }
+}
+
+// Convenience functions for K League
+
+/**
+ * Fetch upcoming fixtures for K League 1 (League ID: 4689)
+ */
+export async function fetchKLeague1UpcomingFixtures(): Promise<TheSportsDBFixture[]> {
+  return fetchLeagueUpcomingFixtures('4689');
+}
+
+/**
+ * Fetch previous fixtures for K League 1 (League ID: 4689)
+ */
+export async function fetchKLeague1PreviousFixtures(): Promise<TheSportsDBFixture[]> {
+  return fetchLeaguePreviousFixtures('4689');
+}
+
+/**
+ * Fetch upcoming fixtures for K League 2 (League ID: 4822)
+ */
+export async function fetchKLeague2UpcomingFixtures(): Promise<TheSportsDBFixture[]> {
+  return fetchLeagueUpcomingFixtures('4822');
+}
+
+/**
+ * Fetch previous fixtures for K League 2 (League ID: 4822)
+ */
+export async function fetchKLeague2PreviousFixtures(): Promise<TheSportsDBFixture[]> {
+  return fetchLeaguePreviousFixtures('4822');
+}
+
+// Combined function to get both upcoming and recent fixtures for a league
+export async function fetchLeagueFixtures(leagueId: string): Promise<{
+  upcoming: TheSportsDBFixture[];
+  recent: TheSportsDBFixture[];
+}> {
+  const [upcoming, recent] = await Promise.all([
+    fetchLeagueUpcomingFixtures(leagueId),
+    fetchLeaguePreviousFixtures(leagueId),
+  ]);
+
+  return {
+    upcoming,
+    recent: recent.slice(0, 10), // Limit recent fixtures to latest 10
+  };
+}
+
+// Combined function to get both upcoming and recent fixtures for a team
+export async function fetchTeamFixtures(teamId: string): Promise<{
+  upcoming: TheSportsDBFixture[];
+  recent: TheSportsDBFixture[];
+}> {
+  const [upcoming, recent] = await Promise.all([
+    fetchTeamUpcomingFixtures(teamId),
+    fetchTeamPreviousFixtures(teamId),
+  ]);
+
+  return {
+    upcoming,
+    recent: recent.slice(0, 10), // Limit recent fixtures to latest 10
+  };
+}
+
+// Error handling utility
+export class TheSportsDBError extends Error {
+  constructor(message: string, public statusCode?: number) {
+    super(message);
+    this.name = 'TheSportsDBError';
+  }
+}
+
+// Constants for K League IDs
+export const K_LEAGUE_IDS = {
+  K_LEAGUE_1: '4689',
+  K_LEAGUE_2: '4822',
+} as const;
+
+// Known team IDs for reference (based on successful team integration)
+export const KNOWN_TEAM_IDS = {
+  DAEGU_FC: '138107',
+  GANGWON_FC: '138108',
+  FC_SEOUL: '138115',
+  ULSAN_HD: '138117',
+  POHANG_STEELERS: '138112',
+  JEJU_SK: '139078',
+  DAEJEON_HANA_CITIZEN: '139785',
+} as const;

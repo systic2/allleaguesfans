@@ -1,7 +1,7 @@
 /**
  * K리그 API 데이터 매퍼
  * K리그 공식 API 응답을 표준 데이터베이스 형식으로 변환
- * API-Football 대체를 위한 무료 솔루션
+ * 대체를 위한 무료 솔루션
  */
 
 import { 
@@ -94,7 +94,7 @@ export class KLeagueMapper {
 
   /**
    * K리그 팀 ID (문자열)를 정수 ID로 변환
-   * K01 → 1001, K02 → 1002 등으로 변환하여 API-Football ID 충돌 방지
+   * K01 → 1001, K02 → 1002 등으로 변환하여 legacy ID 충돌 방지
    */
   static mapTeamId(kLeagueTeamId: string): number {
     // K리그 팀 ID는 "K01", "K02", "K03" 형식
@@ -119,8 +119,8 @@ export class KLeagueMapper {
    */
   static mapLeagueId(kLeagueId: number): number {
     switch (kLeagueId) {
-      case 1: return 292 // K리그1 → API-Football ID 292와 호환성 유지
-      case 2: return 293 // K리그2 → API-Football ID 293과 호환성 유지
+      case 1: return 292 // K리그1 → legacy ID 292와 호환성 유지
+      case 2: return 293 // K리그2 → legacy ID 293과 호환성 유지
       default: return kLeagueId + 291 // 기타 리그는 292부터 시작하도록 오프셋
     }
   }

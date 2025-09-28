@@ -6,7 +6,7 @@
  * This handles users accessing old bookmarked URLs or external links
  */
 export const OLD_TEAM_ID_MAPPING: Record<number, number> = {
-  // API-Football original IDs → Current database IDs
+  // Legacy IDs → Current database IDs
   463: 2767, // Ulsan Hyundai FC  
   464: 2768, // Gimcheon Sangmu FC
   465: 2745, // Bucheon FC 1995
