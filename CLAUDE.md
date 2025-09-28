@@ -100,9 +100,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Data Import & Management
 
-### API-Football Integration
-- **API Provider**: API-Football (v3.football.api-sports.io)
-- **Supported Leagues**: K League 1 (ID: 292), K League 2 (ID: 293)
+### Data Sources Integration
+- **Primary Sources**: K League API, TheSportsDB, Highlightly API
+- **Supported Leagues**: K League 1 (ID: 4001), K League 2 (ID: 4002)
 - **Season**: 2025 (current active season)
 - **Rate Limiting**: Built-in retry logic and delay handling
 
@@ -114,12 +114,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Key Tables**: leagues, teams, players, fixtures, events, standings, lineups
 
 ### Import Scripts
-- **Master Import**: `scripts/master-import-complete.ts` - Full data synchronization
-- **Event Import Fix**: `scripts/fix-event-import-schema-mismatch.ts` - Resolves schema mismatches
+- **Primary Sync**: `scripts/sync-kleague-final.ts` - Complete K League data synchronization
 - **Environment Check**: `scripts/env-check.ts` - Validates all required environment variables
-- **Table Structure**: `scripts/check-events-table-structure.ts` - Database schema verification
-- **Clean Top Stats Import**: `scripts/clean-and-reimport-top-stats.ts` - API-Football only data import to resolve duplicates
-- **Player Name Fix**: `scripts/fix-missing-player-names.ts` - Resolves missing player name issues
+- **Data Verification**: `scripts/final-verification.ts` - Comprehensive data quality validation
+- **Schema Check**: `scripts/check-database-schema.ts` - Database schema verification
+- **API Endpoints**: `scripts/fix-api-endpoints-simple.ts` - API endpoint configuration
 
 ### Environment Variables
 #### Required for 3-API Integration System
@@ -138,20 +137,17 @@ THESPORTSDB_API_KEY=your-thesportsdb-premium-key
 # Highlightly API: Real-time live match data
 HIGHLIGHTLY_API_KEY=your-highlightly-api-key
 
-# Legacy API-Football (deprecated, replaced by 3-API system)
-# API_FOOTBALL_KEY=your-api-football-key  # No longer required
-
 # Optional Configuration
 SEASON_YEAR=2025          # Target season for imports
 NODE_ENV=production       # Environment indicator
 ```
 
-#### 3-API System Benefits
+#### New Data Source Benefits
 - **K League Official API**: 공식 정확한 데이터 (무료)
-- **TheSportsDB Premium**: 팀 로고, 선수 이미지, 풍부한 메타데이터
+- **TheSportsDB**: 팀 로고, 선수 이미지, 풍부한 메타데이터
 - **Highlightly API**: 실시간 라이브 매치 데이터, 하이라이트
-- **Cost Optimization**: API-Football 대비 85% 비용 절감
-- **Data Reliability**: 3중 백업 시스템으로 안정성 확보
+- **Cost Optimization**: 100% 무료 K-League 데이터
+- **Data Reliability**: 공식 소스로 정확성 확보
 
 #### Environment Variable Debugging
 - Run `npx tsx scripts/env-check.ts` to validate all environment variables
@@ -185,7 +181,6 @@ npx tsx scripts/env-check.ts
 # Common fixes:
 # 1. Ensure both SUPABASE_URL and VITE_SUPABASE_URL are set
 # 2. Verify SUPABASE_SERVICE_ROLE has admin permissions
-# 3. Check API_FOOTBALL_KEY validity
 ```
 
 **PostgreSQL Constraint Errors:**
@@ -258,7 +253,7 @@ npx tsx -e "import { yourFunction } from './scripts/your-file.ts'; console.log('
 # Fix: Change .js to .ts in import statements
 
 # 2. Library imports in scripts/lib/
-# Fix: Update supabase.js → supabase.ts, api-football.js → api-football.ts
+# Fix: Update supabase.js → supabase.ts, kleague-api.js → kleague-api.ts
 
 # 3. Src directory imports from scripts
 # Fix: Update relative paths to use .ts extension
@@ -295,7 +290,7 @@ When encountering GitHub Actions data sync errors or PostgreSQL constraint viola
 4. **Run Data Import**
    ```bash
    # Execute master import with fixed database structure
-   SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
+   SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts
    ```
 
 5. **Validate Results**
@@ -333,7 +328,7 @@ When encountering GitHub Actions data sync errors or PostgreSQL constraint viola
 ### Essential Data Scripts
 ```bash
 # Full data import (recommended for initial setup)
-SEASON_YEAR=2025 npx tsx scripts/master-import-complete.ts
+SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts
 
 # Environment validation (run before any script)
 npx tsx scripts/env-check.ts
@@ -391,10 +386,6 @@ find scripts/ -name "*.ts" -exec sed -i 's/\.js["'"'"']/\.ts["'"'"']/g' {} \;
 
 ### Debugging Commands
 ```bash
-# Check API-Football connection
-curl -H "x-apisports-key: $API_FOOTBALL_KEY" \
-     "https://v3.football.api-sports.io/leagues?id=292&season=2025"
-
 # Test Supabase connection
 npx tsx -e "
 import { supa } from './scripts/lib/supabase.js';
@@ -407,14 +398,14 @@ console.log('Teams:', data, error);
 ```
 
 ### Data Quality Improvements
-- **Duplicate Resolution**: Clean API-Football-only imports prevent player name duplicates
+- **Duplicate Resolution**: Clean imports prevent player name duplicates
 - **Data Source Consistency**: Single source of truth eliminates "Jeon Jin-woo" vs "Jinwoo" issues
 - **Verification Scripts**: Automated duplicate detection and data integrity checks
 
 ## Recent Changes & Cleanup (2025-09-21)
 
 ### Widget Removal and Code Cleanup
-- **API-Football Widget Components Removed**: All widget-related components have been removed from the codebase
+- **Widget Components Removed**: All widget-related components have been removed from the codebase
   - Removed: `APIFootballGamesWidget`, `LiveStandingsWidget`, widget hooks, and related utilities
   - Simplified: `EnhancedFixturesSection` → `FixturesSection` (removed tab functionality)
   - Simplified: `EnhancedStandingsSection` → `StandingsSection` (removed widget integration)
@@ -439,7 +430,7 @@ console.log('Teams:', data, error);
 ## Important Notes
 - **Never commit sensitive environment variables** to the repository
 - **Always test scripts in development** before running in production
-- **Monitor API rate limits** - API-Football has daily request limits
+- **Monitor API rate limits** - External APIs have daily request limits
 - **Database changes require schema updates** - Use SQL migration files
 - **Korean language support** - Preserve Korean text in UI components
 - **Environment compatibility** - Scripts support both local and CI/CD environments

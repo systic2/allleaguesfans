@@ -11,17 +11,14 @@
     "preview": "vite preview",
     "lint:unused": "eslint . --fix",
     "analyze:bundle": "ANALYZE=1 vite build",
-    "sync:full": "npx tsx scripts/master-import-complete.ts",
-    "sync:daily": "npx tsx scripts/master-import-complete.ts && npx tsx scripts/import-upcoming-fixtures.ts",
-    "sync:weekly": "npx tsx scripts/master-import-complete.ts && npx tsx scripts/import-player-teams.ts && npx tsx scripts/import-upcoming-fixtures.ts",
-    "sync:live": "npx tsx scripts/import-live-matches.ts",
+    "sync:full": "npx tsx scripts/sync-kleague-final.ts",
+    "sync:daily": "npx tsx scripts/sync-kleague-final.ts",
+    "sync:weekly": "npx tsx scripts/sync-kleague-final.ts",
     "git:cleanup": "npx tsx scripts/git-branch-cleanup.ts",
     "git:cleanup:execute": "npx tsx scripts/git-branch-cleanup.ts --no-dry-run",
     "git:cleanup:manual": "bash scripts/git-manual-cleanup.sh",
     "sync:check": "npx tsx scripts/final-verification.ts",
-    "sync:monitor": "npx tsx scripts/monitoring.ts",
-    "sync:debug": "npx tsx scripts/debug-api-response.ts",
-    "sync:test-db": "npx tsx scripts/test-database.ts"
+
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
@@ -50,6 +47,7 @@
     "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^4.1.12",
     "typescript-eslint": "^8.42.0",
+    "undici-types": "^7.16.0",
     "vite": "^7.1.4",
     "vitest": "^3.2.4"
   }

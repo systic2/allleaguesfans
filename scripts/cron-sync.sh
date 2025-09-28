@@ -25,7 +25,7 @@ handle_error() {
     exit 1
 }
 
-log "=== API Football 데이터 동기화 시작 ==="
+log "=== 데이터 동기화 시작 ==="
 
 # 프로젝트 디렉토리로 이동
 cd "$PROJECT_DIR" || handle_error "프로젝트 디렉토리로 이동 실패"
@@ -47,17 +47,16 @@ fi
 # 동기화 유형에 따른 실행
 case "${1:-daily}" in
     "daily")
-        log "일일 동기화 실행: 경기 결과 및 순위"
-        SEASON_YEAR=2025 npx tsx scripts/import-fixtures.ts >> "$LOG_FILE" 2>&1 || handle_error "경기 데이터 동기화 실패"
-        SEASON_YEAR=2025 npx tsx scripts/import-standings.ts >> "$LOG_FILE" 2>&1 || handle_error "순위 데이터 동기화 실패"
+        log "일일 동기화 실행: K League 데이터"
+        SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts >> "$LOG_FILE" 2>&1 || handle_error "K League 데이터 동기화 실패"
         ;;
     "weekly")
-        log "주간 동기화 실행: 선수 및 스쿼드"
-        SEASON_YEAR=2025 npx tsx scripts/import-squads.ts >> "$LOG_FILE" 2>&1 || handle_error "스쿼드 데이터 동기화 실패"
+        log "주간 동기화 실행: K League 데이터"
+        SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts >> "$LOG_FILE" 2>&1 || handle_error "K League 데이터 동기화 실패"
         ;;
     "full")
-        log "전체 동기화 실행"
-        npx tsx scripts/master-import.ts >> "$LOG_FILE" 2>&1 || handle_error "전체 데이터 동기화 실패"
+        log "전체 동기화 실행: K League 데이터"
+        SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts >> "$LOG_FILE" 2>&1 || handle_error "전체 K League 데이터 동기화 실패"
         ;;
     *)
         handle_error "알 수 없는 동기화 유형: $1"
