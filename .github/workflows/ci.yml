@@ -39,6 +39,9 @@ jobs:
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
           echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+          echo "VITE_SEASON_YEAR=2025" >> .env
+          echo "VITE_THESPORTSDB_API_KEY=${{ secrets.VITE_THESPORTSDB_API_KEY }}" >> .env
+          echo "VITE_HIGHLIGHTLY_API_KEY=${{ secrets.VITE_HIGHLIGHTLY_API_KEY }}" >> .env
 
       - name: Typecheck
         run: pnpm typecheck
@@ -48,6 +51,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: http://localhost:54321
           VITE_SUPABASE_ANON_KEY: test-anon
+          VITE_SEASON_YEAR: 2025
+          VITE_THESPORTSDB_API_KEY: test-api-key
+          VITE_HIGHLIGHTLY_API_KEY: test-api-key
 
       - name: Build (Vite)
         run: pnpm build
