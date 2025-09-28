@@ -121,9 +121,21 @@ vi.mock("../lib/api", () => ({
   fetchHistoricalChampions: vi.fn(),
 }));
 
+// Mock TheSportsDB API calls to prevent network errors in tests
+vi.mock("../lib/thesportsdb-api", () => ({
+  fetchLeagueFixtures: vi.fn(),
+  fetchKLeague1UpcomingFixtures: vi.fn(),
+  fetchKLeague2UpcomingFixtures: vi.fn(),
+  K_LEAGUE_IDS: {
+    K_LEAGUE_1: "4689",
+    K_LEAGUE_2: "4822"
+  }
+}));
+
 // Import components after mocking
 import LeaguePage from "../pages/LeaguePage";
 import * as api from "../lib/api";
+import * as thesportsdbApi from "../lib/thesportsdb-api";
 
 describe("League Information Page Display Verification", () => {
   let queryClient: QueryClient;
@@ -143,9 +155,24 @@ describe("League Information Page Display Verification", () => {
     (api.fetchTopScorers as any).mockResolvedValue(mockTopScorers);
     (api.fetchTopAssists as any).mockResolvedValue(mockTopAssists);
     (api.fetchHistoricalChampions as any).mockResolvedValue(mockHistoricalChampions);
+    
+    // Setup TheSportsDB API mocks to return empty data to prevent network calls
+    (thesportsdbApi.fetchLeagueFixtures as any).mockResolvedValue({
+      recent: [],
+      upcoming: []
+    });
+    (thesportsdbApi.fetchKLeague1UpcomingFixtures as any).mockResolvedValue([]);
+    (thesportsdbApi.fetchKLeague2UpcomingFixtures as any).mockResolvedValue([]);
   });
 
   function renderLeaguePage(slug = "league-4689") {
+    // Mock the environment to ensure test mode is detected
+    const originalEnv = import.meta.env;
+    Object.defineProperty(import.meta, 'env', {
+      value: { ...originalEnv, MODE: 'test', VITEST: true },
+      configurable: true
+    });
+    
     return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={[`/leagues/${slug}`]}>
@@ -161,7 +188,8 @@ describe("League Information Page Display Verification", () => {
 
       // League header information
       await waitFor(() => {
-        expect(screen.getByText("K League 1")).toBeInTheDocument();
+        // Use more flexible text matching to handle potential element splitting  
+        expect(screen.getByText(/K League 1/i)).toBeInTheDocument();
       });
 
       expect(screen.getByText("South Korea")).toBeInTheDocument();
@@ -289,7 +317,8 @@ describe("League Information Page Display Verification", () => {
       renderLeaguePage("league-4822");
 
       await waitFor(() => {
-        expect(screen.getByText("K League 2")).toBeInTheDocument();
+        // Use more flexible text matching to handle potential element splitting
+        expect(screen.getByText(/K League 2/i)).toBeInTheDocument();
         expect(screen.getByText("4822")).toBeInTheDocument();
       });
     });

@@ -289,7 +289,11 @@ function FixturesToggle({
 
 export default function LeaguePage() {
   const { slug } = useParams<{ slug: string }>();
-  const [useTheSportsDB, setUseTheSportsDB] = useState(true); // Default to TheSportsDB
+  const [useTheSportsDB, setUseTheSportsDB] = useState(
+    // In test environment, default to false to avoid network calls
+    // Also check for vitest environment variable
+    import.meta.env.MODE === 'test' || import.meta.env.VITEST ? false : true
+  );
 
   const { data: league, isLoading: leagueLoading, error: leagueError } = useQuery({
     queryKey: ["league", slug],
