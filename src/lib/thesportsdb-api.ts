@@ -69,8 +69,15 @@ export interface TheSportsDBFixture {
   thumb_url: string;
 }
 
-// Utility function to make API calls with proper headers
+// Utility function to make API calls with proper headers (DEVELOPMENT ONLY)
 async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
+  // PRODUCTION FIX: Only use TheSportsDB API in development to avoid CORS/proxy issues
+  const isDevelopment = import.meta.env.DEV;
+  
+  if (!isDevelopment) {
+    throw new Error('TheSportsDB API disabled in production to avoid CORS issues');
+  }
+  
   const url = `${API_BASE_URL}${endpoint}`;
   
   const response = await fetch(url, {
