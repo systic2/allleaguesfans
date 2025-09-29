@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { vi, afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
+
+// Cleanup DOM after each test to prevent element duplication
+afterEach(() => {
+  cleanup();
+});
 
 // Global mock for TheSportsDB API to prevent network calls in all tests
 vi.mock("../lib/thesportsdb-api", () => ({

@@ -132,6 +132,44 @@ vi.mock("../lib/thesportsdb-api", () => ({
   }
 }));
 
+// Mock Enhanced Standings API to prevent Highlightly API calls
+vi.mock("../lib/enhanced-standings-api", () => ({
+  fetchEnhancedLeagueStandings: vi.fn().mockResolvedValue([
+    {
+      team_id: 1,
+      team_name: "Ulsan Hyundai FC",
+      short_name: "ULS",
+      crest_url: "https://example.com/ulsan.png",
+      rank: 1,
+      points: 65,
+      played: 30,
+      win: 20,
+      draw: 5,
+      lose: 5,
+      goals_for: 58,
+      goals_against: 25,
+      goals_diff: 33,
+      form: "WWWDW",
+    },
+    {
+      team_id: 2,
+      team_name: "Jeonbuk Hyundai Motors",
+      short_name: "JBH",
+      crest_url: "https://example.com/jeonbuk.png", 
+      rank: 2,
+      points: 62,
+      played: 30,
+      win: 19,
+      draw: 5,
+      lose: 6,
+      goals_for: 55,
+      goals_against: 28,
+      goals_diff: 27,
+      form: "LWWWW",
+    },
+  ])
+}));
+
 // Mock React Router useParams to return correct slug
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -250,13 +288,21 @@ describe("League Information Page Display Verification", () => {
     it("득점왕 정보가 표시된다", async () => {
       renderLeaguePage();
 
+      // Wait for league data to load first
       await waitFor(() => {
-        // Wait for player stats section to load
+        expect(screen.getByText(/K League 1/i)).toBeInTheDocument();
+      }, { timeout: 3000 });
+
+      // Wait for player stats section to load
+      await waitFor(() => {
         expect(screen.getByText("득점왕")).toBeInTheDocument();
       });
 
-      // Check for player names (should be unique in top scorers context)
-      expect(screen.getByText("김민준")).toBeInTheDocument();
+      // Wait for player data to load and be displayed
+      await waitFor(() => {
+        expect(screen.getByText("김민준")).toBeInTheDocument();
+      }, { timeout: 3000 });
+
       expect(screen.getByText("이동국")).toBeInTheDocument();
       expect(screen.getByText("18")).toBeInTheDocument(); // Top scorer goals
     });
@@ -264,6 +310,12 @@ describe("League Information Page Display Verification", () => {
     it("도움왕 탭이 작동한다", async () => {
       renderLeaguePage();
 
+      // Wait for league data to load first
+      await waitFor(() => {
+        expect(screen.getByText(/K League 1/i)).toBeInTheDocument();
+      }, { timeout: 3000 });
+
+      // Wait for assists tab to be available
       await waitFor(() => {
         expect(screen.getByText("도움왕")).toBeInTheDocument();
       });
@@ -272,11 +324,12 @@ describe("League Information Page Display Verification", () => {
       const assistsTab = screen.getByRole('button', { name: '도움왕' });
       assistsTab.click();
 
+      // Wait for assists data to load and be displayed
       await waitFor(() => {
-        // Check for unique assist player names
         expect(screen.getByText("박지성")).toBeInTheDocument();
-        expect(screen.getByText("손흥민")).toBeInTheDocument();
-      });
+      }, { timeout: 3000 });
+      
+      expect(screen.getByText("손흥민")).toBeInTheDocument();
     });
   });
 
@@ -284,11 +337,21 @@ describe("League Information Page Display Verification", () => {
     it("역대 우승팀 목록이 표시된다", async () => {
       renderLeaguePage();
 
+      // Wait for league data to load first
+      await waitFor(() => {
+        expect(screen.getByText(/K League 1/i)).toBeInTheDocument();
+      }, { timeout: 3000 });
+
+      // Wait for historical champions section to be available
       await waitFor(() => {
         expect(screen.getByText("역대 우승팀")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("2024")).toBeInTheDocument();
+      // Wait for champions data to load and be displayed
+      await waitFor(() => {
+        expect(screen.getByText("2024")).toBeInTheDocument();
+      }, { timeout: 3000 });
+
       expect(screen.getByText("2023")).toBeInTheDocument();
     });
   });
