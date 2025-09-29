@@ -66,6 +66,12 @@ export default function UpcomingFixtures({
   useTheSportsDB = false
 }: UpcomingFixturesProps) {
   
+  // PRODUCTION FIX: 운영환경에서는 TheSportsDB API 사용 비활성화
+  const isDevelopment = import.meta.env.DEV;
+  const safeUseTheSportsDB = useTheSportsDB && isDevelopment;
+  
+  console.log(`🔍 UpcomingFixtures: useTheSportsDB=${useTheSportsDB}, isDev=${isDevelopment}, safe=${safeUseTheSportsDB}`);
+  
   // TheSportsDB API를 사용하는 경우의 쿼리
   const theSportsDBQuery = useQuery({
     queryKey: ["thesportsdb-k-league-upcoming"],
@@ -85,7 +91,7 @@ export default function UpcomingFixtures({
       
       return convertTheSportsDBToEnhanced(sortedFixtures);
     },
-    enabled: useTheSportsDB && !teamId, // Only for league-wide fixtures, not team-specific
+    enabled: safeUseTheSportsDB && !teamId, // Only for league-wide fixtures, not team-specific
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -99,12 +105,12 @@ export default function UpcomingFixtures({
         return fetchEnhancedUpcomingFixtures(leagueId, limit);
       }
     },
-    enabled: !useTheSportsDB, // Only when not using TheSportsDB
+    enabled: !safeUseTheSportsDB, // Only when not using TheSportsDB
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // 사용할 쿼리 결과 선택
-  const activeQuery = useTheSportsDB ? theSportsDBQuery : enhancedQuery;
+  const activeQuery = safeUseTheSportsDB ? theSportsDBQuery : enhancedQuery;
   const { data: fixtures, isLoading, error } = activeQuery;
 
   if (isLoading) {
@@ -162,9 +168,14 @@ export default function UpcomingFixtures({
     <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">{title}</h2>
-        {useTheSportsDB && (
+        {safeUseTheSportsDB && (
           <div className="text-slate-400 text-xs bg-green-600/20 px-2 py-1 rounded border border-green-600/30">
             TheSportsDB
+          </div>
+        )}
+        {useTheSportsDB && !isDevelopment && (
+          <div className="text-slate-400 text-xs bg-blue-600/20 px-2 py-1 rounded border border-blue-600/30">
+            Supabase (Production Safe)
           </div>
         )}
       </div>
@@ -174,7 +185,7 @@ export default function UpcomingFixtures({
             key={fixture.id} 
             fixture={fixture} 
             showTeams={!teamId} 
-            useTheSportsDB={useTheSportsDB}
+            useTheSportsDB={safeUseTheSportsDB}
           />
         ))}
       </div>
