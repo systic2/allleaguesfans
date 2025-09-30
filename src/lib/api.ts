@@ -15,35 +15,61 @@ export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await r.json()) as T;
 }
 
-// ---------- 도메인 라이트 타입 ----------
-export type LeagueLite = { id: number; slug: string; name: string; tier: number | null };
-export type TeamLite = { id: number; name: string; short_name: string | null; crest_url: string | null };
-export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null; jersey_number?: number };
+// ---------- 도메인 라이트 타입 (3-API 통합 업데이트) ----------
+export type LeagueLite = { 
+  id: number; 
+  slug: string; 
+  name: string; 
+  name_korean?: string | null;
+  tier: number | null; 
+  logo_url?: string | null;
+  banner_url?: string | null;
+  country_code?: string;
+  primary_source?: string;
+};
+export type TeamLite = { 
+  id: number; 
+  name: string; 
+  name_korean?: string | null;
+  short_name: string | null; 
+  crest_url: string | null;
+  logo_url?: string | null;
+  badge_url?: string | null;
+  banner_url?: string | null;
+  primary_source?: string;
+};
+export type PlayerLite = { 
+  id: number; 
+  name: string; 
+  position: string | null; 
+  photo_url: string | null; 
+  team_id: number | null; 
+  jersey_number?: number;
+  nationality?: string | null;
+  height?: string | null;
+  primary_source?: string;
+};
 
 // ---------- API ----------
 export async function fetchLeagues(): Promise<LeagueLite[]> {
   const { data, error } = await supabase
     .from("leagues")
-    .select("id, name, country_code, season_year")
-    .order("name", { ascending: true });
+    .select("idLeague, strLeague, strCountry, strBadge, highlightly_id")
+    .order("strLeague", { ascending: true });
 
   if (error) throw error;
 
-  // 중복 제거: 같은 id에 대해 최신 시즌만 유지
-  const uniqueLeagues = new Map<number, any>();
-  
-  (data ?? []).forEach((league) => {
-    const existing = uniqueLeagues.get(league.id);
-    if (!existing || (league.season_year || 0) > (existing.season_year || 0)) {
-      uniqueLeagues.set(league.id, league);
-    }
-  });
-
-  return Array.from(uniqueLeagues.values()).map((x) => ({
-    id: Number(x.id),
-    slug: `league-${x.id}`,
-    name: String(x.name),
+  // TheSportsDB 스키마 기반 직접 매핑
+  return (data ?? []).map((x) => ({
+    id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0,
+    slug: `league-${x.idLeague}`,
+    name: String(x.strLeague),
+    name_korean: null, // TheSportsDB에는 한국어 이름 없음
     tier: null,
+    logo_url: x.strBadge,
+    banner_url: null,
+    country_code: x.strCountry,
+    primary_source: "thesportsdb",
   }));
 }
 
@@ -51,8 +77,13 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
 export type LeagueDetail = {
   id: number;
   name: string;
+  name_korean?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   slug: string;
   country: string | null;
+  primary_source?: string;
+  tier?: number | null;
   season: number;
 };
 
@@ -74,22 +105,37 @@ export type TeamStanding = {
 };
 
 export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | null> {
-  const leagueId = slug.replace('league-', '');
+  // slug 기반 매핑: k-league-1 -> 4001, k-league-2 -> 4002
+  let leagueId: number;
+  if (slug === 'k-league-1') {
+    leagueId = 4001;
+  } else if (slug === 'k-league-2') {
+    leagueId = 4002;
+  } else {
+    // 기존 방식: league-4001 같은 형태
+    leagueId = parseInt(slug.replace('league-', ''));
+  }
+  
   const { data, error } = await supabase
     .from("leagues")
-    .select("id, name, country_code, season_year")
-    .eq("id", leagueId)
+    .select("idLeague, strLeague, strCountry, strBadge, highlightly_id")
+    .eq("highlightly_id", leagueId)
     .maybeSingle();
 
   if (error) throw error;
   if (!data) return null;
 
   return {
-    id: Number(data.id),
-    name: String(data.name),
-    slug: `league-${data.id}`,
-    country: data.country_code as string | null,
-    season: 2025,
+    id: data.highlightly_id || parseInt(data.idLeague.replace(/[^0-9]/g, '')) || 0,
+    name: String(data.strLeague),
+    name_korean: null, // TheSportsDB에는 한국어 이름 없음
+    logo_url: data.strBadge,
+    banner_url: null,
+    slug: data.highlightly_id === 249276 ? 'k-league-1' : data.highlightly_id === 250127 ? 'k-league-2' : `league-${data.idLeague}`,
+    country: data.strCountry as string | null,
+    primary_source: "thesportsdb",
+    tier: null,
+    season: 2025, // 현재 시즌
   };
 }
 
@@ -515,13 +561,13 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   const [leagues, teams] = await Promise.all([
     supabase
       .from("leagues")
-      .select("id, name, country_code, season_year")
-      .ilike("name", `%${qq}%`)
+      .select("idLeague, strLeague, strCountry, highlightly_id")
+      .ilike("strLeague", `%${qq}%`)
       .limit(10),
     supabase
       .from("teams")
-      .select("id, name, code, logo_url")
-      .ilike("name", `%${qq}%`)
+      .select("idTeam, strTeam, strBadge")
+      .ilike("strTeam", `%${qq}%`)
       .limit(10)
   ]);
 
@@ -530,19 +576,20 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   for (const x of leagues.data ?? []) {
     rows.push({
       type: "league",
-      entity_id: Number(x.id),
-      name: String(x.name),
-      slug: `league-${x.id}`
+      entity_id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0,
+      name: String(x.strLeague),
+      slug: x.highlightly_id === 249276 ? 'k-league-1' : x.highlightly_id === 250127 ? 'k-league-2' : `league-${x.idLeague}`
     } as SearchRow);
   }
   for (const t of teams.data ?? []) {
+    const teamId = parseInt(t.idTeam.replace(/[^0-9]/g, '')) || 0;
     rows.push({
       type: "team",
-      entity_id: Number(t.id),
-      team_id: Number(t.id),
-      name: String(t.name),
-      short_name: (t.code ?? null) as string | null,
-      crest_url: (t.logo_url ?? null) as string | null
+      entity_id: teamId,
+      team_id: teamId,
+      name: String(t.strTeam),
+      short_name: null, // TheSportsDB에는 short name 없음
+      crest_url: (t.strBadge ?? null) as string | null
     } as SearchRow);
   }
 

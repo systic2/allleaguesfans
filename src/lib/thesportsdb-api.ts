@@ -1,38 +1,291 @@
-// src/lib/thesportsdb-api.ts
-// TheSportsDB Schedule API Implementation
+// TheSportsDB API Integration - Frontend Types & Functions
+import { supabase } from "@/lib/supabaseClient";
 
-const API_BASE_URL = '/api/thesportsdb';
-const API_KEY = import.meta.env.VITE_THESPORTSDB_KEY || '460915';
+// ========================================
+// TheSportsDB Native Types (No Transformation)
+// ========================================
 
-// Types for TheSportsDB API responses
+export interface TheSportsDBLeague {
+  idLeague: string;
+  strLeague: string;
+  strLeagueAlternate?: string;
+  strSport?: string;
+  strCountry?: string;
+  strCurrentSeason?: string;
+  intFormedYear?: string;
+  dateFirstEvent?: string;
+  strGender?: string;
+  strWebsite?: string;
+  intDivision?: string;
+  idCup?: string;
+  
+  // External API IDs
+  idSoccerXML?: string;
+  idAPIfootball?: string;
+  highlightly_id?: number;
+  
+  // Social Media
+  strFacebook?: string;
+  strInstagram?: string;
+  strTwitter?: string;
+  strYoutube?: string;
+  strRSS?: string;
+  
+  // Descriptions
+  strDescriptionEN?: string;
+  strDescriptionDE?: string;
+  strDescriptionFR?: string;
+  strDescriptionIT?: string;
+  strDescriptionCN?: string;
+  strDescriptionJP?: string;
+  strDescriptionRU?: string;
+  strDescriptionES?: string;
+  strDescriptionPT?: string;
+  strDescriptionSE?: string;
+  strDescriptionNL?: string;
+  strDescriptionHU?: string;
+  strDescriptionNO?: string;
+  strDescriptionPL?: string;
+  strDescriptionIL?: string;
+  
+  // Media Assets
+  strBadge?: string;
+  strLogo?: string;
+  strBanner?: string;
+  strPoster?: string;
+  strTrophy?: string;
+  strFanart1?: string;
+  strFanart2?: string;
+  strFanart3?: string;
+  strFanart4?: string;
+  
+  // Other
+  strTvRights?: string;
+  strNaming?: string;
+  strComplete?: string;
+  strLocked?: string;
+  
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TheSportsDBTeam {
+  idTeam: string;
+  strTeam: string;
+  strTeamAlternate?: string;
+  strTeamShort?: string;
+  intFormedYear?: string;
+  strSport?: string;
+  strCountry?: string;
+  
+  // League Associations
+  strLeague?: string;
+  idLeague?: string;
+  strLeague2?: string;
+  idLeague2?: string;
+  strLeague3?: string;
+  idLeague3?: string;
+  strLeague4?: string;
+  idLeague4?: string;
+  
+  // External API IDs
+  idESPN?: string;
+  idAPIfootball?: string;
+  intLoved?: string;
+  highlightly_id?: number;
+  
+  // Colors
+  strColour1?: string;
+  strColour2?: string;
+  strColour3?: string;
+  strColour4?: string;
+  strColour5?: string;
+  strColour6?: string;
+  
+  // Media Assets
+  strBadge?: string;
+  strLogo?: string;
+  strBanner?: string;
+  strEquipment?: string;
+  strFanart1?: string;
+  strFanart2?: string;
+  strFanart3?: string;
+  strFanart4?: string;
+  
+  // Stadium
+  strStadium?: string;
+  strStadiumThumb?: string;
+  strStadiumDescription?: string;
+  strStadiumLocation?: string;
+  intStadiumCapacity?: string;
+  
+  // Descriptions
+  strDescriptionEN?: string;
+  strDescriptionDE?: string;
+  strDescriptionFR?: string;
+  strDescriptionIT?: string;
+  strDescriptionCN?: string;
+  strDescriptionJP?: string;
+  strDescriptionRU?: string;
+  strDescriptionES?: string;
+  strDescriptionPT?: string;
+  strDescriptionSE?: string;
+  strDescriptionNL?: string;
+  strDescriptionHU?: string;
+  strDescriptionNO?: string;
+  strDescriptionPL?: string;
+  strDescriptionIL?: string;
+  
+  // Social Media
+  strWebsite?: string;
+  strFacebook?: string;
+  strTwitter?: string;
+  strInstagram?: string;
+  strYoutube?: string;
+  strRSS?: string;
+  
+  // Other
+  strGender?: string;
+  strKeywords?: string;
+  strLocked?: string;
+  
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TheSportsDBPlayer {
+  idPlayer: string;
+  strPlayer: string;
+  strPlayerAlternate?: string;
+  strTeam?: string;
+  idTeam?: string;
+  strSport?: string;
+  strPosition?: string;
+  strNumber?: string;
+  
+  // Personal Information
+  dateBorn?: string;
+  strBirthLocation?: string;
+  strNationality?: string;
+  strGender?: string;
+  strHeight?: string;
+  strWeight?: string;
+  strStatus?: string;
+  
+  // Career Information
+  dateSigned?: string;
+  strSigning?: string;
+  strWage?: string;
+  strOutfitter?: string;
+  strKit?: string;
+  strAgent?: string;
+  
+  // External API IDs
+  idAPIfootball?: string;
+  idPlayerManager?: string;
+  strLocked?: string;
+  
+  // Media Assets
+  strThumb?: string;
+  strCutout?: string;
+  strRender?: string;
+  strBanner?: string;
+  strFanart1?: string;
+  strFanart2?: string;
+  strFanart3?: string;
+  strFanart4?: string;
+  
+  // Descriptions
+  strDescriptionEN?: string;
+  strDescriptionDE?: string;
+  strDescriptionFR?: string;
+  strDescriptionIT?: string;
+  strDescriptionCN?: string;
+  strDescriptionJP?: string;
+  strDescriptionRU?: string;
+  strDescriptionES?: string;
+  strDescriptionPT?: string;
+  strDescriptionSE?: string;
+  strDescriptionNL?: string;
+  strDescriptionHU?: string;
+  strDescriptionNO?: string;
+  strDescriptionPL?: string;
+  strDescriptionIL?: string;
+  
+  // Social Media
+  strWebsite?: string;
+  strFacebook?: string;
+  strTwitter?: string;
+  strInstagram?: string;
+  strYoutube?: string;
+  
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface TheSportsDBEvent {
   idEvent: string;
   strEvent: string;
-  idLeague: string;
-  strLeague: string;
-  strSport: string;
-  strHomeTeam: string;
-  strAwayTeam: string;
-  idHomeTeam: string;
-  idAwayTeam: string;
-  intRound: string;
-  intHomeScore: string | null;
-  intAwayScore: string | null;
-  strTimestamp: string; // ISO format: "2025-09-27T07:30:00"
-  dateEvent: string; // "2025-09-27"
-  dateEventLocal: string;
-  strTime: string; // "07:30:00"
-  strTimeLocal: string;
-  strHomeTeamBadge: string;
-  strAwayTeamBadge: string;
-  strVenue: string;
-  strCountry: string;
-  strThumb: string;
-  strPoster: string;
-  strVideo: string;
-  strPostponed: string;
-  strFilename: string;
-  strStatus: string; // "Not Started", "Match Finished", etc.
+  strEventAlternate?: string;
+  strSport?: string;
+  idLeague?: string;
+  strLeague?: string;
+  strSeason?: string;
+  
+  // Teams
+  idHomeTeam?: string;
+  idAwayTeam?: string;
+  strHomeTeam?: string;
+  strAwayTeam?: string;
+  
+  // Scores
+  intHomeScore?: string;
+  intAwayScore?: string;
+  intHomeScoreET?: string;
+  intAwayScoreET?: string;
+  intHomeScorePen?: string;
+  intAwayScorePen?: string;
+  
+  // Date and Time
+  dateEvent?: string;
+  dateEventLocal?: string;
+  strTime?: string;
+  strTimeLocal?: string;
+  strTimestamp?: string;
+  
+  // Match Information
+  intRound?: string;
+  strResult?: string;
+  strVenue?: string;
+  strCountry?: string;
+  strCity?: string;
+  strPoster?: string;
+  strStatus?: string;
+  strPostponed?: string;
+  
+  // External API IDs
+  idAPIfootball?: string;
+  strLocked?: string;
+  
+  // Media Assets
+  strThumb?: string;
+  strBanner?: string;
+  strMap?: string;
+  strTweet1?: string;
+  strTweet2?: string;
+  strTweet3?: string;
+  strVideo?: string;
+  
+  // Highlights
+  highlightly_id?: number;
+  strHighlights?: string;
+  
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface TheSportsDBScheduleResponse {
@@ -78,6 +331,8 @@ async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
     throw new Error('TheSportsDB API disabled in production to avoid CORS issues');
   }
   
+  const API_BASE_URL = 'https://www.thesportsdb.com/api/v2/json';
+  const API_KEY = import.meta.env.VITE_THESPORTSDB_API_KEY || '460915';
   const url = `${API_BASE_URL}${endpoint}`;
   
   const response = await fetch(url, {
@@ -103,29 +358,29 @@ function transformTheSportsDBEvent(event: TheSportsDBEvent): TheSportsDBFixture 
   const isUpcoming = event.strStatus === 'Not Started' || event.strStatus === 'TBD';
   
   return {
-    id: event.idEvent,
-    event_name: event.strEvent,
-    league_id: event.idLeague,
-    league_name: event.strLeague,
+    id: event.idEvent || '',
+    event_name: event.strEvent || '',
+    league_id: event.idLeague || '',
+    league_name: event.strLeague || '',
     home_team: {
-      id: event.idHomeTeam,
-      name: event.strHomeTeam,
-      badge_url: event.strHomeTeamBadge || '',
+      id: event.idHomeTeam || '',
+      name: event.strHomeTeam || '',
+      badge_url: '', // TheSportsDB Event에는 팀 배지가 없음
     },
     away_team: {
-      id: event.idAwayTeam,
-      name: event.strAwayTeam,
-      badge_url: event.strAwayTeamBadge || '',
+      id: event.idAwayTeam || '',
+      name: event.strAwayTeam || '',
+      badge_url: '', // TheSportsDB Event에는 팀 배지가 없음
     },
-    round: event.intRound,
+    round: event.intRound || '',
     home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
     away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
-    date_utc: event.strTimestamp,
-    date_local: event.dateEventLocal,
-    time_utc: event.strTime,
-    time_local: event.strTimeLocal,
+    date_utc: event.strTimestamp || '',
+    date_local: event.dateEventLocal || '',
+    time_utc: event.strTime || '',
+    time_local: event.strTimeLocal || '',
     venue: event.strVenue || '',
-    status: event.strStatus,
+    status: event.strStatus || '',
     is_finished: isFinished,
     is_upcoming: isUpcoming,
     thumb_url: event.strThumb || '',
