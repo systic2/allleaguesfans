@@ -20,7 +20,9 @@ interface StandingsSectionProps {
   isLoading?: boolean;
   /** Error state for database standings (legacy support) */
   error?: Error | null;
-  /** League ID for enhanced standings (preferred) */
+  /** League slug for enhanced standings (preferred) - e.g., 'k-league-1', 'k-league-2' */
+  leagueSlug?: string;
+  /** Legacy league ID support - will be converted to slug */
   leagueId?: number;
   /** Season year */
   season?: number;
@@ -204,29 +206,36 @@ export default function StandingsSection({
   standings,
   isLoading,
   error,
+  leagueSlug,
   leagueId,
   season = 2025,
   className = ''
 }: StandingsSectionProps) {
   
-  // Use enhanced API if leagueId is provided, otherwise use legacy props
+  // Convert legacy leagueId to slug if needed (backward compatibility)
+  const effectiveLeagueSlug = leagueSlug || (leagueId ? 
+    (leagueId === 4001 || leagueId === 1 ? 'k-league-1' : 
+     leagueId === 4002 || leagueId === 2 ? 'k-league-2' : 
+     `league-${leagueId}`) : undefined);
+  
+  // Use enhanced API if slug is available, otherwise use legacy props
   const { 
     data: enhancedStandings, 
     isLoading: enhancedLoading, 
     error: enhancedError 
   } = useQuery({
-    queryKey: ["enhancedStandings", leagueId, season],
-    queryFn: () => fetchEnhancedLeagueStandings(leagueId!, season),
-    enabled: !!leagueId,
+    queryKey: ["enhancedStandings", effectiveLeagueSlug, season],
+    queryFn: () => fetchEnhancedLeagueStandings(effectiveLeagueSlug!, season),
+    enabled: !!effectiveLeagueSlug,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   // Determine which data to use
-  const finalStandings = leagueId ? enhancedStandings : standings;
-  const finalLoading = leagueId ? enhancedLoading : (isLoading ?? false);
-  const finalError = leagueId ? enhancedError : error;
-  const isEnhanced = !!leagueId && !!enhancedStandings;
+  const finalStandings = effectiveLeagueSlug ? enhancedStandings : standings;
+  const finalLoading = effectiveLeagueSlug ? enhancedLoading : (isLoading ?? false);
+  const finalError = effectiveLeagueSlug ? enhancedError : error;
+  const isEnhanced = !!effectiveLeagueSlug && !!enhancedStandings;
 
   return (
     <div className={`bg-slate-800 rounded-lg overflow-hidden ${className}`}>

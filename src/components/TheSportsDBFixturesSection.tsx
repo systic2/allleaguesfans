@@ -2,10 +2,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { 
-  fetchLeagueFixtures, 
-  K_LEAGUE_IDS,
-  type TheSportsDBFixture 
-} from '@/lib/thesportsdb-api';
+  fetchRecentMatches,
+  fetchUpcomingMatches,
+  type DatabaseFixture 
+} from '@/lib/database-fixtures-api';
 
 // Utility function to convert any time to Korean timezone (KST = UTC+9)
 const convertToKoreanTime = (dateStr: string): Date => {
@@ -22,12 +22,13 @@ const convertToKoreanTime = (dateStr: string): Date => {
 };
 
 interface TheSportsDBFixturesSectionProps {
-  leagueId: number;
+  leagueId?: number; // Legacy support
+  leagueSlug?: string; // New slug-based approach
 }
 
 interface FixturesCardProps {
   title: string;
-  fixtures: TheSportsDBFixture[];
+  fixtures: DatabaseFixture[];
   isLoading: boolean;
   error?: Error | null;
   showScores?: boolean;
@@ -85,13 +86,13 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
 
   // Group fixtures by round for better organization
   const rounds = fixtures.reduce((acc, fixture) => {
-    const round = fixture.round;
+    const round = String(fixture.intRound);
     if (!acc[round]) {
       acc[round] = [];
     }
     acc[round].push(fixture);
     return acc;
-  }, {} as Record<string, TheSportsDBFixture[]>);
+  }, {} as Record<string, DatabaseFixture[]>);
 
   const sortedRounds = Object.keys(rounds).sort((a, b) => {
     // Sort rounds numerically
@@ -137,38 +138,33 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
 }
 
 interface TheSportsDBFixtureRowProps {
-  fixture: TheSportsDBFixture;
+  fixture: DatabaseFixture;
   showScores: boolean;
 }
 
 function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowProps) {
-  const isCompleted = fixture.is_finished;
-  const hasScore = fixture.home_score !== null && fixture.away_score !== null;
+  const isCompleted = fixture.strStatus === 'Match Finished';
+  const hasScore = fixture.intHomeScore !== null && fixture.intAwayScore !== null;
 
   // Format fixture date and time in Korean timezone
-  const formatDateKorean = (fixture: TheSportsDBFixture) => {
+  const formatDateKorean = (fixture: DatabaseFixture) => {
     try {
-      let koreanDate: Date;
+      // DatabaseFixture uses dateEvent field (format: "2025-04-27")
+      const date = new Date(fixture.dateEvent);
       
-      if (fixture.date_local && fixture.time_local) {
-        // Use provided local Korean time (already in KST)
-        const localDateTime = `${fixture.date_local}T${fixture.time_local}`;
-        koreanDate = new Date(localDateTime);
-      } else {
-        // Convert UTC to Korean time
-        koreanDate = convertToKoreanTime(fixture.date_utc);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return fixture.dateEvent; // Return raw date if parsing fails
       }
       
-      const month = koreanDate.getMonth() + 1;
-      const day = koreanDate.getDate();
-      const hours = koreanDate.getHours().toString().padStart(2, '0');
-      const minutes = koreanDate.getMinutes().toString().padStart(2, '0');
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
       
-      return `${month}/${day} ${hours}:${minutes}`;
+      // For upcoming matches, we might not have specific times
+      return `${month}/${day}`;
     } catch (error) {
       console.warn('Date formatting error:', error);
-      // Fallback: try to display something readable
-      return fixture.date_utc.replace('T', ' ').slice(0, 16);
+      return fixture.dateEvent;
     }
   };
 
@@ -193,15 +189,9 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
           <div className="flex items-center space-x-4 flex-1 min-w-0">
             {/* Home Team */}
             <div className="flex items-center space-x-2 flex-1 min-w-0">
-              {fixture.home_team.badge_url && (
-                <img 
-                  src={fixture.home_team.badge_url} 
-                  alt="" 
-                  className="w-7 h-7 object-contain flex-shrink-0" 
-                />
-              )}
-              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.home_team.name}>
-                {fixture.home_team.name}
+{/* Team badges not available in database */}
+              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.strHomeTeam}>
+                {fixture.strHomeTeam}
               </span>
             </div>
 
@@ -212,13 +202,13 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
                   <span className={`text-lg font-bold ${
                     isCompleted ? 'text-white' : 'text-slate-300'
                   }`}>
-                    {fixture.home_score}
+                    {fixture.intHomeScore}
                   </span>
                   <span className="text-slate-400 text-sm">-</span>
                   <span className={`text-lg font-bold ${
                     isCompleted ? 'text-white' : 'text-slate-300'
                   }`}>
-                    {fixture.away_score}
+                    {fixture.intAwayScore}
                   </span>
                 </div>
               ) : (
@@ -230,16 +220,10 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
 
             {/* Away Team */}
             <div className="flex items-center space-x-2 flex-1 justify-end min-w-0">
-              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right" title={fixture.away_team.name}>
-                {fixture.away_team.name}
+              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right" title={fixture.strAwayTeam}>
+                {fixture.strAwayTeam}
               </span>
-              {fixture.away_team.badge_url && (
-                <img 
-                  src={fixture.away_team.badge_url} 
-                  alt="" 
-                  className="w-7 h-7 object-contain flex-shrink-0" 
-                />
-              )}
+{/* Team badges not available in database */}
             </div>
           </div>
         </div>
@@ -254,15 +238,15 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
             </span>
             <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
               isCompleted ? 'bg-green-600 text-white' : 
-              fixture.status === 'Not Started' ? 'bg-blue-600 text-white' :
+              fixture.strStatus === 'Not Started' ? 'bg-blue-600 text-white' :
               'bg-slate-600 text-slate-300'
             }`}>
-              {formatStatus(fixture.status)}
+              {formatStatus(fixture.strStatus)}
             </span>
           </div>
-          {fixture.venue && (
-            <div className="text-slate-500 text-xs sm:max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.venue}>
-              📍 {fixture.venue}
+          {fixture.strVenue && (
+            <div className="text-slate-500 text-xs sm:max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.strVenue}>
+              📍 {fixture.strVenue}
             </div>
           )}
         </div>
@@ -271,40 +255,60 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
   );
 }
 
-export default function TheSportsDBFixturesSection({ leagueId }: TheSportsDBFixturesSectionProps) {
+export default function TheSportsDBFixturesSection({ 
+  leagueId, 
+  leagueSlug 
+}: TheSportsDBFixturesSectionProps) {
   const [activeTab, setActiveTab] = useState<'recent' | 'upcoming'>('recent');
 
-  // Map internal league ID to TheSportsDB league ID
-  const getTheSportsDBLeagueId = (leagueId: number): string => {
-    switch (leagueId) {
-      case 4001: // Internal K League 1 ID
-      case 4689: // TheSportsDB K League 1 ID
-        return K_LEAGUE_IDS.K_LEAGUE_1;
-      case 4002: // Internal K League 2 ID
-      case 4822: // TheSportsDB K League 2 ID
-        return K_LEAGUE_IDS.K_LEAGUE_2;
-      default:
-        // Try to use the ID as-is (might be TheSportsDB ID already)
-        return leagueId.toString();
-    }
-  };
+  // Convert legacy leagueId to slug if needed
+  const effectiveLeagueSlug = leagueSlug || (leagueId ? 
+    (leagueId === 4001 || leagueId === 1 ? 'k-league-1' : 
+     leagueId === 4002 || leagueId === 2 ? 'k-league-2' : 
+     `league-${leagueId}`) : 'k-league-1');
 
-  const theSportsDBLeagueId = getTheSportsDBLeagueId(leagueId);
-
+  // Fetch recent matches using database
   const { 
-    data: fixturesData, 
-    isLoading, 
-    error 
+    data: recentFixtures = [], 
+    isLoading: recentLoading, 
+    error: recentError 
   } = useQuery({
-    queryKey: ["theSportsDBFixtures", theSportsDBLeagueId],
-    queryFn: () => fetchLeagueFixtures(theSportsDBLeagueId),
-    enabled: !!theSportsDBLeagueId,
+    queryKey: ["databaseRecentFixtures", effectiveLeagueSlug],
+    queryFn: () => {
+      console.log(`🔍 Fetching recent matches for: ${effectiveLeagueSlug}`);
+      return fetchRecentMatches(effectiveLeagueSlug, 2025, 10);
+    },
+    enabled: !!effectiveLeagueSlug,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (gcTime replaces cacheTime in newer versions)
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  const recentFixtures = fixturesData?.recent ?? [];
-  const upcomingFixtures = fixturesData?.upcoming ?? [];
+  // Fetch upcoming matches using database
+  const { 
+    data: upcomingFixtures = [], 
+    isLoading: upcomingLoading, 
+    error: upcomingError 
+  } = useQuery({
+    queryKey: ["databaseUpcomingFixtures", effectiveLeagueSlug],
+    queryFn: () => {
+      console.log(`🔮 Fetching upcoming matches for: ${effectiveLeagueSlug}`);
+      return fetchUpcomingMatches(effectiveLeagueSlug, 2025, 10);
+    },
+    enabled: !!effectiveLeagueSlug,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  const isLoading = recentLoading || upcomingLoading;
+  const error = recentError || upcomingError;
+
+  // Debug logging
+  console.log(`📊 Fixtures Debug - League: ${effectiveLeagueSlug}`, {
+    recentFixtures: recentFixtures?.length || 0,
+    upcomingFixtures: upcomingFixtures?.length || 0,
+    isLoading,
+    error: error?.message || null
+  });
 
   return (
     <div className="space-y-6">
@@ -408,7 +412,7 @@ export default function TheSportsDBFixturesSection({ leagueId }: TheSportsDBFixt
       {/* API Source Info */}
       <div className="text-center">
         <div className="text-slate-500 text-xs">
-          제공: TheSportsDB • 리그 ID: {theSportsDBLeagueId}
+          제공: TheSportsDB • 리그: {effectiveLeagueSlug}
         </div>
       </div>
     </div>

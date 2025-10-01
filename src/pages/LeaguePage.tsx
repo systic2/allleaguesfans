@@ -453,9 +453,9 @@ export default function LeaguePage() {
   });
 
   const { data: standings, isLoading: standingsLoading, error: standingsError } = useQuery({
-    queryKey: ["standings", league?.id],
-    queryFn: () => fetchLeagueStandings(league!.id),
-    enabled: !!league?.id,
+    queryKey: ["standings", slug],
+    queryFn: () => fetchLeagueStandings(slug!),
+    enabled: !!slug,
   });
 
   const { data: stats } = useQuery({
@@ -501,7 +501,7 @@ export default function LeaguePage() {
               standings={standings}
               isLoading={standingsLoading}
               error={standingsError}
-              leagueId={league.id}
+              leagueSlug={slug}
               season={league.season}
             />
           </div>
@@ -519,6 +519,7 @@ export default function LeaguePage() {
             {useTheSportsDB ? (
               <TheSportsDBFixturesSection 
                 leagueId={league.id}
+                leagueSlug={slug}
               />
             ) : (
               <RoundBasedFixturesSection 

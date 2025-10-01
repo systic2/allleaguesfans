@@ -69,7 +69,11 @@ async function fetchTeamLogosFromStandings(leagueId: number, season: number = 20
   }
 
   try {
-    const standings = await fetchEnhancedLeagueStandings(leagueId, season);
+    // Convert leagueId to slug for the new API
+    const leagueSlug = leagueId === 4001 ? 'k-league-1' : 
+                      leagueId === 4002 ? 'k-league-2' : 
+                      `league-${leagueId}`;
+    const standings = await fetchEnhancedLeagueStandings(leagueSlug, season);
     const logos = new Map<number, string>();
     
     standings.forEach((team: EnhancedTeamStanding) => {

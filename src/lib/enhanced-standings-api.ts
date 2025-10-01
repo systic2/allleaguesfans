@@ -1,5 +1,5 @@
-// Enhanced standings API using Highlightly API for K League data
-import type { TeamStanding } from './api';
+// Enhanced standings API using TheSportsDB data only
+import { fetchLeagueStandings, type TeamStanding } from './api';
 
 export interface EnhancedTeamStanding extends TeamStanding {
   recent_form: string; // Computed from recent fixtures (e.g., "WWDLL")
@@ -11,269 +11,70 @@ export interface EnhancedTeamStanding extends TeamStanding {
   goal_difference_per_game: number;
 }
 
-// Highlightly API response interfaces
-interface HighlightlyTeamStats {
-  wins: number;
-  draws: number;
-  games: number;
-  loses: number;
-  scoredGoals: number;
-  receivedGoals: number;
-}
-
-interface HighlightlyTeam {
-  id: number;
-  logo: string;
-  name: string;
-}
-
-interface HighlightlyStanding {
-  away: HighlightlyTeamStats;
-  home: HighlightlyTeamStats;
-  team: HighlightlyTeam;
-  total: HighlightlyTeamStats;
-  points: number;
-  position: number;
-}
-
-interface HighlightlyGroup {
-  name: string;
-  standings: HighlightlyStanding[];
-}
-
-interface HighlightlyLeague {
-  id: number;
-  logo: string;
-  name: string;
-  season: number;
-}
-
-interface HighlightlyStandingsResponse {
-  groups: HighlightlyGroup[];
-  league: HighlightlyLeague;
+/**
+ * Generate recent form string from team form data
+ */
+function generateRecentForm(formString: string | null): string {
+  if (!formString) return "N/A";
+  
+  // TheSportsDB form is like "DLWWL" - return first 5 characters
+  return formString.substring(0, 5) || "N/A";
 }
 
 /**
- * Fetch standings from Highlightly API via Vite proxy (DEVELOPMENT ONLY)
- * In production, this will always throw to force fallback to Supabase
+ * Fetch enhanced league standings using TheSportsDB data
+ * Now works with slug-based API calls
  */
-async function fetchHighlightlyStandings(leagueId: number, season: number): Promise<HighlightlyStandingsResponse> {
-  // PRODUCTION FIX: Only use Highlightly API in development to avoid CORS issues
-  const isDevelopment = import.meta.env.DEV;
-  
-  if (!isDevelopment) {
-    throw new Error('Highlightly API disabled in production to avoid CORS issues');
-  }
-  
-  const baseUrl = '/api/highlightly'; // Always use proxy in development
-  const url = `${baseUrl}/football/standings?leagueId=${leagueId}&season=${season}`;
+export async function fetchEnhancedLeagueStandings(
+  leagueSlug: string, 
+  season: number = 2025
+): Promise<EnhancedTeamStanding[]> {
+  console.log(`🔍 Fetching TheSportsDB standings for league slug: ${leagueSlug}, season ${season}`);
   
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(import.meta.env.VITE_HIGHLIGHTLY_API_KEY ? {
-          'X-RapidAPI-Key': import.meta.env.VITE_HIGHLIGHTLY_API_KEY,
-          'X-RapidAPI-Host': 'sports.highlightly.net',
-        } : {}),
+    // Use the updated fetchLeagueStandings that works with slug
+    const basicStandings = await fetchLeagueStandings(leagueSlug, season);
+    
+    // Convert basic standings to enhanced format
+    const enhancedStandings: EnhancedTeamStanding[] = basicStandings.map((standing): EnhancedTeamStanding => ({
+      ...standing,
+      recent_form: generateRecentForm(standing.form),
+      form_details: {
+        wins: standing.win,
+        draws: standing.draw,
+        losses: standing.lose,
       },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Highlightly API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
+      goal_difference_per_game: standing.played > 0 ? standing.goals_diff / standing.played : 0,
+    }));
+    
+    console.log(`✅ TheSportsDB: Successfully fetched ${enhancedStandings.length} teams for ${leagueSlug}`);
+    return enhancedStandings;
   } catch (error) {
-    console.error('Error fetching Highlightly standings:', error);
+    console.error('❌ TheSportsDB standings failed:', error);
     throw error;
   }
 }
 
 /**
- * Generate recent form string from team stats (placeholder implementation)
+ * Legacy compatibility function - converts league ID to slug and calls new API
+ * @deprecated Use fetchEnhancedLeagueStandings with slug instead
  */
-function generateRecentForm(teamStats: HighlightlyTeamStats): string {
-  // Since Highlightly doesn't provide recent form, we'll generate a placeholder
-  // based on win percentage for now
-  const totalGames = teamStats.games;
-  const winRate = totalGames > 0 ? teamStats.wins / totalGames : 0;
-  
-  // Generate a simple form pattern based on performance
-  if (winRate > 0.7) return 'WWWWW';
-  if (winRate > 0.5) return 'WWDWL';
-  if (winRate > 0.3) return 'WDLDL';
-  return 'LLDLL';
-}
-
-/**
- * Fetch enhanced league standings - Production uses Supabase, Development can use Highlightly
- */
-export async function fetchEnhancedLeagueStandings(
+export async function fetchEnhancedLeagueStandingsById(
   leagueId: number, 
   season: number = 2025
 ): Promise<EnhancedTeamStanding[]> {
-  console.log(`🔍 Fetching enhanced standings for league ${leagueId}, season ${season}`);
+  console.warn('fetchEnhancedLeagueStandingsById is deprecated. Use slug-based API.');
   
-  // PRODUCTION FIX: Try Highlightly only in development, otherwise use Supabase
-  const isDevelopment = import.meta.env.DEV;
-  
-  if (isDevelopment) {
-    try {
-      // Map internal league ID to Highlightly league ID  
-      let highlightlyLeagueId: number;
-      
-      if (leagueId === 4001 || leagueId === 1) {
-        // K League 1
-        highlightlyLeagueId = 249276;
-      } else if (leagueId === 4002 || leagueId === 2) {
-        // K League 2
-        highlightlyLeagueId = 250127;
-      } else {
-        // For other leagues, fallback to K League 1 for now
-        console.warn(`No Highlightly mapping found for league ID ${leagueId}, defaulting to K League 1`);
-        highlightlyLeagueId = 249276;
-      }
-      
-      console.log(`🔍 DEV MODE - Trying Highlightly: Internal ID ${leagueId} → Highlightly ID ${highlightlyLeagueId}`);
-      
-      // Fetch standings from Highlightly API
-      const highlightlyData = await fetchHighlightlyStandings(highlightlyLeagueId, season);
-      
-      if (highlightlyData.groups && highlightlyData.groups.length > 0) {
-        const standings = highlightlyData.groups[0].standings;
-        if (standings && standings.length > 0) {
-          // Convert Highlightly standings to our format
-          const enhancedStandings: EnhancedTeamStanding[] = standings.map((standing: HighlightlyStanding): EnhancedTeamStanding => {
-            const totalStats = standing.total;
-            const goalDifference = totalStats.scoredGoals - totalStats.receivedGoals;
-            const form = generateRecentForm(totalStats);
-            
-            return {
-              team_id: standing.team.id,
-              team_name: standing.team.name,
-              short_name: null,
-              crest_url: standing.team.logo,
-              rank: standing.position,
-              points: standing.points,
-              played: totalStats.games,
-              win: totalStats.wins,
-              draw: totalStats.draws,
-              lose: totalStats.loses,
-              goals_for: totalStats.scoredGoals,
-              goals_against: totalStats.receivedGoals,
-              goals_diff: goalDifference,
-              form: form,
-              // Enhanced fields
-              recent_form: form,
-              form_details: {
-                wins: totalStats.wins,
-                draws: totalStats.draws,
-                losses: totalStats.loses
-              },
-              goal_difference_per_game: totalStats.games > 0 ? 
-                Number((goalDifference / totalStats.games).toFixed(2)) : 0
-            };
-          });
-
-          console.log(`✅ Enhanced Highlightly standings: ${enhancedStandings.length} teams`);
-          return enhancedStandings;
-        }
-      }
-    } catch (error) {
-      console.warn('Highlightly API failed in development, falling back to Supabase:', error);
-    }
+  // Convert league ID to slug for compatibility
+  let leagueSlug: string;
+  if (leagueId === 249276) {
+    leagueSlug = 'k-league-1';
+  } else if (leagueId === 250127) {
+    leagueSlug = 'k-league-2';
+  } else {
+    console.warn(`Unknown league ID ${leagueId}, defaulting to k-league-1`);
+    leagueSlug = 'k-league-1';
   }
   
-  // PRODUCTION/FALLBACK: Use Supabase data with enhanced calculations
-  console.log('🏪 Using Supabase for enhanced standings');
-  try {
-    // Import fetchLeagueStandings from api.ts
-    const { fetchLeagueStandings } = await import('./api');
-    const basicStandings = await fetchLeagueStandings(leagueId, season);
-    
-    if (!basicStandings || basicStandings.length === 0) {
-      console.warn(`No standings data found in Supabase for league ${leagueId}`);
-      return [];
-    }
-    
-    // Convert basic standings to enhanced format
-    const enhancedStandings: EnhancedTeamStanding[] = basicStandings.map(standing => {
-      const form = standing.form || generateRecentForm({
-        games: standing.played,
-        wins: standing.win,
-        draws: standing.draw,
-        loses: standing.lose,
-        scoredGoals: standing.goals_for,
-        receivedGoals: standing.goals_against
-      });
-      
-      return {
-        ...standing,
-        // Enhanced fields
-        recent_form: form,
-        form_details: {
-          wins: standing.win,
-          draws: standing.draw,
-          losses: standing.lose
-        },
-        goal_difference_per_game: standing.played > 0 ? 
-          Number((standing.goals_diff / standing.played).toFixed(2)) : 0
-      };
-    });
-    
-    console.log(`✅ Enhanced Supabase standings: ${enhancedStandings.length} teams`);
-    return enhancedStandings;
-    
-  } catch (error) {
-    console.error('Error fetching enhanced standings from Supabase:', error);
-    return [];
-  }
-}
-
-/**
- * Get standings with form statistics using Highlightly API
- */
-export async function getStandingsWithFormStats(leagueId: number, season: number = 2025) {
-  const standings = await fetchEnhancedLeagueStandings(leagueId, season);
-  
-  if (standings.length === 0) {
-    return {
-      standings: [],
-      statistics: {
-        teams_with_form: 0,
-        avg_goals_per_game: 0,
-        most_recent_wins: [],
-        relegation_battle: []
-      }
-    };
-  }
-  
-  // Calculate form statistics
-  const formStats = {
-    teams_with_form: standings.filter(team => team.recent_form.length > 0).length,
-    avg_goals_per_game: standings.reduce((sum, team) => 
-      sum + (team.played > 0 ? (team.goals_for + team.goals_against) / team.played : 0), 0
-    ) / standings.length,
-    most_recent_wins: standings
-      .filter(team => team.recent_form.startsWith('W'))
-      .sort((a, b) => b.points - a.points)
-      .slice(0, 3)
-      .map(team => team.team_name),
-    relegation_battle: standings
-      .slice(-4)
-      .map(team => ({
-        name: team.team_name,
-        points: team.points,
-        goal_diff: team.goals_diff,
-        recent_form: team.recent_form.slice(-3) // Last 3 games
-      }))
-  };
-
-  return {
-    standings,
-    statistics: formStats
-  };
+  return fetchEnhancedLeagueStandings(leagueSlug, season);
 }

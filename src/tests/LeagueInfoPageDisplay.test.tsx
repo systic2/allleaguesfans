@@ -293,9 +293,9 @@ describe("League Information Page Display Verification", () => {
         expect(screen.getByText(/K League 1/i)).toBeInTheDocument();
       }, { timeout: 3000 });
 
-      // Wait for player stats section to load
+      // Wait for player stats section to load (looking for the actual tab text with emoji)
       await waitFor(() => {
-        expect(screen.getByText("득점왕")).toBeInTheDocument();
+        expect(screen.getByText("⚽ 득점왕")).toBeInTheDocument();
       });
 
       // Wait for player data to load and be displayed
@@ -315,13 +315,13 @@ describe("League Information Page Display Verification", () => {
         expect(screen.getByText(/K League 1/i)).toBeInTheDocument();
       }, { timeout: 3000 });
 
-      // Wait for assists tab to be available
+      // Wait for assists tab to be available (looking for the actual tab text with emoji)
       await waitFor(() => {
-        expect(screen.getByText("도움왕")).toBeInTheDocument();
+        expect(screen.getByText("🎯 도움왕")).toBeInTheDocument();
       });
 
-      // Click assists tab (use more specific button selector)
-      const assistsTab = screen.getByRole('button', { name: '도움왕' });
+      // Click assists tab (use more specific button selector with emoji)
+      const assistsTab = screen.getByRole('button', { name: '🎯 도움왕' });
       assistsTab.click();
 
       // Wait for assists data to load and be displayed
@@ -344,7 +344,7 @@ describe("League Information Page Display Verification", () => {
 
       // Wait for historical champions section to be available
       await waitFor(() => {
-        expect(screen.getByText("역대 우승팀")).toBeInTheDocument();
+        expect(screen.getByText("🏆 역대 우승팀")).toBeInTheDocument();
       });
 
       // Wait for champions data to load and be displayed
@@ -406,8 +406,8 @@ describe("League Information Page Display Verification", () => {
         expect(screen.getByText("2025 시즌")).toBeInTheDocument();
       });
 
-      // Verify API calls use correct season
-      expect(api.fetchLeagueStandings).toHaveBeenCalledWith(4689);
+      // Verify API calls use correct parameters (slug for standings, numeric ID for stats)
+      expect(api.fetchLeagueStandings).toHaveBeenCalledWith("league-4689"); // Default mock uses league-4689
       expect(api.fetchLeagueStats).toHaveBeenCalledWith(4689);
     });
   });

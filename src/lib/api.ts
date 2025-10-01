@@ -4,8 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow } from "@/domain/types";
 import { 
   getLeagueFixturesHybrid,
-  getTeamFixturesHybrid,
-  type TheSportsDBEvent 
+  getTeamFixturesHybrid
 } from "@/lib/thesportsdb-fixtures";
 
 // ---------- 공통 fetch 유틸 ----------
@@ -54,15 +53,15 @@ export type PlayerLite = {
 export async function fetchLeagues(): Promise<LeagueLite[]> {
   const { data, error } = await supabase
     .from("leagues")
-    .select("idLeague, strLeague, strCountry, strBadge, highlightly_id")
+    .select("idLeague, strLeague, strCountry, strBadge")
     .order("strLeague", { ascending: true });
 
   if (error) throw error;
 
-  // TheSportsDB 스키마 기반 직접 매핑
+  // 순수 TheSportsDB 스키마 기반 직접 매핑
   return (data ?? []).map((x) => ({
-    id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0,
-    slug: `league-${x.idLeague}`,
+    id: x.idLeague === '4689' ? 249276 : x.idLeague === '4822' ? 250127 : parseInt(x.idLeague) || 0,
+    slug: x.idLeague === '4689' ? 'k-league-1' : x.idLeague === '4822' ? 'k-league-2' : `league-${x.idLeague}`,
     name: String(x.strLeague),
     name_korean: null, // TheSportsDB에는 한국어 이름 없음
     tier: null,
@@ -105,33 +104,33 @@ export type TeamStanding = {
 };
 
 export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | null> {
-  // slug 기반 매핑: k-league-1 -> 4001, k-league-2 -> 4002
-  let leagueId: number;
+  // slug 기반 매핑: k-league-1 -> 4689, k-league-2 -> 4822 (TheSportsDB IDs)
+  let theSportsDBLeagueId: string;
   if (slug === 'k-league-1') {
-    leagueId = 4001;
+    theSportsDBLeagueId = '4689';
   } else if (slug === 'k-league-2') {
-    leagueId = 4002;
+    theSportsDBLeagueId = '4822';
   } else {
-    // 기존 방식: league-4001 같은 형태
-    leagueId = parseInt(slug.replace('league-', ''));
+    // 기존 방식: league-4689 같은 형태
+    theSportsDBLeagueId = slug.replace('league-', '');
   }
   
   const { data, error } = await supabase
     .from("leagues")
-    .select("idLeague, strLeague, strCountry, strBadge, highlightly_id")
-    .eq("highlightly_id", leagueId)
+    .select("idLeague, strLeague, strCountry, strBadge")
+    .eq("idLeague", theSportsDBLeagueId)
     .maybeSingle();
 
   if (error) throw error;
   if (!data) return null;
 
   return {
-    id: data.highlightly_id || parseInt(data.idLeague.replace(/[^0-9]/g, '')) || 0,
+    id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
     name: String(data.strLeague),
     name_korean: null, // TheSportsDB에는 한국어 이름 없음
     logo_url: data.strBadge,
     banner_url: null,
-    slug: data.highlightly_id === 249276 ? 'k-league-1' : data.highlightly_id === 250127 ? 'k-league-2' : `league-${data.idLeague}`,
+    slug: data.idLeague === '4689' ? 'k-league-1' : data.idLeague === '4822' ? 'k-league-2' : `league-${data.idLeague}`,
     country: data.strCountry as string | null,
     primary_source: "thesportsdb",
     tier: null,
@@ -139,65 +138,92 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   };
 }
 
-export async function fetchLeagueStandings(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStanding[]> {
-  // FIXED: Use actual column names from the database
+export async function fetchLeagueStandings(leagueSlug: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStanding[]> {
+  // PURE TheSportsDB Schema - slug에서 직접 TheSportsDB ID 매핑
+  const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : leagueSlug === 'k-league-2' ? '4822' : leagueSlug.replace('league-', '');
+  
   const { data, error } = await supabase
     .from("standings")
     .select(`
-      team_id,
-      position,
-      points,
-      played,
-      won,
-      drawn,
-      lost,
-      goals_for,
-      goals_against,
-      goal_difference,
-      form,
-      teams!inner(name, code, logo_url)
+      idStanding,
+      intRank,
+      idTeam,
+      strTeam,
+      strBadge,
+      idLeague,
+      strLeague,
+      strSeason,
+      strForm,
+      strDescription,
+      intPlayed,
+      intWin,
+      intLoss,
+      intDraw,
+      intGoalsFor,
+      intGoalsAgainst,
+      intGoalDifference,
+      intPoints,
+      created_at
     `)
-    .eq("league_id", leagueId)
-    .eq("season_year", season)
-    .order("position", { ascending: true });
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("strSeason", String(season))
+    .order("intRank", { ascending: true });
 
   if (error) throw error;
 
-  return (data ?? []).map((standing: any) => ({
-    team_id: Number(standing.team_id),
-    team_name: String(standing.teams?.name || "Unknown"),
-    short_name: (standing.teams?.code ?? null) as string | null,
-    crest_url: (standing.teams?.logo_url ?? null) as string | null,
-    rank: Number(standing.position),
-    points: Number(standing.points),
-    played: Number(standing.played),
-    win: Number(standing.won),
-    draw: Number(standing.drawn),
-    lose: Number(standing.lost),
-    goals_for: Number(standing.goals_for || 0),
-    goals_against: Number(standing.goals_against || 0),
-    goals_diff: Number(standing.goal_difference),
-    form: (standing.form ?? null) as string | null,
+  // 문자열로 저장된 intRank를 숫자로 변환해서 정렬
+  const sortedData = (data ?? []).sort((a: any, b: any) => {
+    const rankA = parseInt(a.intRank) || 0;
+    const rankB = parseInt(b.intRank) || 0;
+    return rankA - rankB;
+  });
+
+  return sortedData.map((standing: any) => ({
+    team_id: Number(standing.idTeam || 0),
+    team_name: String(standing.strTeam || "Unknown"),
+    short_name: null, // 별도로 가져와야 함
+    crest_url: standing.strBadge, // TheSportsDB 팀 배지 URL
+    rank: Number(standing.intRank || 0),
+    points: Number(standing.intPoints || 0),
+    played: Number(standing.intPlayed || 0),
+    win: Number(standing.intWin || 0),
+    draw: Number(standing.intDraw || 0),
+    lose: Number(standing.intLoss || 0),
+    goals_for: Number(standing.intGoalsFor || 0),
+    goals_against: Number(standing.intGoalsAgainst || 0),
+    goals_diff: Number(standing.intGoalDifference || 0),
+    form: standing.strForm, // TheSportsDB 폼 데이터 (예: "DLWWL")
   }));
 }
 
-// Alternative approach: Get teams directly from standings since team_seasons table doesn't exist
+// Get teams directly from standings using PURE TheSportsDB schema
 export async function fetchLeagueTeams(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamLite[]> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  
   const { data, error } = await supabase
     .from("standings")
     .select(`
-      teams!inner(id, name, code, logo_url)
+      idStanding,
+      idTeam,
+      strTeam,
+      strBadge,
+      idLeague,
+      strSeason
     `)
-    .eq("league_id", leagueId)
-    .eq("season_year", season);
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("strSeason", String(season));
 
   if (error) throw error;
 
   return (data ?? []).map((item: any) => ({
-    id: Number(item.teams?.id || 0),
-    name: String(item.teams?.name || "Unknown"),
-    short_name: (item.teams?.code ?? null) as string | null,
-    crest_url: (item.teams?.logo_url ?? null) as string | null,
+    id: Number(item.idTeam || 0),
+    name: String(item.strTeam || "Unknown"),
+    short_name: null, // 별도 teams 테이블에서 가져와야 함
+    crest_url: item.strBadge, // TheSportsDB 팀 배지 URL
+    logo_url: item.strBadge, // 동일한 배지 URL 사용
+    badge_url: item.strBadge,
+    banner_url: null,
+    primary_source: "thesportsdb",
   }));
 }
 
@@ -210,13 +236,15 @@ export type LeagueStats = {
 };
 
 export async function fetchLeagueStats(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<LeagueStats> {
-  // FIXED: Use actual column names
+  // PURE TheSportsDB Schema - 순수 원본 JSON 키값 사용
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  
   const [standingsResult, fixturesResult] = await Promise.all([
     supabase
       .from("standings")
-      .select("*")
-      .eq("league_id", leagueId)
-      .eq("season_year", season),
+      .select("idStanding, intGoalsFor, intGoalsAgainst, intPlayed")
+      .eq("idLeague", theSportsDBLeagueId)
+      .eq("strSeason", String(season)),
     supabase
       .from("fixtures")
       .select("home_score, away_score")
@@ -229,13 +257,26 @@ export async function fetchLeagueStats(leagueId: number, season: number = Number
   const totalTeams = standingsResult.data?.length || 0;
   const completedMatches = fixturesResult.data || [];
   const totalMatches = completedMatches.length;
-  const totalGoals = completedMatches.reduce((sum, match) => 
-    sum + (match.home_score || 0) + (match.away_score || 0), 0);
+  
+  // TheSportsDB 순위 데이터에서 골 통계 계산
+  const totalGoalsFromStandings = standingsResult.data?.reduce((sum, team) => 
+    sum + (parseInt(team.intGoalsFor) || 0), 0) || 0;
+  
+  // Fixtures가 없는 경우 standings 데이터 사용
+  const totalGoals = totalMatches > 0 
+    ? completedMatches.reduce((sum, match) => sum + (match.home_score || 0) + (match.away_score || 0), 0)
+    : totalGoalsFromStandings;
+
+  // 매치 수 계산 (TheSportsDB 데이터 기반)
+  const avgMatchesPerTeam = standingsResult.data && standingsResult.data.length > 0 
+    ? standingsResult.data.reduce((sum, team) => sum + (parseInt(team.intPlayed) || 0), 0) / standingsResult.data.length
+    : 0;
 
   return {
     total_goals: totalGoals,
-    total_matches: totalMatches,
-    avg_goals_per_match: totalMatches > 0 ? Number((totalGoals / totalMatches).toFixed(2)) : 0,
+    total_matches: totalMatches > 0 ? totalMatches : Math.round(avgMatchesPerTeam * totalTeams / 2),
+    avg_goals_per_match: totalMatches > 0 ? Number((totalGoals / totalMatches).toFixed(2)) : 
+                        avgMatchesPerTeam > 0 ? Number((totalGoals / (avgMatchesPerTeam * totalTeams / 2)).toFixed(2)) : 0,
     total_teams: totalTeams,
   };
 }
@@ -275,13 +316,15 @@ export async function fetchTopAssists(leagueId: number, season: number = Number(
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
-  // Get 1st place teams from standings for different seasons
+  // Get 1st place teams from standings for different seasons using TheSportsDB schema
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  
   const { data: standingsData, error: standingsError } = await supabase
     .from("standings")
-    .select("season_year, team_id")
-    .eq("league_id", leagueId)
-    .eq("position", 1)
-    .order("season_year", { ascending: false })
+    .select("strSeason, strTeam")
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("intRank", 1)
+    .order("strSeason", { ascending: false })
     .limit(15);
 
   if (standingsError) {
@@ -293,27 +336,12 @@ export async function fetchHistoricalChampions(leagueId: number): Promise<Histor
     return [];
   }
 
-  // Get team information
-  const teamIds = standingsData.map(item => item.team_id);
-  const { data: teamsData, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, logo_url")
-    .in("id", teamIds);
-
-  if (teamsError) {
-    console.warn("Failed to fetch teams data:", teamsError);
-    return [];
-  }
-
-  // Combine data
-  return standingsData.map((standing: any) => {
-    const team = (teamsData || []).find(t => t.id === standing.team_id);
-    return {
-      season_year: Number(standing.season_year),
-      champion_name: String(team?.name || "Unknown"),
-      champion_logo: (team?.logo_url ?? null) as string | null,
-    };
-  });
+  // TheSportsDB schema provides team data directly in standings
+  return standingsData.map((standing: any) => ({
+    season_year: Number(standing.strSeason || 0),
+    champion_name: String(standing.strTeam || "Unknown"),
+    champion_logo: null, // Not available in current schema
+  }));
 }
 
 // ---------- Fixtures with corrected column names ----------
@@ -344,22 +372,22 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
       
       if (thesportsdbFixtures.length > 0) {
         // Convert TheSportsDBEvent to UpcomingFixture format
-        return thesportsdbFixtures.slice(0, limit).map((fixture: TheSportsDBEvent) => ({
+        return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
           id: parseInt(fixture.idEvent),
           date_utc: fixture.dateEvent,
-          status: fixture.strStatus,
+          status: fixture.strStatus || 'TBD',
           round: `Round ${fixture.intRound}`,
           home_team: {
-            id: parseInt(fixture.idHomeTeam),
-            name: fixture.strHomeTeam,
+            id: parseInt(fixture.idHomeTeam || '0'),
+            name: fixture.strHomeTeam || 'TBD',
             logo_url: null, // TheSportsDB doesn't provide team logos in fixtures
           },
           away_team: {
-            id: parseInt(fixture.idAwayTeam),
-            name: fixture.strAwayTeam,
+            id: parseInt(fixture.idAwayTeam || '0'),
+            name: fixture.strAwayTeam || 'TBD',
             logo_url: null,
           },
-          venue: fixture.strVenue,
+          venue: fixture.strVenue || 'TBD',
           league_id: leagueId,
         }));
       }
@@ -683,22 +711,22 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
     
     if (thesportsdbFixtures.length > 0) {
       // Convert TheSportsDBEvent to UpcomingFixture format
-      return thesportsdbFixtures.slice(0, limit).map((fixture: TheSportsDBEvent) => ({
+      return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
         id: parseInt(fixture.idEvent),
         date_utc: fixture.dateEvent,
-        status: fixture.strStatus,
+        status: fixture.strStatus || 'TBD',
         round: `Round ${fixture.intRound}`,
         home_team: {
-          id: parseInt(fixture.idHomeTeam),
-          name: fixture.strHomeTeam,
+          id: parseInt(fixture.idHomeTeam || '0'),
+          name: fixture.strHomeTeam || 'TBD',
           logo_url: null, // TheSportsDB doesn't provide team logos in fixtures
         },
         away_team: {
-          id: parseInt(fixture.idAwayTeam),
-          name: fixture.strAwayTeam,
+          id: parseInt(fixture.idAwayTeam || '0'),
+          name: fixture.strAwayTeam || 'TBD',
           logo_url: null,
         },
-        venue: fixture.strVenue,
+        venue: fixture.strVenue || 'TBD',
         league_id: parseInt(fixture.idLeague),
       }));
     }
@@ -759,24 +787,24 @@ export async function fetchRecentFixtures(leagueId?: number, limit: number = 10)
       
       if (thesportsdbFixtures.length > 0) {
         // Convert TheSportsDBEvent to RoundFixture format
-        return thesportsdbFixtures.slice(0, limit).map((fixture: TheSportsDBEvent) => ({
+        return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
           id: parseInt(fixture.idEvent),
           date_utc: fixture.dateEvent,
-          status_short: fixture.strStatus,
+          status_short: fixture.strStatus || 'TBD',
           round: `Round ${fixture.intRound}`,
           home_team: {
-            id: parseInt(fixture.idHomeTeam),
-            name: fixture.strHomeTeam,
+            id: parseInt(fixture.idHomeTeam || '0'),
+            name: fixture.strHomeTeam || 'TBD',
             logo_url: null,
           },
           away_team: {
-            id: parseInt(fixture.idAwayTeam),
-            name: fixture.strAwayTeam,
+            id: parseInt(fixture.idAwayTeam || '0'),
+            name: fixture.strAwayTeam || 'TBD',
             logo_url: null,
           },
           home_goals: fixture.intHomeScore,
           away_goals: fixture.intAwayScore,
-          venue: fixture.strVenue,
+          venue: fixture.strVenue || 'TBD',
           league_id: leagueId,
         }));
       }
@@ -845,24 +873,24 @@ export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5)
     
     if (thesportsdbFixtures.length > 0) {
       // Convert TheSportsDBEvent to RoundFixture format
-      return thesportsdbFixtures.slice(0, limit).map((fixture: TheSportsDBEvent) => ({
+      return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
         id: parseInt(fixture.idEvent),
         date_utc: fixture.dateEvent,
-        status_short: fixture.strStatus,
+        status_short: fixture.strStatus || 'TBD',
         round: `Round ${fixture.intRound}`,
         home_team: {
-          id: parseInt(fixture.idHomeTeam),
-          name: fixture.strHomeTeam,
+          id: parseInt(fixture.idHomeTeam || '0'),
+          name: fixture.strHomeTeam || 'TBD',
           logo_url: null,
         },
         away_team: {
-          id: parseInt(fixture.idAwayTeam),
-          name: fixture.strAwayTeam,
+          id: parseInt(fixture.idAwayTeam || '0'),
+          name: fixture.strAwayTeam || 'TBD',
           logo_url: null,
         },
         home_goals: fixture.intHomeScore,
         away_goals: fixture.intAwayScore,
-        venue: fixture.strVenue,
+        venue: fixture.strVenue || 'TBD',
         league_id: parseInt(fixture.idLeague),
       }));
     }
@@ -915,4 +943,172 @@ export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5)
     venue: fixture.venue_name || undefined,
     league_id: Number(fixture.league_id),
   }));
+}
+
+// ---------- TheSportsDB Events API Functions (Pure Schema) ----------
+
+// TheSportsDB Events API Types (Pure Original JSON Structure)
+export interface TheSportsDBEvent {
+  idEvent: string;
+  idAPIfootball?: string;
+  strEvent: string;
+  strEventAlternate?: string;
+  strFilename?: string;
+  strSport?: string;
+  idLeague: string;
+  strLeague: string;
+  strLeagueBadge?: string;
+  strSeason: string;
+  strDescriptionEN?: string;
+  strHomeTeam: string;
+  strAwayTeam: string;
+  intHomeScore?: string;
+  intRound?: string;
+  intAwayScore?: string;
+  intSpectators?: string;
+  strOfficial?: string;
+  strTimestamp?: string;
+  dateEvent: string;
+  dateEventLocal?: string;
+  strTime?: string;
+  strTimeLocal?: string;
+  strGroup?: string;
+  idHomeTeam?: string;
+  strHomeTeamBadge?: string;
+  idAwayTeam?: string;
+  strAwayTeamBadge?: string;
+  intScore?: string;
+  intScoreVotes?: string;
+  strResult?: string;
+  idVenue?: string;
+  strVenue?: string;
+  strCountry?: string;
+  strCity?: string;
+  strPoster?: string;
+  strSquare?: string;
+  strFanart?: string;
+  strThumb?: string;
+  strBanner?: string;
+  strMap?: string;
+  strTweet1?: string;
+  strTweet2?: string;
+  strTweet3?: string;
+  strVideo?: string;
+  strStatus?: string;
+  strPostponed?: string;
+  strLocked?: string;
+}
+
+/**
+ * Fetch league events from pure TheSportsDB events table
+ */
+export async function fetchLeagueEvents(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TheSportsDBEvent[]> {
+  // Map internal league IDs to TheSportsDB league IDs
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("strSeason", String(season))
+    .order("dateEvent", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching league events:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch upcoming fixtures from events table
+ */
+export async function fetchUpcomingEvents(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("strSeason", String(season))
+    .gte("dateEvent", today)
+    .in("strStatus", ["Not Started", "TBD", "scheduled"])
+    .order("dateEvent", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching upcoming events:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch recent/completed fixtures from events table
+ */
+export async function fetchRecentEvents(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("strSeason", String(season))
+    .lt("dateEvent", today)
+    .eq("strStatus", "Match Finished")
+    .order("dateEvent", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching recent events:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch events by round from events table
+ */
+export async function fetchEventsByRound(leagueId: number, round: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TheSportsDBEvent[]> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("idLeague", theSportsDBLeagueId)
+    .eq("strSeason", String(season))
+    .eq("intRound", round)
+    .order("dateEvent", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching events by round:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch team events from events table
+ */
+export async function fetchTeamEvents(teamName: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("strSeason", String(season))
+    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
+    .order("dateEvent", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching team events:", error);
+    return [];
+  }
+
+  return data || [];
 }
