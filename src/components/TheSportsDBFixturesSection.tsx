@@ -121,10 +121,10 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
                 </div>
               )}
               <div className="space-y-3">
-                {rounds[round].map((fixture) => (
-                  <TheSportsDBFixtureRow 
-                    key={fixture.id} 
-                    fixture={fixture} 
+                {rounds[round].map((fixture: DatabaseFixture) => (
+                  <TheSportsDBFixtureRow
+                    key={fixture.id}
+                    fixture={fixture}
                     showScores={showScores}
                   />
                 ))}
@@ -368,10 +368,10 @@ export default function TheSportsDBFixturesSection({
                   최근 경기가 없습니다.
                 </div>
               ) : (
-                recentFixtures.slice(0, 10).map((fixture) => (
-                  <TheSportsDBFixtureRow 
-                    key={fixture.id} 
-                    fixture={fixture} 
+                recentFixtures.slice(0, 10).map((fixture: DatabaseFixture) => (
+                  <TheSportsDBFixtureRow
+                    key={fixture.id}
+                    fixture={fixture}
                     showScores={true}
                   />
                 ))
@@ -396,10 +396,10 @@ export default function TheSportsDBFixturesSection({
                   예정된 경기가 없습니다.
                 </div>
               ) : (
-                upcomingFixtures.slice(0, 10).map((fixture) => (
-                  <TheSportsDBFixtureRow 
-                    key={fixture.id} 
-                    fixture={fixture} 
+                upcomingFixtures.slice(0, 10).map((fixture: DatabaseFixture) => (
+                  <TheSportsDBFixtureRow
+                    key={fixture.id}
+                    fixture={fixture}
                     showScores={false}
                   />
                 ))
