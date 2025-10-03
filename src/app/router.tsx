@@ -4,7 +4,7 @@ import RootLayout from "@/app/layout/RootLayout";
 
 const LeagueListPage = lazy(() => import("@/pages/LeagueListPage"));
 const LeaguePage = lazy(() => import("@/pages/LeaguePage"));
-const TeamPage = lazy(() => import("@/pages/TeamPage"));
+const TeamPage = lazy(() => import("@/pages/TeamPageDB")); // Using new DB-based version
 const PlayerPage = lazy(() => import("@/pages/PlayerPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 

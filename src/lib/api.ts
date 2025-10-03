@@ -1112,3 +1112,176 @@ export async function fetchTeamEvents(teamName: string, season: number = Number(
 
   return data || [];
 }
+
+// ========== NEW TEAM PAGE API FUNCTIONS (TheSportsDB Schema) ==========
+
+import type { TeamFromDB, TeamStandings, EventFromDB, EventLiveData, FormResult } from "@/domain/types";
+
+/**
+ * Fetch team details from teams table by idTeam
+ */
+export async function fetchTeamFromDB(idTeam: string): Promise<TeamFromDB | null> {
+  const { data, error } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('idTeam', idTeam)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching team from DB:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Fetch team standings data for a specific team
+ */
+export async function fetchTeamStandingsData(
+  idLeague: string,
+  season: string,
+  teamName: string
+): Promise<TeamStandings | null> {
+  const { data, error } = await supabase
+    .from('standings')
+    .select('*')
+    .eq('idLeague', idLeague)
+    .eq('strSeason', season) // Fixed: use strSeason instead of season
+    .eq('strTeam', teamName)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching team standings:', error);
+    return null; // Non-critical, return null instead of throwing
+  }
+
+  return data;
+}
+
+/**
+ * Fetch events for a specific team
+ */
+export async function fetchTeamEventsData(
+  teamName: string,
+  season: string,
+  limit?: number
+): Promise<EventFromDB[]> {
+  let query = supabase
+    .from('events')
+    .select('*')
+    .eq('strSeason', season)
+    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
+    .order('dateEvent', { ascending: false });
+
+  if (limit) {
+    query = query.limit(limit);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching team events:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch live data for a specific event from events_highlightly_enhanced
+ */
+export async function fetchEventLiveData(idEvent: string): Promise<EventLiveData | null> {
+  const { data, error } = await supabase
+    .from('events_highlightly_enhanced')
+    .select('*')
+    .eq('idEvent', idEvent)
+    .maybeSingle();
+
+  // No error if not found - not all events have live data
+  if (error) {
+    console.warn('No live data found for event:', idEvent);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Calculate form guide (W/D/L) from recent team events
+ */
+export async function fetchTeamFormGuide(
+  teamName: string,
+  season: string,
+  limit: number = 5
+): Promise<FormResult[]> {
+  const events = await fetchTeamEventsData(teamName, season, limit);
+
+  return events
+    .filter(event => event.intHomeScore !== null && event.intAwayScore !== null)
+    .map(event => {
+      const isHome = event.strHomeTeam === teamName;
+      const teamScore = isHome ? event.intHomeScore : event.intAwayScore;
+      const oppScore = isHome ? event.intAwayScore : event.intHomeScore;
+
+      if (teamScore! > oppScore!) return 'W';
+      if (teamScore! < oppScore!) return 'L';
+      return 'D';
+    });
+}
+
+/**
+ * Fetch upcoming events for a team
+ */
+export async function fetchTeamUpcomingEventsData(
+  teamName: string,
+  season: string,
+  limit: number = 5
+): Promise<EventFromDB[]> {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('strSeason', season)
+    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
+    .gte('dateEvent', today)
+    .order('dateEvent', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching team upcoming events:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch recent completed events for a team
+ */
+export async function fetchTeamRecentEventsData(
+  teamName: string,
+  season: string,
+  limit: number = 5
+): Promise<EventFromDB[]> {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('strSeason', season)
+    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
+    .lt('dateEvent', today)
+    .not('intHomeScore', 'is', null)
+    .not('intAwayScore', 'is', null)
+    .order('dateEvent', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching team recent events:', error);
+    return [];
+  }
+
+  return data || [];
+}
