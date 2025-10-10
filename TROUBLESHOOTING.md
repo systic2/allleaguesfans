@@ -142,9 +142,87 @@ GitHub Actions에서 워크플로우 실패 시 이메일 알림 활성화:
 - [Supabase JavaScript Client](https://supabase.com/docs/reference/javascript/introduction)
 - [TheSportsDB API Documentation](https://www.thesportsdb.com/api.php)
 
+---
+
+## 문제 2: pnpm lockfile 버전 불일치 오류
+
+### 진단 결과 (2025-10-10)
+
+#### 오류 메시지
+```
+WARN  Ignoring not compatible lockfile at pnpm-lock.yaml
+ERR_PNPM_NO_LOCKFILE  Cannot install with "frozen-lockfile"
+because pnpm-lock.yaml is absent
+```
+
+#### ✅ 근본 원인
+- **Lockfile 버전 불일치**: pnpm-lock.yaml은 lockfileVersion '9.0' (pnpm v9+)
+- **워크플로우 버전**: GitHub Actions에서 pnpm v8 사용
+- **호환성 문제**: pnpm v8은 v9 lockfile을 읽을 수 없음
+- **결과**: 워크플로우가 lockfile을 무시하고 `frozen-lockfile` 옵션으로 실패
+
+#### 🛠️ 해결 방법
+
+**방법 1: 모든 워크플로우에서 pnpm 버전 업데이트 (권장) ✅**
+```yaml
+# .github/workflows/*.yml
+- name: Setup pnpm
+  uses: pnpm/action-setup@v2  # 또는 v4
+  with:
+    version: 10  # v8 또는 v9에서 v10으로 변경
+```
+
+**영향받는 워크플로우**:
+- `ci.yml`: v9 → v10
+- `data-quality-automation.yml`: v8 → v10 (3개 jobs)
+- `data-sync.yml`: v8 → v10
+- `deploy-pages.yml`: v9 → v10
+
+**방법 2: Lockfile 다운그레이드 (비권장)**
+```bash
+# pnpm v8로 lockfile 재생성 (비권장)
+npm install -g pnpm@8
+pnpm install
+```
+
+#### 📊 버전 호환성 매트릭스
+
+| pnpm 버전 | lockfileVersion | 호환성 |
+|-----------|-----------------|--------|
+| v8.x      | 6.x             | ✅ v8만 |
+| v9.x      | 9.0             | ✅ v9+ |
+| v10.x     | 9.0             | ✅ v9, v10 |
+
+#### 🔍 진단 방법
+
+```bash
+# 로컬 pnpm 버전 확인
+pnpm --version
+
+# lockfile 버전 확인
+head -1 pnpm-lock.yaml
+# 출력 예: lockfileVersion: '9.0'
+
+# 워크플로우에서 사용하는 pnpm 버전 확인
+grep -A 2 "pnpm/action-setup" .github/workflows/*.yml
+```
+
+#### ✅ 해결 완료
+- 모든 GitHub Actions 워크플로우를 pnpm v10으로 업데이트
+- 4개 워크플로우 파일, 총 6개 버전 참조 수정
+- CI/CD 환경과 로컬 개발 환경 일치 (pnpm v10)
+
+---
+
 ### 업데이트 로그
 
-- **2025-10-10**: 초기 진단 및 트러블슈팅 가이드 작성
+- **2025-10-10 (오전)**: 초기 진단 및 트러블슈팅 가이드 작성
   - 문제: GitHub Actions scheduled workflows 자동 실행 안됨
   - 원인: 리포지토리 비활성화 또는 워크플로우 비활성화 추정
   - 해결: 수동 트리거 및 keepalive 워크플로우 추가 권장
+
+- **2025-10-10 (오후)**: pnpm lockfile 버전 불일치 문제 해결
+  - 문제: `ERR_PNPM_NO_LOCKFILE Cannot install with frozen-lockfile`
+  - 원인: pnpm v8/v9 워크플로우가 lockfileVersion 9.0을 읽을 수 없음
+  - 해결: 모든 워크플로우를 pnpm v10으로 업데이트 완료
+  - 영향: 4개 워크플로우 파일, 6개 버전 참조 수정
