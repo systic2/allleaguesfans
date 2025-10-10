@@ -214,6 +214,77 @@ grep -A 2 "pnpm/action-setup" .github/workflows/*.yml
 
 ---
 
+## 문제 3: 경기 정보 (Fixtures) 업데이트 안됨
+
+### 진단 결과 (2025-10-10)
+
+#### 증상
+- ✅ 순위표(standings) 데이터는 최신으로 업데이트됨
+- ❌ 최근 경기 결과가 업데이트 안됨
+- ❌ 예정 경기 정보가 업데이트 안됨
+- 워크플로우는 정상 실행 (오류 없음)
+
+#### ✅ 근본 원인
+**워크플로우가 standings만 동기화하고 events/fixtures는 동기화하지 않음**
+
+1. **불완전한 워크플로우**
+   - `sync-kleague-final.ts`: standings만 가져옴
+   - `sync-thesportsdb-events.ts`: 별도로 존재하지만 실행 안됨
+   - 워크플로우 주석과 실제 동작 불일치
+
+2. **데이터 격차**
+   - Events 테이블 존재 (471개 레코드)
+   - 하지만 최신 데이터로 업데이트 안됨
+   - 과거 경기 결과와 예정 경기 모두 누락
+
+#### 🛠️ 해결 방법
+
+**워크플로우에 events sync 단계 추가 ✅**
+
+수정된 워크플로우 구조:
+```yaml
+# Step 1: Standings Sync
+npx tsx scripts/sync-kleague-final.ts
+
+# Step 2: Events/Fixtures Sync (NEW)
+npx tsx scripts/sync-thesportsdb-events.ts
+```
+
+**적용 범위**:
+- Daily sync (매일 02:00 UTC)
+- Weekly full sync (매주 월요일 03:00 UTC)
+- Manual trigger
+
+#### 🔍 진단 방법
+
+```bash
+# Events 테이블 상태 확인
+npx tsx scripts/check-events-table.ts
+
+# Events sync 수동 실행
+SEASON_YEAR=2025 npx tsx scripts/sync-thesportsdb-events.ts
+
+# 최신 데이터 확인
+npx tsx scripts/check-latest-data.ts
+```
+
+#### 📊 데이터 검증
+
+**Events sync 후 기대 결과**:
+- K League 1: ~198개 이벤트
+- K League 2: 비슷한 수의 이벤트
+- 과거 경기: 점수 포함 (예: 0-3)
+- 미래 경기: 점수 없음 (예정)
+- 상태: "Match Finished" 또는 미래 날짜
+
+#### ✅ 해결 완료
+- data-sync.yml 워크플로우 업데이트
+- 3개 트리거 모두 events sync 추가 (daily, weekly, manual)
+- 2-step 동기화: standings → events
+- 각 단계 독립적으로 실패 처리
+
+---
+
 ### 업데이트 로그
 
 - **2025-10-10 (오전)**: 초기 진단 및 트러블슈팅 가이드 작성
@@ -221,8 +292,14 @@ grep -A 2 "pnpm/action-setup" .github/workflows/*.yml
   - 원인: 리포지토리 비활성화 또는 워크플로우 비활성화 추정
   - 해결: 수동 트리거 및 keepalive 워크플로우 추가 권장
 
-- **2025-10-10 (오후)**: pnpm lockfile 버전 불일치 문제 해결
+- **2025-10-10 (오후 1)**: pnpm lockfile 버전 불일치 문제 해결
   - 문제: `ERR_PNPM_NO_LOCKFILE Cannot install with frozen-lockfile`
   - 원인: pnpm v8/v9 워크플로우가 lockfileVersion 9.0을 읽을 수 없음
   - 해결: 모든 워크플로우를 pnpm v10으로 업데이트 완료
   - 영향: 4개 워크플로우 파일, 6개 버전 참조 수정
+
+- **2025-10-10 (오후 2)**: 경기 정보(fixtures) 업데이트 안되는 문제 해결
+  - 문제: 순위표는 업데이트되지만 경기 정보는 업데이트 안됨
+  - 원인: 워크플로우가 standings만 동기화 (events sync 누락)
+  - 해결: data-sync.yml에 events sync 단계 추가
+  - 영향: 3개 트리거 (daily, weekly, manual) 모두 수정
