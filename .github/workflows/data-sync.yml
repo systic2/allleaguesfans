@@ -72,15 +72,25 @@ jobs:
         echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "K League Official API: ✅ Free public API (no key required)"
         
-        # K League Official API Data Import
-        # - Complete K League coverage: teams, fixtures, standings, player records
-        # - Free official data directly from K League website
+        # K League Standings Import
+        echo "📊 Step 1: Syncing standings data..."
         if npx tsx scripts/sync-kleague-final.ts; then
-          echo "✅ K League Official API sync completed successfully"
+          echo "✅ K League standings sync completed successfully"
         else
-          echo "❌ K League Official API sync failed"
+          echo "❌ K League standings sync failed"
           exit 1
         fi
+
+        # K League Events/Fixtures Import
+        echo "⚽ Step 2: Syncing events and fixtures data..."
+        if npx tsx scripts/sync-thesportsdb-events.ts; then
+          echo "✅ K League events sync completed successfully"
+        else
+          echo "❌ K League events sync failed"
+          exit 1
+        fi
+
+        echo "🎉 Complete K League data sync finished (standings + events)"
         
     - name: Weekly K League Official Full Sync
       if: github.event.schedule == '0 3 * * 1'
@@ -98,15 +108,24 @@ jobs:
         echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "K League Official API: ✅ Free public API (no key required)"
         
-        # Comprehensive K League Official data synchronization and validation
-        # - Full K League data refresh for consistency
-        # - Official data directly from K League website
+        # Comprehensive K League data synchronization
+        echo "📊 Step 1: Full standings sync..."
         if npx tsx scripts/sync-kleague-final.ts; then
-          echo "✅ K League Official API full sync completed successfully"
+          echo "✅ K League standings full sync completed"
         else
-          echo "❌ K League Official API full sync failed"
+          echo "❌ K League standings full sync failed"
           exit 1
         fi
+
+        echo "⚽ Step 2: Full events and fixtures sync..."
+        if npx tsx scripts/sync-thesportsdb-events.ts; then
+          echo "✅ K League events full sync completed"
+        else
+          echo "❌ K League events full sync failed"
+          exit 1
+        fi
+
+        echo "🎉 Weekly comprehensive sync finished (standings + events)"
         
     - name: Manual K League Migration
       if: github.event_name == 'workflow_dispatch'
@@ -124,15 +143,25 @@ jobs:
         echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
         echo "K League Official API: ✅ Free public API (no key required)"
         
-        # Manual execution - K League Official API sync
-        # Complete K League data sync using official API
+        # Manual execution - Complete K League data sync
+        echo "📊 Step 1: Manual standings sync..."
         if npx tsx scripts/sync-kleague-final.ts; then
-          echo "✅ K League Official API sync completed successfully"
-          echo "🎉 K League data pipeline secured with official API"
+          echo "✅ K League standings sync completed"
         else
-          echo "❌ K League Official API sync failed"
+          echo "❌ K League standings sync failed"
           exit 1
         fi
+
+        echo "⚽ Step 2: Manual events and fixtures sync..."
+        if npx tsx scripts/sync-thesportsdb-events.ts; then
+          echo "✅ K League events sync completed"
+        else
+          echo "❌ K League events sync failed"
+          exit 1
+        fi
+
+        echo "🎉 Manual sync completed (standings + events)"
+        echo "✅ K League data pipeline: standings, fixtures, and results"
         
     - name: Data Quality Check
       env:
