@@ -324,12 +324,9 @@ export interface TheSportsDBFixture {
 
 // Utility function to make API calls with proper headers (DEVELOPMENT ONLY)
 async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
-  // PRODUCTION FIX: Only use TheSportsDB API in development to avoid CORS/proxy issues
-  const isDevelopment = import.meta.env.DEV;
-  
-  if (!isDevelopment) {
-    throw new Error('TheSportsDB API disabled in production to avoid CORS issues');
-  }
+  // CORS FIX: TheSportsDB v2 API has CORS restrictions, use database data instead
+  console.warn('TheSportsDB API call blocked due to CORS restrictions. Using database fallback.');
+  throw new Error('TheSportsDB API disabled due to CORS restrictions. Use database data instead.');
   
   const API_BASE_URL = 'https://www.thesportsdb.com/api/v2/json';
   const API_KEY = import.meta.env.VITE_THESPORTSDB_API_KEY || '460915';

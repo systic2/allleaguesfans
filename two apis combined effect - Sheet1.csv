@@ -1,6 +1,0 @@
-데이터 유형,주요 공급자,보조 공급자 (Fallback),기대 정확도,근거 및 설명
-실시간 스코어/이벤트,Highlightly,-,높음,"Highlightly는 실시간 데이터에 강점을 보이며, TheSportsDB의 2분 지연  문제를 피할 수 있습니다."
-라인업/경기 통계,Highlightly,TheSportsDB,높음,"핵심 데이터는 Highlightly를 신뢰하되, 만약 데이터가 누락되었을 경우 TheSportsDB의 데이터를 보조적으로 표시할 수 있습니다."
-팀 로고/선수 이미지,TheSportsDB,Highlightly,매우 높음 (주요 리그 기준),TheSportsDB의 핵심 강점. 만약 이미지가 없을 경우 Highlightly에서 제공하는지 확인하는 fallback 로직을 구현하면 커버리지를 극대화할 수 있습니다.
-기본 팀/리그 정보,TheSportsDB,Highlightly,중간-높음,"크라우드소싱 데이터 특성상 100% 신뢰는 어렵지만, 비용 없이 방대한 데이터를 얻을 수 있는 장점이 훨씬 큽니다."
-비디오 하이라이트,Highlightly,TheSportsDB (유튜브 링크),높음,"Highlightly의 직접적인 하이라이트 기능이 우선이며 , TheSportsDB의 유튜브 링크 는 보조적으로 활용 가능합니다."

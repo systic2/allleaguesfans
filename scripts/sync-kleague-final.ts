@@ -1,267 +1,253 @@
 // sync-kleague-final.ts
-// 실제 현재 스키마 구조에 맞춘 최종 K League 데이터 동기화
+// Pure TheSportsDB K League Final Sync
+import 'dotenv/config';
+import { supa } from './lib/supabase.js';
 
-import { supa } from './lib/supabase.js'
-import { KLeagueAPI } from './lib/kleague-api.ts'
+// Environment variables
+const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || process.env.TheSportsDB_KEY || '460915';
+const SEASON_YEAR = process.env.SEASON_YEAR || '2025';
 
-async function syncKLeagueFinal() {
-  console.log('🚀 K League 최종 데이터 동기화 시작...')
-  console.log('📅 시작 시간:', new Date().toLocaleString('ko-KR'))
+if (!THESPORTSDB_API_KEY) {
+  throw new Error('Missing THESPORTSDB_API_KEY environment variable');
+}
+
+// TheSportsDB API Types (Pure Original JSON Structure)
+interface TheSportsDBStanding {
+  idStanding: string;
+  intRank: string;
+  idTeam: string;
+  strTeam: string;
+  strBadge: string;
+  idLeague: string;
+  strLeague: string;
+  strSeason: string;
+  strForm: string;
+  strDescription: string;
+  intPlayed: string;
+  intWin: string;
+  intLoss: string;
+  intDraw: string;
+  intGoalsFor: string;
+  intGoalsAgainst: string;
+  intGoalDifference: string;
+  intPoints: string;
+  dateUpdated?: string;
+}
+
+interface TheSportsDBStandingsResponse {
+  table: TheSportsDBStanding[];
+}
+
+// TheSportsDB API Client (Pure)
+class PureTheSportsDBClient {
+  private apiKey: string;
   
-  const kLeagueAPI = new KLeagueAPI()
-  let totalSynced = 0
-  let totalErrors = 0
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
   
-  try {
-    // 1. K League API 연결 테스트
-    console.log('\n🧪 K League API 연결 테스트...')
-    const isConnected = await kLeagueAPI.testConnection()
-    if (!isConnected) {
-      throw new Error('K League API 연결 실패')
+  private async fetch(url: string) {
+    console.log(`🔍 Fetching: ${url}`);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'AllLeaguesFans/1.0 (TheSportsDB Pure Integration)',
+        'X-API-KEY': this.apiKey
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`TheSportsDB API error: ${response.status} ${response.statusText}`);
     }
     
-    // 2. 리그 정보 동기화 (새 ID 시스템)
-    console.log('\n🏆 K League 리그 정보 동기화...')
-    const leagues = [
-      { id: 4001, name: 'K리그1', kleague_id: 1 },
-      { id: 4002, name: 'K리그2', kleague_id: 2 }
-    ]
-    
-    for (const league of leagues) {
-      try {
-        const { error } = await supa.from('leagues').upsert({
-          id: league.id,
-          name: league.name,
-          type: 'League',
-          season_year: 2025  // NOT NULL 제약 조건 만족
-        }, { onConflict: 'id' })
-        
-        if (error) {
-          console.log(`⚠️ ${league.name}: ${error.message}`)
-          totalErrors++
-        } else {
-          console.log(`✅ ${league.name} 리그 동기화 완료`)
-          totalSynced++
-        }
-      } catch (err) {
-        console.log(`❌ ${league.name}: ${err}`)
-        totalErrors++
-      }
-    }
-    
-    // 3. K League 순위 데이터 동기화
-    console.log('\n📊 K League 순위 데이터 동기화...')
-    try {
-      const rankings = await kLeagueAPI.getTeamRankings()
-      
-      // K리그1 순위
-      if (rankings.league1?.length > 0) {
-        console.log(`   K리그1 순위: ${rankings.league1.length}개 팀`)
-        for (const [index, team] of rankings.league1.entries()) {
-          try {
-            // 팀 정보 먼저 동기화 (새 ID 시스템)
-            const { error: teamError } = await supa.from('teams').upsert({
-              id: parseInt(team.teamId) || (10000 + index),
-              name: team.teamName,
-              league_id: 4001,  // 새 K리그1 ID
-              season_year: 2025
-            }, { onConflict: 'id' })
-            
-            if (teamError) {
-              console.log(`   ⚠️ 팀 ${team.teamName}: ${teamError.message}`)
-              totalErrors++
-            } else {
-              console.log(`   ✅ 팀 ${team.teamName} 동기화`)
-              totalSynced++
-            }
-            
-            // 순위 정보 동기화
-            const { error: standingError } = await supa.from('standings').upsert({
-              league_id: 4001,  // 새 K리그1 ID
-              team_id: parseInt(team.teamId) || (10000 + index),
-              season_year: 2025,
-              position: team.rank,
-              played: team.winCnt + team.tieCnt + team.lossCnt,
-              won: team.winCnt,
-              drawn: team.tieCnt,
-              lost: team.lossCnt,
-              goals_for: team.goalCnt,
-              goals_against: team.loseGoalCnt,
-              goal_difference: team.goalCnt - team.loseGoalCnt,
-              points: team.gainPoint
-            }, { onConflict: 'league_id,team_id,season_year' })
-            
-            if (standingError) {
-              console.log(`   ⚠️ 순위 ${team.teamName}: ${standingError.message}`)
-              totalErrors++
-            } else {
-              console.log(`   ✅ 순위 ${team.teamName} 동기화`)
-              totalSynced++
-            }
-          } catch (err) {
-            console.log(`   ❌ ${team.teamName}: ${err}`)
-            totalErrors++
-          }
-        }
-      }
-      
-      // K리그2 순위
-      if (rankings.league2?.length > 0) {
-        console.log(`   K리그2 순위: ${rankings.league2.length}개 팀`)
-        for (const [index, team] of rankings.league2.entries()) {
-          try {
-            const { error: teamError } = await supa.from('teams').upsert({
-              id: parseInt(team.teamId) || (20000 + index),
-              name: team.teamName,
-              league_id: 4002,  // 새 K리그2 ID
-              season_year: 2025
-            }, { onConflict: 'id' })
-            
-            const { error: standingError } = await supa.from('standings').upsert({
-              league_id: 4002,  // 새 K리그2 ID
-              team_id: parseInt(team.teamId) || (20000 + index),
-              season_year: 2025,
-              position: team.rank,
-              played: team.winCnt + team.tieCnt + team.lossCnt,
-              won: team.winCnt,
-              drawn: team.tieCnt,
-              lost: team.lossCnt,
-              goals_for: team.goalCnt,
-              goals_against: team.loseGoalCnt,
-              goal_difference: team.goalCnt - team.loseGoalCnt,
-              points: team.gainPoint
-            }, { onConflict: 'league_id,team_id,season_year' })
-            
-            if (!teamError && !standingError) {
-              totalSynced += 2
-              console.log(`   ✅ ${team.teamName} 완료`)
-            } else {
-              totalErrors++
-            }
-          } catch (err) {
-            totalErrors++
-          }
-        }
-      }
-      
-    } catch (err) {
-      console.log(`❌ 순위 데이터 동기화 실패: ${err}`)
-      totalErrors++
-    }
-    
-    // 4. 최근 경기 결과 동기화 (away_goals 컬럼 없이)
-    console.log('\n⚽ K League 최근 경기 결과 동기화...')
-    try {
-      const matches = await kLeagueAPI.getRecentMatches()
-      
-      if (matches.all?.length > 0) {
-        console.log(`   최근 경기: ${matches.all.length}개`)
-        
-        for (const [index, match] of matches.all.slice(0, 10).entries()) {
-          try {
-            // K League API IDs (1, 2) → Database IDs (4001, 4002) 매핑
-            const mappedLeagueId = match.leagueId === 1 ? 4001 : 
-                                  match.leagueId === 2 ? 4002 : null
-            
-            if (!mappedLeagueId) {
-              console.log(`   ⚠️ 경기 ${index + 1}: Unknown league ID ${match.leagueId}`)
-              totalErrors++
-              continue
-            }
-            
-            const { error } = await supa.from('fixtures').insert({
-              league_id: mappedLeagueId,
-              season_year: match.year,
-              round: match.roundId,
-              match_date: new Date(`${match.gameDate} ${match.gameTime}`),
-              status: match.endYn === 'Y' ? 'FT' : 'NS',
-              home_score: match.homeGoal,
-              away_score: match.awayGoal,
-              venue_name: match.fieldName
-            })
-            
-            if (error && !error.message.includes('duplicate')) {
-              console.log(`   ⚠️ 경기 ${index + 1}: ${error.message}`)
-              totalErrors++
-            } else {
-              console.log(`   ✅ 경기 ${index + 1} 동기화`)
-              totalSynced++
-            }
-          } catch (err) {
-            console.log(`   ❌ 경기 ${index + 1}: ${err}`)
-            totalErrors++
-          }
-        }
-      }
-    } catch (err) {
-      console.log(`❌ 경기 데이터 동기화 실패: ${err}`)
-      totalErrors++
-    }
-    
-    // 5. 동기화 결과 요약
-    console.log('\n' + '='.repeat(60))
-    console.log('📊 K League 최종 데이터 동기화 완료!')
-    console.log('='.repeat(60))
-    console.log(`📅 완료 시간: ${new Date().toLocaleString('ko-KR')}`)
-    console.log(`✅ 성공: ${totalSynced}개`)
-    console.log(`❌ 오류: ${totalErrors}개`)
-    console.log(`📈 성공률: ${totalSynced > 0 ? Math.round((totalSynced / (totalSynced + totalErrors)) * 100) : 0}%`)
-    
-    // 6. 동기화된 데이터 확인
-    console.log('\n🔍 동기화된 데이터 확인...')
-    
-    try {
-      const [leagueResult, teamResult, standingResult, fixtureResult] = await Promise.all([
-        supa.from('leagues').select('*'),
-        supa.from('teams').select('*'),
-        supa.from('standings').select('*'),
-        supa.from('fixtures').select('*')
-      ])
-      
-      console.log(`📋 리그: ${leagueResult.data?.length || 0}개`)
-      console.log(`⚽ 팀: ${teamResult.data?.length || 0}개`)
-      console.log(`📊 순위: ${standingResult.data?.length || 0}개`)
-      console.log(`🏟️ 경기: ${fixtureResult.data?.length || 0}개`)
-      
-      // 샘플 데이터 표시
-      if (standingResult.data && standingResult.data.length > 0) {
-        console.log('\n🏆 K리그1 상위 5팀:')
-        const k1standings = standingResult.data
-          .filter(s => s.league_id === 4001)
-          .sort((a, b) => a.position - b.position)
-          .slice(0, 5)
-          
-        k1standings.forEach((standing) => {
-          const teamData = teamResult.data?.find(t => t.id === standing.team_id)
-          console.log(`   ${standing.position}. ${teamData?.name || '팀명 없음'} - ${standing.points}점 (${standing.won}승 ${standing.drawn}무 ${standing.lost}패)`)
-        })
-      }
-      
-      if (leagueResult.data && leagueResult.data.length > 0) {
-        console.log('\n🏆 동기화된 리그:')
-        leagueResult.data.forEach(league => {
-          console.log(`   ${league.id}: ${league.name} (${league.season_year}시즌)`)
-        })
-      }
-      
-    } catch (err) {
-      console.log('⚠️ 데이터 확인 중 오류:', err)
-    }
-    
-    if (totalSynced > totalErrors) {
-      console.log('\n🎉 K League 데이터 동기화가 성공적으로 완료되었습니다!')
-      console.log('✨ 이제 K League 공식 데이터를 사용합니다!')
-      console.log('📊 데이터 품질이 크게 향상되었습니다!')
-    } else if (totalSynced > 0) {
-      console.log('\n⚠️ 부분적으로 성공했습니다. 일부 데이터가 동기화되었습니다.')
-    } else {
-      console.log('\n❌ 동기화에 실패했습니다. 스키마 구조를 다시 확인해주세요.')
-    }
-    
-  } catch (error) {
-    console.error('\n💥 K League 데이터 동기화 실패:', error)
-    process.exit(1)
+    const data = await response.json();
+    console.log(`✅ Success: Got ${JSON.stringify(data).length} chars`);
+    return data;
+  }
+  
+  async getStandings(idLeague: string, season: string): Promise<TheSportsDBStanding[]> {
+    const data: TheSportsDBStandingsResponse = await this.fetch(
+      `https://www.thesportsdb.com/api/v1/json/${this.apiKey}/lookuptable.php?l=${idLeague}&s=${season}`
+    );
+    return data.table || [];
   }
 }
 
-syncKLeagueFinal().catch(console.error)
+// Pure Import Manager (No Mapping)
+class PureKLeagueImporter {
+  private client: PureTheSportsDBClient;
+  
+  constructor() {
+    this.client = new PureTheSportsDBClient(THESPORTSDB_API_KEY);
+  }
+  
+  async importPureStandings() {
+    console.log('\\n📊 Starting Pure TheSportsDB Standings Import...');
+    console.log('🎯 Direct JSON to database mapping - Zero transformation');
+    
+    // K League IDs mapping (TheSportsDB)
+    const leagueMapping = [
+      { idLeague: '4689', name: 'K League 1' },
+      { idLeague: '4822', name: 'K League 2' }
+    ];
+    
+    const allStandings: TheSportsDBStanding[] = [];
+    
+    for (const league of leagueMapping) {
+      try {
+        console.log(`\\n🏆 Processing pure standings for ${league.name}...`);
+        
+        // Clear existing standings for this league and season (Pure TheSportsDB schema)
+        console.log(`🧹 Clearing existing standings for ${league.name} season ${SEASON_YEAR}...`);
+        const { error: deleteError } = await supa
+          .from('standings')
+          .delete()
+          .eq('idLeague', league.idLeague)
+          .eq('strSeason', SEASON_YEAR);
+        
+        if (deleteError) {
+          console.warn(`⚠️ Error clearing existing data: ${deleteError.message}`);
+        }
+        
+        // Get standings data from TheSportsDB
+        const standings = await this.client.getStandings(league.idLeague, SEASON_YEAR);
+        console.log(`Found ${standings.length} teams in standings`);
+        
+        // Show raw TheSportsDB data for verification
+        console.log(`\\n📋 Pure TheSportsDB Data Sample (${league.name}):`);
+        if (standings.length > 0) {
+          const sample = standings[0];
+          console.log(`   🏆 #${sample.intRank}: ${sample.strTeam}`);
+          console.log(`   📊 ${sample.intWin}W ${sample.intDraw}D ${sample.intLoss}L = ${sample.intPoints}pts`);
+          console.log(`   ⚽ ${sample.intGoalsFor}-${sample.intGoalsAgainst} (${sample.intGoalDifference})`);
+          console.log(`   📈 Form: ${sample.strForm || 'N/A'}`);
+          console.log(`   🎯 League: ${sample.strLeague} (ID: ${sample.idLeague})`);
+        }
+        
+        for (const standing of standings) {
+          try {
+            console.log(`🔍 Importing PURE: ${standing.strTeam} (Rank ${standing.intRank}, ${standing.intPoints} pts)`);
+            
+            // Direct insert - NO MAPPING - Pure TheSportsDB structure
+            const pureStanding = {
+              idStanding: standing.idStanding || `${standing.idLeague}_${standing.idTeam}_${SEASON_YEAR}`,
+              intRank: standing.intRank,
+              idTeam: standing.idTeam,
+              strTeam: standing.strTeam,
+              strBadge: standing.strBadge,
+              idLeague: standing.idLeague,
+              strLeague: standing.strLeague,
+              strSeason: standing.strSeason || SEASON_YEAR,
+              strForm: standing.strForm,
+              strDescription: standing.strDescription,
+              intPlayed: standing.intPlayed,
+              intWin: standing.intWin,
+              intLoss: standing.intLoss,
+              intDraw: standing.intDraw,
+              intGoalsFor: standing.intGoalsFor,
+              intGoalsAgainst: standing.intGoalsAgainst,
+              intGoalDifference: standing.intGoalDifference,
+              intPoints: standing.intPoints
+            };
+            
+            const { data, error } = await supa
+              .from('standings')
+              .insert(pureStanding)
+              .select();
+            
+            if (error) {
+              console.error(`❌ Pure import error for ${standing.strTeam}:`, error);
+            } else {
+              console.log(`✅ PURE IMPORTED: ${standing.strTeam} - ${standing.intPoints} pts (TheSportsDB ID: ${standing.idLeague})`);
+              allStandings.push(standing);
+            }
+            
+          } catch (error) {
+            console.error(`❌ Error processing ${standing.strTeam}:`, error);
+          }
+        }
+        
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+      } catch (error) {
+        console.error(`❌ Error processing league ${league.name}:`, error);
+      }
+    }
+    
+    console.log(`\\n📊 Pure Import Complete: ${allStandings.length} teams imported`);
+    return allStandings;
+  }
+  
+  async runFullSync() {
+    try {
+      console.log('🚀 Starting Pure TheSportsDB K League Final Sync...');
+      console.log('🎯 ZERO transformation - Direct API to database');
+      console.log('📋 Original TheSportsDB JSON structure preserved 100%');
+      console.log('💾 Database schema: Pure TheSportsDB column names');
+      
+      const standings = await this.importPureStandings();
+      
+      console.log('\\n🎉 Pure TheSportsDB Sync Finished!');
+      console.log('📊 Final Summary:');
+      console.log(`   - Team Standings: ${standings.length}`);
+      console.log(`   - Season: ${SEASON_YEAR}`);
+      console.log(`   - Data Source: TheSportsDB v1 lookuptable API (100% PURE)`);
+      console.log(`   - Schema: Pure TheSportsDB (zero mapping, zero transformation)`);
+      console.log(`   - Column Names: Original JSON keys (idStanding, intRank, strTeam, etc.)`);
+      
+      // Generate league breakdown using pure TheSportsDB data
+      const leagueSummary = standings.reduce((acc, standing) => {
+        const idLeague = standing.idLeague;
+        const leagueName = idLeague === '4689' ? 'K League 1' : idLeague === '4822' ? 'K League 2' : `League ${idLeague}`;
+        if (!acc[leagueName]) {
+          acc[leagueName] = {
+            count: 0,
+            totalPoints: 0,
+            totalGoals: 0
+          };
+        }
+        acc[leagueName].count++;
+        acc[leagueName].totalPoints += parseInt(standing.intPoints) || 0;
+        acc[leagueName].totalGoals += parseInt(standing.intGoalsFor) || 0;
+        return acc;
+      }, {} as Record<string, { count: number; totalPoints: number; totalGoals: number }>);
+      
+      console.log('\\n📋 League Summary (Pure TheSportsDB Data):');
+      Object.entries(leagueSummary).forEach(([league, stats]) => {
+        console.log(`   - ${league}: ${stats.count} teams, ${stats.totalPoints} total pts, ${stats.totalGoals} total goals`);
+      });
+      
+      console.log('\\n🔧 Pure TheSportsDB Structure:');
+      console.log(`   - Original League IDs: ${standings.map(s => s.idLeague).filter((v, i, a) => a.indexOf(v) === i).join(', ')}`);
+      console.log(`   - Column Names: All original TheSportsDB JSON keys preserved`);
+      console.log(`   - Data Types: All TEXT (matches TheSportsDB API exactly)`);
+      console.log(`   - Season: ${SEASON_YEAR} (strSeason column)`);
+      
+      return standings;
+      
+    } catch (error) {
+      console.error('❌ Pure sync failed:', error);
+      throw error;
+    }
+  }
+}
+
+// Main execution
+async function main() {
+  console.log('🎯 Pure TheSportsDB K League Final Sync');
+  console.log('====================================');
+  console.log('📝 Requirements:');
+  console.log('1. Database schema must use pure TheSportsDB structure');
+  console.log('2. Apply pure-thesportsdb-standings-schema.sql first');
+  console.log('3. Table columns: idStanding, intRank, strTeam, etc.');
+  console.log('\\n🚀 Starting sync...');
+  
+  const importer = new PureKLeagueImporter();
+  await importer.runFullSync();
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(console.error);
+}
+
+export { PureKLeagueImporter };

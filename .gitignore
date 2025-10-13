@@ -16,6 +16,21 @@ tmp/
 dumps/
 scripts/output/
 
+# Build artifacts
+*.tsbuildinfo
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+temp-*.js
+debug-*.html
+test-*.html
+
+# API dumps and responses
+*-api-response.json
+*-response.json
+
 # Security sensitive files - 실제 키값이 포함된 파일들
 GITHUB-SETUP.md
 **/secrets/**
