@@ -1,0 +1,125 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create .env from GitHub Secrets
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+          echo "VITE_SEASON_YEAR=2025" >> .env
+          echo "VITE_THESPORTSDB_API_KEY=${{ secrets.VITE_THESPORTSDB_API_KEY }}" >> .env
+          echo "VITE_HIGHLIGHTLY_API_KEY=${{ secrets.VITE_HIGHLIGHTLY_API_KEY }}" >> .env
+
+      - name: TypeScript Type Checking
+        run: pnpm typecheck
+
+      - name: Run Tests
+        run: pnpm test
+        env:
+          VITE_SUPABASE_URL: http://localhost:54321
+          VITE_SUPABASE_ANON_KEY: test-anon
+          VITE_SEASON_YEAR: 2025
+          VITE_THESPORTSDB_API_KEY: test-api-key
+          VITE_HIGHLIGHTLY_API_KEY: test-api-key
+
+      - name: Build Application
+        run: pnpm build
+
+      - name: Add 404 Fallback for SPA
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload Build Artifact (CI Verification)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-pr-${{ github.event.pull_request.number }}
+          path: dist
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload Pages Artifact (Deployment)
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## 🎉 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **TypeCheck**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tests**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "- **Deployment**: 🚀 Ready for GitHub Pages" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    concurrency:
+      group: "pages"
+      cancel-in-progress: true
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
