@@ -316,14 +316,18 @@ export async function fetchTopAssists(leagueId: number, season: number = Number(
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
-  // Get 1st place teams from standings for different seasons using TheSportsDB schema
+  // Get 1st place teams from standings for COMPLETED seasons only (exclude current season)
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  
+
+  // Get current year to filter out ongoing season
+  const currentYear = new Date().getFullYear();
+
   const { data: standingsData, error: standingsError } = await supabase
     .from("standings")
     .select("strSeason, strTeam")
     .eq("idLeague", theSportsDBLeagueId)
     .eq("intRank", 1)
+    .lt("strSeason", String(currentYear)) // Only completed seasons (exclude current year)
     .order("strSeason", { ascending: false })
     .limit(15);
 
