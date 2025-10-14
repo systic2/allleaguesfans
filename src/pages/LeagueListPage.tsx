@@ -197,9 +197,9 @@ export default function LeagueListPage() {
 
         {/* 예정된 경기 */}
         <div className="mt-8">
-          <UpcomingFixtures 
-            title="🗓️ K리그 예정 경기" 
-            limit={8}
+          <UpcomingFixtures
+            title="🗓️ K리그 예정 경기"
+            limit={20}
             className="bg-slate-800"
             useTheSportsDB={true}
           />
