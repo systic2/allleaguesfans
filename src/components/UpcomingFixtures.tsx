@@ -66,11 +66,10 @@ export default function UpcomingFixtures({
   useTheSportsDB = false
 }: UpcomingFixturesProps) {
   
-  // PRODUCTION FIX: 운영환경에서는 TheSportsDB API 사용 비활성화
-  const isDevelopment = import.meta.env.DEV;
-  const safeUseTheSportsDB = useTheSportsDB && isDevelopment;
-  
-  console.log(`🔍 UpcomingFixtures: useTheSportsDB=${useTheSportsDB}, isDev=${isDevelopment}, safe=${safeUseTheSportsDB}`);
+  // TheSportsDB API를 사용하여 K리그 1+2 통합 경기 정보 제공
+  const safeUseTheSportsDB = useTheSportsDB;
+
+  console.log(`🔍 UpcomingFixtures: useTheSportsDB=${useTheSportsDB}, safe=${safeUseTheSportsDB}`);
   
   // TheSportsDB API를 사용하는 경우의 쿼리
   const theSportsDBQuery = useQuery({
@@ -170,12 +169,7 @@ export default function UpcomingFixtures({
         <h2 className="text-xl font-bold text-white">{title}</h2>
         {safeUseTheSportsDB && (
           <div className="text-slate-400 text-xs bg-green-600/20 px-2 py-1 rounded border border-green-600/30">
-            TheSportsDB
-          </div>
-        )}
-        {useTheSportsDB && !isDevelopment && (
-          <div className="text-slate-400 text-xs bg-blue-600/20 px-2 py-1 rounded border border-blue-600/30">
-            Supabase (Production Safe)
+            K리그 1+2 통합
           </div>
         )}
       </div>
