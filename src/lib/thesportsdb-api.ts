@@ -387,20 +387,31 @@ function transformTheSportsDBEvent(event: TheSportsDBEvent): TheSportsDBFixture 
 // API Functions
 
 /**
- * Fetch upcoming fixtures for a specific league
+ * Fetch upcoming fixtures for a specific league from database
  */
 export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
   try {
-    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
-      `/schedule/next/league/${leagueId}`
-    );
-    
-    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('idLeague', leagueId)
+      .gte('dateEvent', today)
+      .order('dateEvent', { ascending: true })
+      .limit(15);
+
+    if (error) {
+      console.error('Database error fetching league upcoming fixtures:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
       console.warn(`No upcoming fixtures data for league ${leagueId}`);
       return [];
     }
-    
-    return response.schedule.map(transformTheSportsDBEvent);
+
+    return data.map(transformTheSportsDBEvent);
   } catch (error) {
     console.error('Error fetching league upcoming fixtures:', error);
     return [];
@@ -408,20 +419,31 @@ export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<The
 }
 
 /**
- * Fetch previous/completed fixtures for a specific league
+ * Fetch previous/completed fixtures for a specific league from database
  */
 export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
   try {
-    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
-      `/schedule/previous/league/${leagueId}`
-    );
-    
-    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('idLeague', leagueId)
+      .lt('dateEvent', today)
+      .order('dateEvent', { ascending: false })
+      .limit(15);
+
+    if (error) {
+      console.error('Database error fetching league previous fixtures:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
       console.warn(`No previous fixtures data for league ${leagueId}`);
       return [];
     }
-    
-    return response.schedule.map(transformTheSportsDBEvent);
+
+    return data.map(transformTheSportsDBEvent);
   } catch (error) {
     console.error('Error fetching league previous fixtures:', error);
     return [];
@@ -429,20 +451,31 @@ export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<The
 }
 
 /**
- * Fetch upcoming fixtures for a specific team
+ * Fetch upcoming fixtures for a specific team from database
  */
 export async function fetchTeamUpcomingFixtures(teamId: string): Promise<TheSportsDBFixture[]> {
   try {
-    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
-      `/schedule/next/team/${teamId}`
-    );
-    
-    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .or(`idHomeTeam.eq.${teamId},idAwayTeam.eq.${teamId}`)
+      .gte('dateEvent', today)
+      .order('dateEvent', { ascending: true })
+      .limit(15);
+
+    if (error) {
+      console.error('Database error fetching team upcoming fixtures:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
       console.warn(`No upcoming fixtures data for team ${teamId}`);
       return [];
     }
-    
-    return response.schedule.map(transformTheSportsDBEvent);
+
+    return data.map(transformTheSportsDBEvent);
   } catch (error) {
     console.error('Error fetching team upcoming fixtures:', error);
     return [];
@@ -450,20 +483,31 @@ export async function fetchTeamUpcomingFixtures(teamId: string): Promise<TheSpor
 }
 
 /**
- * Fetch previous/completed fixtures for a specific team
+ * Fetch previous/completed fixtures for a specific team from database
  */
 export async function fetchTeamPreviousFixtures(teamId: string): Promise<TheSportsDBFixture[]> {
   try {
-    const response = await fetchTheSportsDB<TheSportsDBScheduleResponse>(
-      `/schedule/previous/team/${teamId}`
-    );
-    
-    if (!response || !response.schedule || !Array.isArray(response.schedule)) {
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .or(`idHomeTeam.eq.${teamId},idAwayTeam.eq.${teamId}`)
+      .lt('dateEvent', today)
+      .order('dateEvent', { ascending: false })
+      .limit(15);
+
+    if (error) {
+      console.error('Database error fetching team previous fixtures:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
       console.warn(`No previous fixtures data for team ${teamId}`);
       return [];
     }
-    
-    return response.schedule.map(transformTheSportsDBEvent);
+
+    return data.map(transformTheSportsDBEvent);
   } catch (error) {
     console.error('Error fetching team previous fixtures:', error);
     return [];
