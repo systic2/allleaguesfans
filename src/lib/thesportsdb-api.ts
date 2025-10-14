@@ -388,30 +388,41 @@ function transformTheSportsDBEvent(event: TheSportsDBEvent): TheSportsDBFixture 
 
 /**
  * Fetch upcoming fixtures for a specific league from database
+ * Returns only fixtures from the next upcoming round (lowest round number with "Not Started" status)
  */
 export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    // First, get all upcoming fixtures to find the next round
+    const { data: upcomingData, error: upcomingError } = await supabase
       .from('events')
       .select('*')
       .eq('idLeague', leagueId)
+      .eq('strStatus', 'Not Started')
       .gte('dateEvent', today)
-      .order('dateEvent', { ascending: true })
-      .limit(15);
+      .order('intRound', { ascending: true })
+      .order('dateEvent', { ascending: true });
 
-    if (error) {
-      console.error('Database error fetching league upcoming fixtures:', error);
+    if (upcomingError) {
+      console.error('Database error fetching league upcoming fixtures:', upcomingError);
       return [];
     }
 
-    if (!data || data.length === 0) {
+    if (!upcomingData || upcomingData.length === 0) {
       console.warn(`No upcoming fixtures data for league ${leagueId}`);
       return [];
     }
 
-    return data.map(transformTheSportsDBEvent);
+    // Find the lowest round number (next upcoming round)
+    const nextRound = upcomingData[0].intRound;
+
+    // Filter to only include fixtures from the next round
+    const nextRoundFixtures = upcomingData.filter(
+      (fixture) => fixture.intRound === nextRound
+    );
+
+    return nextRoundFixtures.map(transformTheSportsDBEvent);
   } catch (error) {
     console.error('Error fetching league upcoming fixtures:', error);
     return [];
