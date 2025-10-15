@@ -304,7 +304,7 @@ export type HistoricalChampion = {
   champion_logo: string | null;
 };
 
-// Since top_scorers table doesn't exist, return empty arrays
+// Deprecated: Use fetchTopScorersStats and fetchTopAssistersStats instead
 export async function fetchTopScorers(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopScorer[]> {
   console.warn("top_scorers table not found, returning empty array");
   return [];
@@ -1309,7 +1309,7 @@ export interface TeamPlayer {
  * @returns Array of team players
  */
 export async function fetchTeamPlayers(idTeam: string): Promise<TeamPlayer[]> {
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('players')
     .select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber')
     .eq('idTeam', idTeam)
@@ -1317,6 +1317,106 @@ export async function fetchTeamPlayers(idTeam: string): Promise<TeamPlayer[]> {
 
   if (error) {
     console.error('Error fetching team players:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Player Statistics Interfaces
+ */
+export interface PlayerStatistics {
+  idPlayer: string;
+  strPlayer: string;
+  idTeam: string;
+  strTeam: string;
+  idLeague: string;
+  strSeason: string;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  appearances: number;
+  own_goals: number;
+  penalties_scored: number;
+  goals_per_game?: number;
+  assists_per_game?: number;
+}
+
+/**
+ * Fetch top scorers for a league from player_statistics
+ * @param idLeague - League ID (TheSportsDB format string like '4689')
+ * @param season - Season year (e.g., '2025')
+ * @param limit - Maximum number of results
+ * @returns Array of top scorers with statistics
+ */
+export async function fetchTopScorersStats(
+  idLeague: string,
+  season: string,
+  limit: number = 10
+): Promise<PlayerStatistics[]> {
+  const { data, error } = await supabase
+    .from('top_scorers')
+    .select('*')
+    .eq('idLeague', idLeague)
+    .eq('strSeason', season)
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching top scorers:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch top assisters for a league from player_statistics
+ * @param idLeague - League ID (TheSportsDB format string like '4689')
+ * @param season - Season year (e.g., '2025')
+ * @param limit - Maximum number of results
+ * @returns Array of top assisters with statistics
+ */
+export async function fetchTopAssistersStats(
+  idLeague: string,
+  season: string,
+  limit: number = 10
+): Promise<PlayerStatistics[]> {
+  const { data, error } = await supabase
+    .from('top_assisters')
+    .select('*')
+    .eq('idLeague', idLeague)
+    .eq('strSeason', season)
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching top assisters:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch all player statistics for a league
+ * @param idLeague - League ID (TheSportsDB format)
+ * @param season - Season year (e.g., '2025')
+ * @returns Array of player statistics
+ */
+export async function fetchPlayerStatistics(
+  idLeague: string,
+  season: string
+): Promise<PlayerStatistics[]> {
+  const { data, error } = await supabase
+    .from('player_statistics')
+    .select('*')
+    .eq('idLeague', idLeague)
+    .eq('strSeason', season)
+    .order('goals', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching player statistics:', error);
     return [];
   }
 

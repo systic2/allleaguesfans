@@ -5,6 +5,7 @@ import { useState } from "react";
 import RoundBasedFixturesSection from "@/components/RoundBasedFixturesSection";
 import TheSportsDBFixturesSection from "@/components/TheSportsDBFixturesSection";
 import StandingsSection from "@/components/EnhancedStandingsSection";
+import LeagueTopScorers from "@/components/LeagueTopScorers";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
@@ -496,13 +497,20 @@ export default function LeaguePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 왼쪽: 하이브리드 순위표 */}
-          <div className="lg:col-span-2">
-            <StandingsSection 
+          <div className="lg:col-span-2 space-y-6">
+            <StandingsSection
               standings={standings}
               isLoading={standingsLoading}
               error={standingsError}
               leagueSlug={slug}
               season={league.season}
+            />
+
+            {/* 득점왕 & 도움왕 */}
+            <LeagueTopScorers
+              idLeague={league.id === 249276 ? '4689' : league.id === 250127 ? '4822' : String(league.id)}
+              season={String(league.season)}
+              limit={5}
             />
           </div>
 
