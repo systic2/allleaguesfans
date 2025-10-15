@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import type { TeamFromDB, TeamStandings, EventFromDB, EventLiveData, FormResult } from "@/domain/types";
 import TeamLineup from "@/components/TeamLineup";
+import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
 
 const CURRENT_SEASON = '2025';
@@ -251,6 +252,9 @@ export default function TeamPageDB() {
                 />
               </section>
             )}
+
+            {/* Team Roster Section */}
+            <TeamRoster idTeam={teamIdParam} teamName={teamData.strTeam} />
 
             {/* Recent Fixtures */}
             {eventsLoading ? (

@@ -24,7 +24,13 @@
       "Bash(SEASON_YEAR=2025 npx tsx scripts/sync-thesportsdb-events.ts)",
       "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-events-status.ts)",
       "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-round-distribution.ts)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-upcoming-fixtures.ts)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/test-fixed-api.ts)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/test-next-round-filter.ts)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/import-team-players.ts)",
+      "Bash(VITE_SUPABASE_URL=$VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY npx tsx scripts/check-players-schema.ts)",
+      "Bash(curl -s \"https://www.thesportsdb.com/api/v1/json/460915/lookup_all_players.php?id=138107\")"
     ],
     "deny": [],
     "ask": []

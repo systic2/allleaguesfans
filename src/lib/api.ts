@@ -1289,3 +1289,36 @@ export async function fetchTeamRecentEventsData(
 
   return data || [];
 }
+
+/**
+ * Team Player Information Interface
+ * Matches actual database schema: idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber
+ */
+export interface TeamPlayer {
+  idPlayer: string;
+  strPlayer: string;
+  strTeam: string;
+  idTeam: string;
+  strPosition: string | null;
+  strNumber: string | null;
+}
+
+/**
+ * Fetch team players (squad/roster) from database
+ * @param idTeam - Team ID (TheSportsDB format)
+ * @returns Array of team players
+ */
+export async function fetchTeamPlayers(idTeam: string): Promise<TeamPlayer[]> {
+  const { data, error } = await supabase
+    .from('players')
+    .select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber')
+    .eq('idTeam', idTeam)
+    .order('strNumber', { ascending: true, nullsFirst: false });
+
+  if (error) {
+    console.error('Error fetching team players:', error);
+    return [];
+  }
+
+  return data || [];
+}
