@@ -105,7 +105,34 @@ async function syncPlayerStats() {
 
     // 이벤트 처리
     for (const ev of highlightlyEvents) {
-      if (!ev.playerId || !ev.player) continue; // Skip if no player ID or name
+      // Assist는 골 넣은 선수의 playerId가 없어도 처리 가능하므로 먼저 체크
+      // Assist 처리 (골 이벤트에만 적용)
+      if ((ev.type === 'Goal' || ev.type === 'Penalty') && ev.assist && ev.assistingPlayerId) {
+        const assistId = ev.assistingPlayerId.toString();
+        if (!playerStatsMap.has(assistId)) {
+          playerStatsMap.set(assistId, {
+            player_id: assistId,
+            player_name: ev.assist,
+            team_name: ev.team.name,
+            goals: 0,
+            assists: 0,
+            yellow_cards: 0,
+            red_cards: 0,
+            appearances: new Set(),
+          });
+        }
+
+        // Debug: Yago의 도움만 로그
+        if (assistId === '5767335') {
+          console.log(`      🎯 Yago 도움 +1: ${ev.player || 'unknown'} 골 (${ev.time}') → 현재 도움: ${playerStatsMap.get(assistId)!.assists + 1}`);
+        }
+
+        playerStatsMap.get(assistId)!.assists++;
+        playerStatsMap.get(assistId)!.appearances.add(matchId);
+      }
+
+      // 골을 넣은 선수의 정보가 없으면 나머지 처리는 건너뛰기
+      if (!ev.playerId || !ev.player) continue;
 
       const playerId = ev.playerId.toString();
 
@@ -131,25 +158,6 @@ async function syncPlayerStats() {
         stats.yellow_cards++;
       } else if (ev.type === 'Red Card') {
         stats.red_cards++;
-      }
-
-      // Assist 처리
-      if (ev.assist && ev.assistingPlayerId) {
-        const assistId = ev.assistingPlayerId.toString();
-        if (!playerStatsMap.has(assistId)) {
-          playerStatsMap.set(assistId, {
-            player_id: assistId,
-            player_name: ev.assist,
-            team_name: ev.team.name,
-            goals: 0,
-            assists: 0,
-            yellow_cards: 0,
-            red_cards: 0,
-            appearances: new Set(),
-          });
-        }
-        playerStatsMap.get(assistId)!.assists++;
-        playerStatsMap.get(assistId)!.appearances.add(matchId);
       }
     }
 
