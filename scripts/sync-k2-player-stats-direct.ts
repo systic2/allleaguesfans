@@ -107,8 +107,11 @@ async function syncPlayerStats() {
     for (const ev of highlightlyEvents) {
       // Assist는 골 넣은 선수의 playerId가 없어도 처리 가능하므로 먼저 체크
       // Assist 처리 (골 이벤트에만 적용)
-      if ((ev.type === 'Goal' || ev.type === 'Penalty') && ev.assist && ev.assistingPlayerId) {
-        const assistId = ev.assistingPlayerId.toString();
+      if ((ev.type === 'Goal' || ev.type === 'Penalty') && ev.assist && ev.assist !== 'null') {
+        // assistingPlayerId가 있으면 사용, 없으면 assist 이름 기반으로 고유 ID 생성
+        const assistId = ev.assistingPlayerId
+          ? ev.assistingPlayerId.toString()
+          : `name_${ev.assist.replace(/\s+/g, '_')}`;
         if (!playerStatsMap.has(assistId)) {
           playerStatsMap.set(assistId, {
             player_id: assistId,

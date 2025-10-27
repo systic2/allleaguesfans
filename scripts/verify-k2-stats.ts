@@ -35,10 +35,13 @@ async function verifyK2Stats() {
       .eq('strSeason', '2025');
 
     if (data && data.length > 0) {
+      // 여러 레코드가 있는 경우 합산
+      const totalGoals = data.reduce((sum, p) => sum + (p.goals || 0), 0);
       const playerData = data[0];
-      const diff = player.official - playerData.goals;
+      const diff = player.official - totalGoals;
       const status = diff === 0 ? '✅' : '❌';
-      console.log(`| ${status} ${playerData.strPlayer} | ${playerData.strTeam} | ${player.official} | ${playerData.goals} | ${diff > 0 ? '+' : ''}${diff} |`);
+      const recordInfo = data.length > 1 ? ` (${data.length}개 레코드 합산)` : '';
+      console.log(`| ${status} ${playerData.strPlayer} | ${playerData.strTeam} | ${player.official} | ${totalGoals}${recordInfo} | ${diff > 0 ? '+' : ''}${diff} |`);
     } else {
       console.log(`| ❌ ${player.name} | ${player.team} | ${player.official} | - | 찾을 수 없음 |`);
     }
@@ -47,7 +50,7 @@ async function verifyK2Stats() {
   console.log('\n\n🔍 K League 2 도움왕 기록 검증\n');
 
   const officialAssisters = [
-    { name: 'Euler', team: 'Ansan Greeners', official: 10 },
+    { name: 'Euller', team: 'Seoul E-Land FC', official: 10 },
     { name: 'Gerso', team: 'Incheon United', official: 10 },
     { name: 'Valdivia', team: 'Jeonnam Dragons', official: 9 },
     { name: 'Alberti', team: 'Jeonnam Dragons', official: 8 },
@@ -70,10 +73,13 @@ async function verifyK2Stats() {
       .eq('strSeason', '2025');
 
     if (data && data.length > 0) {
+      // 여러 레코드가 있는 경우 합산
+      const totalAssists = data.reduce((sum, p) => sum + (p.assists || 0), 0);
       const playerData = data[0];
-      const diff = player.official - playerData.assists;
+      const diff = player.official - totalAssists;
       const status = diff === 0 ? '✅' : '❌';
-      console.log(`| ${status} ${playerData.strPlayer} | ${playerData.strTeam} | ${player.official} | ${playerData.assists} | ${diff > 0 ? '+' : ''}${diff} |`);
+      const recordInfo = data.length > 1 ? ` (${data.length}개 레코드 합산)` : '';
+      console.log(`| ${status} ${playerData.strPlayer} | ${playerData.strTeam} | ${player.official} | ${totalAssists}${recordInfo} | ${diff > 0 ? '+' : ''}${diff} |`);
     } else {
       console.log(`| ❌ ${player.name} | ${player.team} | ${player.official} | - | 찾을 수 없음 |`);
     }
