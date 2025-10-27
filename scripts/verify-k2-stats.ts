@@ -13,7 +13,7 @@ async function verifyK2Stats() {
   console.log('🔍 K League 2 득점왕 기록 검증\n');
 
   const officialScorers = [
-    { name: 'Mugosa', team: 'Incheon United', official: 19 },
+    { name: 'Mugosa', team: 'Incheon United', official: 20 },
     { name: 'Ruiz', team: 'Seongnam FC', official: 16 },
     { name: 'Valdivia', team: 'Jeonnam Dragons', official: 14 },
     { name: 'Ilyuchenko', team: 'Suwon Bluewings', official: 13 },
@@ -50,15 +50,15 @@ async function verifyK2Stats() {
   console.log('\n\n🔍 K League 2 도움왕 기록 검증\n');
 
   const officialAssisters = [
-    { name: 'Euller', team: 'Seoul E-Land FC', official: 10 },
+    { name: 'Euller', team: 'Seoul E-Land FC', official: 11 },
     { name: 'Gerso', team: 'Incheon United', official: 10 },
     { name: 'Valdivia', team: 'Jeonnam Dragons', official: 9 },
     { name: 'Alberti', team: 'Jeonnam Dragons', official: 8 },
     { name: 'Shin Jae-Won', team: 'Seongnam FC', official: 8 },
     { name: 'Villero', team: 'Busan I Park', official: 7 },
+    { name: 'Lee Ki-Je', team: 'Suwon Bluewings', official: 7 },
     { name: 'Ronan', team: 'Jeonnam Dragons', official: 6 },
     { name: 'Han Kyo-Won', team: 'Asan Mugunghwa', official: 6 },
-    { name: 'Lee Ki-Je', team: 'Suwon Bluewings', official: 6 },
   ];
 
   console.log('| 선수 | 팀 | K League 공식 | 우리 데이터 | 차이 |');
