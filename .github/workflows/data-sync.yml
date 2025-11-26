@@ -74,7 +74,7 @@ jobs:
         
         # K League Standings Import
         echo "📊 Step 1: Syncing standings data..."
-        if npx tsx scripts/sync-kleague-final.ts; then
+        if pnpm tsx scripts/sync/orchestrator.ts; then
           echo "✅ K League standings sync completed successfully"
         else
           echo "❌ K League standings sync failed"
@@ -110,7 +110,7 @@ jobs:
         
         # Comprehensive K League data synchronization
         echo "📊 Step 1: Full standings sync..."
-        if npx tsx scripts/sync-kleague-final.ts; then
+        if pnpm tsx scripts/sync/orchestrator.ts; then
           echo "✅ K League standings full sync completed"
         else
           echo "❌ K League standings full sync failed"
@@ -145,7 +145,7 @@ jobs:
         
         # Manual execution - Complete K League data sync
         echo "📊 Step 1: Manual standings sync..."
-        if npx tsx scripts/sync-kleague-final.ts; then
+        if pnpm tsx scripts/sync/orchestrator.ts; then
           echo "✅ K League standings sync completed"
         else
           echo "❌ K League standings sync failed"

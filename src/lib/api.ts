@@ -139,60 +139,41 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
 }
 
 export async function fetchLeagueStandings(leagueSlug: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStanding[]> {
-  // PURE TheSportsDB Schema - slug에서 직접 TheSportsDB ID 매핑
-  const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : leagueSlug === 'k-league-2' ? '4822' : leagueSlug.replace('league-', '');
-  
+  // slug에서 내부 leagueId를 TheSportsDB ID로 변환 (기존 로직 유지)
+  let theSportsDBLeagueId: string;
+  if (leagueSlug === 'k-league-1') {
+    theSportsDBLeagueId = '4689';
+  } else if (leagueSlug === 'k-league-2') {
+    theSportsDBLeagueId = '4822';
+  } else {
+    theSportsDBLeagueId = leagueSlug.replace('league-', '');
+  }
+
   const { data, error } = await supabase
-    .from("standings")
-    .select(`
-      idStanding,
-      intRank,
-      idTeam,
-      strTeam,
-      strBadge,
-      idLeague,
-      strLeague,
-      strSeason,
-      strForm,
-      strDescription,
-      intPlayed,
-      intWin,
-      intLoss,
-      intDraw,
-      intGoalsFor,
-      intGoalsAgainst,
-      intGoalDifference,
-      intPoints,
-      created_at
-    `)
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("strSeason", String(season))
-    .order("intRank", { ascending: true });
+    .from("standings_v2") // <-- 변경: standings_v2 테이블 사용
+    .select(`*`) // <-- 변경: 모든 컬럼을 선택 (Standing 도메인 모델과 일치)
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .order("rank", { ascending: true }); // <-- 변경: rank 컬럼으로 정렬
 
   if (error) throw error;
 
-  // 문자열로 저장된 intRank를 숫자로 변환해서 정렬
-  const sortedData = (data ?? []).sort((a: any, b: any) => {
-    const rankA = parseInt(a.intRank) || 0;
-    const rankB = parseInt(b.intRank) || 0;
-    return rankA - rankB;
-  });
-
-  return sortedData.map((standing: any) => ({
-    team_id: Number(standing.idTeam || 0),
-    team_name: String(standing.strTeam || "Unknown"),
-    short_name: null, // 별도로 가져와야 함
-    crest_url: standing.strBadge, // TheSportsDB 팀 배지 URL
-    rank: Number(standing.intRank || 0),
-    points: Number(standing.intPoints || 0),
-    played: Number(standing.intPlayed || 0),
-    win: Number(standing.intWin || 0),
-    draw: Number(standing.intDraw || 0),
-    lose: Number(standing.intLoss || 0),
-    goals_for: Number(standing.intGoalsFor || 0),
-    goals_against: Number(standing.intGoalsAgainst || 0),
-    goals_diff: Number(standing.intGoalDifference || 0),
-    form: standing.strForm, // TheSportsDB 폼 데이터 (예: "DLWWL")
+  // standings_v2 (Standing 도메인 모델)의 데이터를 TeamStanding 타입으로 변환
+  return (data ?? []).map((standing: any) => ({
+    team_id: Number(standing.teamId || 0), // domain.teamId -> TeamStanding.team_id (number)
+    team_name: String(standing.teamName || "Unknown"),
+    short_name: null, // domain 모델에 short_name이 없으므로 null
+    crest_url: standing.teamBadgeUrl, // domain.teamBadgeUrl -> TeamStanding.crest_url
+    rank: Number(standing.rank || 0),
+    points: Number(standing.points || 0),
+    played: Number(standing.gamesPlayed || 0), // domain.gamesPlayed -> TeamStanding.played
+    win: Number(standing.wins || 0),
+    draw: Number(standing.draws || 0),
+    lose: Number(standing.losses || 0), // domain.losses -> TeamStanding.lose
+    goals_for: Number(standing.goalsFor || 0),
+    goals_against: Number(standing.goalsAgainst || 0),
+    goals_diff: Number(standing.goalDifference || 0), // domain.goalDifference -> TeamStanding.goals_diff
+    form: standing.form,
   }));
 }
 
@@ -201,29 +182,26 @@ export async function fetchLeagueTeams(leagueId: number, season: number = Number
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   
   const { data, error } = await supabase
-    .from("standings")
+    .from("standings_v2") // <-- 변경: standings_v2 테이블 사용
     .select(`
-      idStanding,
-      idTeam,
-      strTeam,
-      strBadge,
-      idLeague,
-      strSeason
+      teamId,       // <-- 변경: domain.teamId
+      teamName,     // <-- 변경: domain.teamName
+      teamBadgeUrl  // <-- 변경: domain.teamBadgeUrl
     `)
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("strSeason", String(season));
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("season", String(season)); // <-- 변경: season 컬럼 사용
 
   if (error) throw error;
 
   return (data ?? []).map((item: any) => ({
-    id: Number(item.idTeam || 0),
-    name: String(item.strTeam || "Unknown"),
-    short_name: null, // 별도 teams 테이블에서 가져와야 함
-    crest_url: item.strBadge, // TheSportsDB 팀 배지 URL
-    logo_url: item.strBadge, // 동일한 배지 URL 사용
-    badge_url: item.strBadge,
+    id: Number(item.teamId || 0), // domain.teamId -> TeamLite.id
+    name: String(item.teamName || "Unknown"), // domain.teamName -> TeamLite.name
+    short_name: null, // domain 모델에 short_name이 없으므로 null
+    crest_url: item.teamBadgeUrl, // domain.teamBadgeUrl -> TeamLite.crest_url
+    logo_url: item.teamBadgeUrl, // 동일한 배지 URL 사용
+    badge_url: item.teamBadgeUrl,
     banner_url: null,
-    primary_source: "thesportsdb",
+    primary_source: "thesportsdb", // 이 정보는 standings_v2에 없으므로 고정
   }));
 }
 
@@ -236,15 +214,15 @@ export type LeagueStats = {
 };
 
 export async function fetchLeagueStats(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<LeagueStats> {
-  // PURE TheSportsDB Schema - 순수 원본 JSON 키값 사용
+  // PURE TheSportsDB Schema - 순수 원본 JSON 키값 사용 (TheSportsDB ID 매핑은 기존 로직 유지)
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   
   const [standingsResult, fixturesResult] = await Promise.all([
     supabase
-      .from("standings")
-      .select("idStanding, intGoalsFor, intGoalsAgainst, intPlayed")
-      .eq("idLeague", theSportsDBLeagueId)
-      .eq("strSeason", String(season)),
+      .from("standings_v2") // <-- 변경: standings_v2 테이블 사용
+      .select("leagueId, goalsFor, goalsAgainst, gamesPlayed") // <-- 변경: domain 모델의 필드명 사용
+      .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+      .eq("season", String(season)), // <-- 변경: season 컬럼 사용
     supabase
       .from("fixtures")
       .select("home_score, away_score")
@@ -258,18 +236,18 @@ export async function fetchLeagueStats(leagueId: number, season: number = Number
   const completedMatches = fixturesResult.data || [];
   const totalMatches = completedMatches.length;
   
-  // TheSportsDB 순위 데이터에서 골 통계 계산
+  // standings_v2 (domain 모델) 데이터에서 골 통계 계산
   const totalGoalsFromStandings = standingsResult.data?.reduce((sum, team) => 
-    sum + (parseInt(team.intGoalsFor) || 0), 0) || 0;
+    sum + (team.goalsFor || 0), 0) || 0; // <-- 변경: goalsFor 필드 사용
   
   // Fixtures가 없는 경우 standings 데이터 사용
   const totalGoals = totalMatches > 0 
     ? completedMatches.reduce((sum, match) => sum + (match.home_score || 0) + (match.away_score || 0), 0)
     : totalGoalsFromStandings;
 
-  // 매치 수 계산 (TheSportsDB 데이터 기반)
+  // 매치 수 계산 (standings_v2 데이터 기반)
   const avgMatchesPerTeam = standingsResult.data && standingsResult.data.length > 0 
-    ? standingsResult.data.reduce((sum, team) => sum + (parseInt(team.intPlayed) || 0), 0) / standingsResult.data.length
+    ? standingsResult.data.reduce((sum, team) => sum + (team.gamesPlayed || 0), 0) / standingsResult.data.length // <-- 변경: gamesPlayed 필드 사용
     : 0;
 
   return {
@@ -304,31 +282,55 @@ export type HistoricalChampion = {
   champion_logo: string | null;
 };
 
-// Deprecated: Use fetchTopScorersStats and fetchTopAssistersStats instead
+// Wrapper functions for backward compatibility - delegates to new player_statistics functions
 export async function fetchTopScorers(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopScorer[]> {
-  console.warn("top_scorers table not found, returning empty array");
-  return [];
+  // Convert API-Hub league ID to TheSportsDB league ID
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+
+  // Fetch from player_statistics via top_scorers view
+  const stats = await fetchTopScorersStats(theSportsDBLeagueId, String(season), limit);
+
+  // Convert PlayerStatistics to TopScorer format
+  return stats.map(stat => ({
+    player_name: stat.strPlayer,
+    team_name: stat.strTeam || '',
+    goals: stat.goals || 0,
+    assists: stat.assists || 0,
+    matches: stat.appearances || 0
+  }));
 }
 
 export async function fetchTopAssists(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopAssist[]> {
-  console.warn("top_assists table not found, returning empty array");
-  return [];
+  // Convert API-Hub league ID to TheSportsDB league ID
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+
+  // Fetch from player_statistics via top_assisters view
+  const stats = await fetchTopAssistersStats(theSportsDBLeagueId, String(season), limit);
+
+  // Convert PlayerStatistics to TopAssist format
+  return stats.map(stat => ({
+    player_name: stat.strPlayer,
+    team_name: stat.strTeam || '',
+    assists: stat.assists || 0,
+    goals: stat.goals || 0,
+    matches: stat.appearances || 0
+  }));
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
-  // Get 1st place teams from standings for COMPLETED seasons only (exclude current season)
+  // Get 1st place teams from standings_v2 for COMPLETED seasons only (exclude current season)
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
 
   // Get current year to filter out ongoing season
   const currentYear = new Date().getFullYear();
 
   const { data: standingsData, error: standingsError } = await supabase
-    .from("standings")
-    .select("strSeason, strTeam")
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("intRank", 1)
-    .lt("strSeason", String(currentYear)) // Only completed seasons (exclude current year)
-    .order("strSeason", { ascending: false })
+    .from("standings_v2") // <-- 변경: standings_v2 테이블 사용
+    .select("season, teamName") // <-- 변경: domain 모델의 필드명 사용
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("rank", 1) // <-- 변경: intRank 대신 rank 컬럼 사용
+    .lt("season", String(currentYear)) // <-- 변경: strSeason 대신 season 컬럼 사용
+    .order("season", { ascending: false }) // <-- 변경: season 컬럼으로 정렬
     .limit(15);
 
   if (standingsError) {
@@ -340,11 +342,11 @@ export async function fetchHistoricalChampions(leagueId: number): Promise<Histor
     return [];
   }
 
-  // TheSportsDB schema provides team data directly in standings
+  // standings_v2 (domain 모델)의 데이터를 HistoricalChampion 형식으로 변환
   return standingsData.map((standing: any) => ({
-    season_year: Number(standing.strSeason || 0),
-    champion_name: String(standing.strTeam || "Unknown"),
-    champion_logo: null, // Not available in current schema
+    season_year: Number(standing.season || 0), // domain.season -> HistoricalChampion.season_year
+    champion_name: String(standing.teamName || "Unknown"), // domain.teamName -> HistoricalChampion.champion_name
+    champion_logo: null, // domain 모델에 champion_logo 없음 (현재 스키마에 없음)
   }));
 }
 

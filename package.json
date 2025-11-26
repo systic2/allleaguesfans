@@ -17,7 +17,8 @@
     "git:cleanup": "npx tsx scripts/git-branch-cleanup.ts",
     "git:cleanup:execute": "npx tsx scripts/git-branch-cleanup.ts --no-dry-run",
     "git:cleanup:manual": "bash scripts/git-manual-cleanup.sh",
-    "sync:check": "npx tsx scripts/final-verification.ts"
+    "sync:check": "npx tsx scripts/final-verification.ts",
+    "test:integration": "npx tsx tests/integration/data-integrity.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
