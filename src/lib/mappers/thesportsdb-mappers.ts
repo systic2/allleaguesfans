@@ -137,8 +137,35 @@ export function mapTheSportsDBEventToDomain(rawEvent: TheSportsDBEvent): Match {
     homeScore: safeParseInt(rawEvent.intHomeScore),
     awayScore: safeParseInt(rawEvent.intAwayScore),
     venueName: rawEvent.strVenue || undefined,
-    sourceIds: {
-      thesportsdb: rawEvent.idEvent,
-    },
-  };
-}
+        sourceIds: {
+          thesportsdb: rawEvent.idEvent,
+        },
+      };
+    }
+    
+    // --- Team Mapping ---
+    
+    // This interface is based on the structure from TheSportsDB API
+    export interface TheSportsDBTeam {
+      idTeam: string;
+      strTeam: string;
+      strBadge?: string;
+      // Add other fields as needed for mapping
+    }
+    
+    /**
+     * Maps a raw team object from TheSportsDB API to our standardized `Team` domain model.
+     * @param rawTeam The raw team object from TheSportsDB.
+     * @returns A standardized `Team` object.
+     */
+    export function mapTheSportsDBTeamToDomain(rawTeam: TheSportsDBTeam): Team {
+      return {
+        id: rawTeam.idTeam,
+        name: rawTeam.strTeam,
+        badgeUrl: rawTeam.strBadge || undefined,
+        sourceIds: {
+          thesportsdb: rawTeam.idTeam,
+        },
+      };
+    }
+    

@@ -1,12 +1,20 @@
 // src/lib/database-fixtures-api.ts
-// REFACTORED VERSION: This file now queries the new 'events_v2' table
-// and uses the standardized 'Match' domain model.
+// REFACTORED VERSION: This file now queries 'events_v2' and JOINS with 'teams_v2'.
 import { supabase } from './supabaseClient';
-import type { Match } from '@/types/domain';
+import type { Match, Team } from '@/types/domain';
 
-// The return type can now be our standard Match model or a specific one if needed.
-// For simplicity, we'll have the functions return Match[] directly.
-export type DatabaseFixture = Match;
+// The fixture type now includes the nested team objects
+export interface DatabaseFixture extends Match {
+  homeTeam: Team | null;
+  awayTeam: Team | null;
+}
+
+const V2_FIXTURE_SELECT_QUERY = `
+  *,
+  homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+  awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+`;
+
 
 /**
  * Get recent completed matches from the latest completed round using events_v2.
@@ -16,7 +24,7 @@ export async function fetchRecentMatches(
   season: number = 2025,
   limit: number = 10
 ): Promise<DatabaseFixture[]> {
-  console.log(`[v2] 🔍 Fetching recent matches for ${leagueSlug}, season ${season}`);
+  console.log(`[v2 JOIN] 🔍 Fetching recent matches for ${leagueSlug}, season ${season}`);
   
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
@@ -39,11 +47,11 @@ export async function fetchRecentMatches(
     }
     const latestRound = Math.max(...uniqueRounds);
     
-    console.log(`[v2] 📅 Latest completed round: ${latestRound}`);
+    console.log(`[v2 JOIN] 📅 Latest completed round: ${latestRound}`);
     
     const { data, error } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(V2_FIXTURE_SELECT_QUERY)
       .eq('leagueId', theSportsDBLeagueId)
       .eq('season', String(season))
       .eq('status', 'FINISHED')
@@ -53,11 +61,11 @@ export async function fetchRecentMatches(
       
     if (error) throw error;
     
-    console.log(`[v2] ✅ Found ${data?.length || 0} recent matches from round ${latestRound}`);
+    console.log(`[v2 JOIN] ✅ Found ${data?.length || 0} recent matches from round ${latestRound}`);
     return data || [];
     
   } catch (error) {
-    console.error('❌ [v2] Error fetching recent matches:', error);
+    console.error('❌ [v2 JOIN] Error fetching recent matches:', error);
     throw error;
   }
 }
@@ -70,7 +78,7 @@ export async function fetchUpcomingMatches(
   season: number = 2025,
   limit: number = 10
 ): Promise<DatabaseFixture[]> {
-  console.log(`[v2] 🔍 Fetching upcoming matches for ${leagueSlug}, season ${season}`);
+  console.log(`[v2 JOIN] 🔍 Fetching upcoming matches for ${leagueSlug}, season ${season}`);
   
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
@@ -93,11 +101,11 @@ export async function fetchUpcomingMatches(
     }
     const nextRound = Math.min(...uniqueUpcomingRounds);
     
-    console.log(`[v2] 📅 Next upcoming round: ${nextRound}`);
+    console.log(`[v2 JOIN] 📅 Next upcoming round: ${nextRound}`);
     
     const { data, error } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(V2_FIXTURE_SELECT_QUERY)
       .eq('leagueId', theSportsDBLeagueId)
       .eq('season', String(season))
       .in('status', ['SCHEDULED', 'POSTPONED'])
@@ -107,11 +115,11 @@ export async function fetchUpcomingMatches(
       
     if (error) throw error;
     
-    console.log(`[v2] ✅ Found ${data?.length || 0} upcoming matches from round ${nextRound}`);
+    console.log(`[v2 JOIN] ✅ Found ${data?.length || 0} upcoming matches from round ${nextRound}`);
     return data || [];
     
   } catch (error) {
-    console.error('❌ [v2] Error fetching upcoming matches:', error);
+    console.error('❌ [v2 JOIN] Error fetching upcoming matches:', error);
     throw error;
   }
 }
@@ -124,7 +132,7 @@ export async function fetchMatchesByRound(
   round: number,
   season: number = 2025
 ): Promise<DatabaseFixture[]> {
-  console.log(`[v2] 🔍 Fetching round ${round} matches for ${leagueSlug}, season ${season}`);
+  console.log(`[v2 JOIN] 🔍 Fetching round ${round} matches for ${leagueSlug}, season ${season}`);
   
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
@@ -133,7 +141,7 @@ export async function fetchMatchesByRound(
   try {
     const { data, error } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(V2_FIXTURE_SELECT_QUERY)
       .eq('leagueId', theSportsDBLeagueId)
       .eq('season', String(season))
       .eq('round', String(round))
@@ -141,11 +149,11 @@ export async function fetchMatchesByRound(
       
     if (error) throw error;
     
-    console.log(`[v2] ✅ Found ${data?.length || 0} matches in round ${round}`);
+    console.log(`[v2 JOIN] ✅ Found ${data?.length || 0} matches in round ${round}`);
     return data || [];
     
   } catch (error) {
-    console.error(`❌ [v2] Error fetching round ${round} matches:`, error);
+    console.error(`❌ [v2 JOIN] Error fetching round ${round} matches:`, error);
     throw error;
   }
 }

@@ -1,7 +1,13 @@
 // src/lib/thesportsdb-api.ts
 // REFACTORED VERSION: Uses events_v2 and Match domain model
 import { supabase } from "@/lib/supabaseClient";
-import type { Match } from "@/types/domain"; // Import the Match domain model
+import type { Match, Team } from "@/types/domain"; // Import the Match and Team domain models
+
+// Define a new type for a Match with joined team data
+export type MatchWithTeams = Match & {
+  homeTeam: Team | null;
+  awayTeam: Team | null;
+};
 
 // ========================================
 // TheSportsDB Native Types (No Transformation)
@@ -263,20 +269,24 @@ async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
  * Fetch upcoming fixtures for a specific league from events_v2
  * Returns only fixtures from the next upcoming round (lowest round number with "SCHEDULED" status)
  */
-export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Match[]> {
+export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<MatchWithTeams[]> {
   try {
     const today = new Date().toISOString();
 
     const { data: upcomingData, error: upcomingError } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(`
+        *,
+        homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+        awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+      `)
       .eq('leagueId', leagueId)
-      .in('status', ['SCHEDULED', 'POSTPONED']) // Use Match domain status
+      .in('status', ['SCHEDULED', 'POSTPONED'])
       .gte('date', today)
       .order('date', { ascending: true });
 
     if (upcomingError) {
-      console.error('Database error fetching league upcoming fixtures from events_v2:', upcomingError);
+      console.error('Database error fetching league upcoming fixtures with teams:', upcomingError);
       return [];
     }
 
@@ -285,17 +295,14 @@ export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Mat
       return [];
     }
 
-    // Find the lowest round number (next upcoming round)
     const nextRoundNumber = upcomingData[0].round;
-
-    // Filter to only include fixtures from the next round
     const nextRoundFixtures = upcomingData.filter(
       (match) => match.round === nextRoundNumber
     );
 
-    return nextRoundFixtures || []; // Already Match[] type
+    return nextRoundFixtures as MatchWithTeams[];
   } catch (error) {
-    console.error('Error fetching league upcoming fixtures from events_v2:', error);
+    console.error('Error fetching league upcoming fixtures with teams:', error);
     return [];
   }
 }
@@ -303,21 +310,25 @@ export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Mat
 /**
  * Fetch previous/completed fixtures for a specific league from events_v2
  */
-export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<Match[]> {
+export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<MatchWithTeams[]> {
   try {
     const today = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(`
+        *,
+        homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+        awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+      `)
       .eq('leagueId', leagueId)
-      .eq('status', 'FINISHED') // Use Match domain status
+      .eq('status', 'FINISHED')
       .lt('date', today)
       .order('date', { ascending: false })
       .limit(15);
 
     if (error) {
-      console.error('Database error fetching league previous fixtures from events_v2:', error);
+      console.error('Database error fetching league previous fixtures with teams:', error);
       return [];
     }
 
@@ -326,9 +337,9 @@ export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<Mat
       return [];
     }
 
-    return data || []; // Already Match[] type
+    return data as MatchWithTeams[];
   } catch (error) {
-    console.error('Error fetching league previous fixtures from events_v2:', error);
+    console.error('Error fetching league previous fixtures with teams:', error);
     return [];
   }
 }
@@ -336,21 +347,25 @@ export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<Mat
 /**
  * Fetch upcoming fixtures for a specific team from events_v2
  */
-export async function fetchTeamUpcomingFixtures(teamId: string): Promise<Match[]> {
+export async function fetchTeamUpcomingFixtures(teamId: string): Promise<MatchWithTeams[]> {
   try {
     const today = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(`
+        *,
+        homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+        awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+      `)
       .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
-      .in('status', ['SCHEDULED', 'POSTPONED']) // Use Match domain status
+      .in('status', ['SCHEDULED', 'POSTPONED'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(15);
 
     if (error) {
-      console.error('Database error fetching team upcoming fixtures from events_v2:', error);
+      console.error('Database error fetching team upcoming fixtures with teams:', error);
       return [];
     }
 
@@ -359,9 +374,9 @@ export async function fetchTeamUpcomingFixtures(teamId: string): Promise<Match[]
       return [];
     }
 
-    return data || []; // Already Match[] type
+    return data as MatchWithTeams[];
   } catch (error) {
-    console.error('Error fetching team upcoming fixtures from events_v2:', error);
+    console.error('Error fetching team upcoming fixtures with teams:', error);
     return [];
   }
 }
@@ -369,21 +384,25 @@ export async function fetchTeamUpcomingFixtures(teamId: string): Promise<Match[]
 /**
  * Fetch previous/completed fixtures for a specific team from events_v2
  */
-export async function fetchTeamPreviousFixtures(teamId: string): Promise<Match[]> {
+export async function fetchTeamPreviousFixtures(teamId: string): Promise<MatchWithTeams[]> {
   try {
     const today = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('events_v2')
-      .select('*')
+      .select(`
+        *,
+        homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+        awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+      `)
       .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
-      .eq('status', 'FINISHED') // Use Match domain status
+      .eq('status', 'FINISHED')
       .lt('date', today)
       .order('date', { ascending: false })
       .limit(15);
 
     if (error) {
-      console.error('Database error fetching team previous fixtures from events_v2:', error);
+      console.error('Database error fetching team previous fixtures with teams:', error);
       return [];
     }
 
@@ -392,9 +411,9 @@ export async function fetchTeamPreviousFixtures(teamId: string): Promise<Match[]
       return [];
     }
 
-    return data || []; // Already Match[] type
+    return data as MatchWithTeams[];
   } catch (error) {
-    console.error('Error fetching team previous fixtures from events_v2:', error);
+    console.error('Error fetching team previous fixtures with teams:', error);
     return [];
   }
 }
@@ -404,35 +423,35 @@ export async function fetchTeamPreviousFixtures(teamId: string): Promise<Match[]
 /**
  * Fetch upcoming fixtures for K League 1 (League ID: 4689)
  */
-export async function fetchKLeague1UpcomingFixtures(): Promise<Match[]> {
+export async function fetchKLeague1UpcomingFixtures(): Promise<MatchWithTeams[]> {
   return fetchLeagueUpcomingFixtures('4689');
 }
 
 /**
  * Fetch previous fixtures for K League 1 (League ID: 4689)
  */
-export async function fetchKLeague1PreviousFixtures(): Promise<Match[]> {
+export async function fetchKLeague1PreviousFixtures(): Promise<MatchWithTeams[]> {
   return fetchLeaguePreviousFixtures('4689');
 }
 
 /**
  * Fetch upcoming fixtures for K League 2 (League ID: 4822)
  */
-export async function fetchKLeague2UpcomingFixtures(): Promise<Match[]> {
+export async function fetchKLeague2UpcomingFixtures(): Promise<MatchWithTeams[]> {
   return fetchLeagueUpcomingFixtures('4822');
 }
 
 /**
  * Fetch previous fixtures for K League 2 (League ID: 4822)
  */
-export async function fetchKLeague2PreviousFixtures(): Promise<Match[]> {
+export async function fetchKLeague2PreviousFixtures(): Promise<MatchWithTeams[]> {
   return fetchLeaguePreviousFixtures('4822');
 }
 
 // Combined function to get both upcoming and recent fixtures for a league
 export async function fetchLeagueFixtures(leagueId: string): Promise<{
-  upcoming: Match[];
-  recent: Match[];
+  upcoming: MatchWithTeams[];
+  recent: MatchWithTeams[];
 }> {
   const [upcoming, recent] = await Promise.all([
     fetchLeagueUpcomingFixtures(leagueId),
@@ -447,8 +466,8 @@ export async function fetchLeagueFixtures(leagueId: string): Promise<{
 
 // Combined function to get both upcoming and recent fixtures for a team
 export async function fetchTeamFixtures(teamId: string): Promise<{
-  upcoming: Match[];
-  recent: Match[];
+  upcoming: MatchWithTeams[];
+  recent: MatchWithTeams[];
 }> {
   const [upcoming, recent] = await Promise.all([
     fetchTeamUpcomingFixtures(teamId),

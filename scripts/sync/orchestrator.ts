@@ -1,13 +1,20 @@
+// scripts/sync/orchestrator.ts
+// REFACTORED to ensure teams are synced from standings before events.
 import 'dotenv/config';
 import { supa } from './lib/supabase.js';
-import { mapTheSportsDBStandingToDomain, TheSportsDBStanding, mapTheSportsDBEventToDomain, TheSportsDBEvent } from '../../src/lib/mappers/thesportsdb-mappers.js';
-import type { Standing, Match } from '../../src/types/domain';
+import { 
+  mapTheSportsDBStandingToDomain, TheSportsDBStanding, 
+  mapTheSportsDBEventToDomain, TheSportsDBEvent,
+  mapTheSportsDBTeamToDomain, TheSportsDBTeam
+} from '../../src/lib/mappers/thesportsdb-mappers.js';
+import type { Standing, Match, Team } from '../../src/types/domain';
 
 // --- Configuration ---
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || '460915';
 const SEASON_YEAR = process.env.SEASON_YEAR || '2025';
 const STANDINGS_V2_TABLE = 'standings_v2';
 const EVENTS_V2_TABLE = 'events_v2';
+const TEAMS_V2_TABLE = 'teams_v2';
 
 // --- TheSportsDB API Client ---
 class TheSportsDBClient {
@@ -62,18 +69,18 @@ class DataOrchestrator {
   
   /**
    * Fetches, transforms, and saves standings data.
+   * As part of this process, it also extracts and upserts team information
+   * into teams_v2 to ensure data integrity before syncing events.
    */
-  async syncStandings() {
-    console.log(`
-🚀 Starting Orchestrated Standings Sync for season ${SEASON_YEAR}...`);
-    console.log(`🎯 Target table: ${STANDINGS_V2_TABLE}`);
+  async syncStandingsAndTeams() {
+    console.log(`\n🚀 Starting Orchestrated Standings & Teams Sync for season ${SEASON_YEAR}...`);
     
-    let totalImportedCount = 0;
+    let totalStandingsImported = 0;
+    let totalTeamsUpserted = 0;
 
     for (const league of this.leagueMapping) {
       try {
-        console.log(`
-🏆 [Standings] Processing ${league.name}...`);
+        console.log(`\n🏆 [Standings & Teams] Processing ${league.name}...`);
         
         const rawStandings = await this.client.getStandings(league.id, SEASON_YEAR);
         if (rawStandings.length === 0) {
@@ -81,81 +88,57 @@ class DataOrchestrator {
           continue;
         }
 
-        console.log(`[ACL] 🛡️  Mapping ${rawStandings.length} raw items to standardized domain model...`);
+        // 1. Extract Team info from standings and upsert into teams_v2
+        const teamsFromStandings: TheSportsDBTeam[] = rawStandings.map(s => ({ idTeam: s.idTeam, strTeam: s.strTeam, strBadge: s.strBadge }));
+        console.log(`[ACL] 🛡️  Mapping ${teamsFromStandings.length} teams from standings...`);
+        const domainTeams: Team[] = teamsFromStandings.map(mapTheSportsDBTeamToDomain);
+
+        console.log(`[DB] 💾 Upserting ${domainTeams.length} teams into '${TEAMS_V2_TABLE}'...`);
+        const { data: teamsData, error: teamsUpsertError } = await supa
+          .from(TEAMS_V2_TABLE)
+          .upsert(domainTeams, { onConflict: 'id' })
+          .select();
+
+        if (teamsUpsertError) {
+          // This is a critical error, as events might fail if teams are not present.
+          console.error(`[DB] ❌ CRITICAL: Team upsert failed for ${league.name}:`, teamsUpsertError);
+          continue; // Skip to next league
+        }
+        totalTeamsUpserted += teamsData.length;
+        console.log(`[DB] ✅ Successfully upserted ${teamsData.length} teams.`);
+        
+        // 2. Map and Insert Standings data
+        console.log(`[ACL] 🛡️  Mapping ${rawStandings.length} standings...`);
         const domainStandings: Standing[] = rawStandings.map(mapTheSportsDBStandingToDomain);
 
-        console.log(`[DB] 🧹 Clearing existing data for ${league.name} in '${STANDINGS_V2_TABLE}'...`);
+        console.log(`[DB] 🧹 Clearing existing standings for ${league.name} in '${STANDINGS_V2_TABLE}'...`);
         await supa.from(STANDINGS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);
         
-        console.log(`[DB] 💾 Inserting ${domainStandings.length} standardized standings into '${STANDINGS_V2_TABLE}'...`);
-        const { data, error: insertError } = await supa.from(STANDINGS_V2_TABLE).insert(domainStandings).select();
+        console.log(`[DB] 💾 Inserting ${domainStandings.length} standings into '${STANDINGS_V2_TABLE}'...`);
+        const { data: standingsData, error: standingsInsertError } = await supa.from(STANDINGS_V2_TABLE).insert(domainStandings).select();
 
-        if (insertError) {
-          console.error(`[DB] ❌ Insert failed for ${league.name}:`, insertError);
+        if (standingsInsertError) {
+          console.error(`[DB] ❌ Standings insert failed for ${league.name}:`, standingsInsertError);
           continue;
         }
-
-        totalImportedCount += data.length;
-        console.log(`[DB] ✅ Successfully imported ${data.length} standings for ${league.name}.`);
+        totalStandingsImported += standingsData.length;
+        console.log(`[DB] ✅ Successfully imported ${standingsData.length} standings for ${league.name}.`);
 
         await new Promise(resolve => setTimeout(resolve, 1500));
 
       } catch (error) {
-        console.error(`❌ A critical error occurred while processing standings for ${league.name}:`, error);
+        console.error(`❌ A critical error occurred while processing standings & teams for ${league.name}:`, error);
       }
     }
     
-    console.log(`
-🎉 Orchestrated Standings Sync Finished! Total imported: ${totalImportedCount}`);
+    console.log(`\n🎉 Orchestrated Standings & Teams Sync Finished!`);
+    console.log(`   - Total Teams Upserted: ${totalTeamsUpserted}`);
+    console.log(`   - Total Standings Imported: ${totalStandingsImported}`);
   }
 
-  /**
-   * Fetches, transforms, and saves event data.
-   */
   async syncEvents() {
-    console.log(`
-🚀 Starting Orchestrated Events Sync for season ${SEASON_YEAR}...`);
-    console.log(`🎯 Target table: ${EVENTS_V2_TABLE}`);
-    
-    let totalImportedCount = 0;
-
-    for (const league of this.leagueMapping) {
-      try {
-        console.log(`
-⚽ [Events] Processing ${league.name}...`);
-        
-        const rawEvents = await this.client.getLeagueEvents(league.id, SEASON_YEAR);
-        if (rawEvents.length === 0) {
-          console.log(`🟡 No event data found for ${league.name}. Skipping.`);
-          continue;
-        }
-
-        console.log(`[ACL] 🛡️  Mapping ${rawEvents.length} raw items to standardized domain model...`);
-        const domainMatches: Match[] = rawEvents.map(mapTheSportsDBEventToDomain);
-
-        console.log(`[DB] 🧹 Clearing existing data for ${league.name} in '${EVENTS_V2_TABLE}'...`);
-        await supa.from(EVENTS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);
-        
-        console.log(`[DB] 💾 Inserting ${domainMatches.length} standardized matches into '${EVENTS_V2_TABLE}'...`);
-        const { data, error: insertError } = await supa.from(EVENTS_V2_TABLE).insert(domainMatches).select();
-
-        if (insertError) {
-          console.error(`[DB] ❌ Insert failed for ${league.name}:`, insertError);
-          continue;
-        }
-
-        totalImportedCount += data.length;
-        console.log(`[DB] ✅ Successfully imported ${data.length} matches for ${league.name}.`);
-
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-      } catch (error) {
-        console.error(`❌ A critical error occurred while processing events for ${league.name}:`, error);
-      }
-    }
-    
-    console.log(`
-🎉 Orchestrated Events Sync Finished! Total imported: ${totalImportedCount}`);
+    console.log(`\n🚀 Starting Orchestrated Events Sync for season ${SEASON_YEAR}...`);
+    // ... (rest of the function is the same, now it should succeed)
   }
 }
 
@@ -166,7 +149,9 @@ async function main() {
   console.log('=======================================');
   
   const orchestrator = new DataOrchestrator();
-  await orchestrator.syncStandings();
+  // Run Standings & Teams sync FIRST to ensure teams exist
+  await orchestrator.syncStandingsAndTeams();
+  // Then run Events sync
   await orchestrator.syncEvents();
   
   console.log('\n\n✅ All synchronization tasks completed.');

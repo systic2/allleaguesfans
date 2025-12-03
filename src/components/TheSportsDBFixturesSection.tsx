@@ -1,78 +1,61 @@
 // src/components/TheSportsDBFixturesSection.tsx
-// REFACTORED to use the new Match domain model from events_v2
+// REFACTORED to use JOINed team data
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { 
   fetchRecentMatches,
-  fetchUpcomingMatches
+  fetchUpcomingMatches,
+  type DatabaseFixture 
 } from '@/lib/database-fixtures-api';
-import type { Match } from '@/types/domain';
-
-// The component will now work directly with the Match model
-type FixtureData = Match;
 
 interface TheSportsDBFixturesSectionProps {
-  leagueId?: number; // Legacy support
-  leagueSlug?: string; // New slug-based approach
+  leagueId?: number;
+  leagueSlug?: string;
 }
 
 function FixturesCard({ title, fixtures, isLoading, error, showScores = false }: {
   title: string;
-  fixtures: FixtureData[];
+  fixtures: DatabaseFixture[];
   isLoading: boolean;
   error?: Error | null;
   showScores?: boolean;
 }) {
   if (isLoading) {
+    // ... (loading state remains the same)
     return (
       <div className="bg-slate-800 rounded-lg overflow-hidden">
         <div className="bg-slate-700 px-6 py-4 border-b border-slate-600">
           <h2 className="text-white text-lg font-semibold">{title}</h2>
         </div>
-        <div className="p-6">
-          <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-16 bg-slate-700 rounded"></div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div className="p-6"><div className="space-y-3">{[...Array(3)].map((_, i) => (<div key={i} className="animate-pulse"><div className="h-16 bg-slate-700 rounded"></div></div>))}</div></div>
       </div>
     );
   }
 
   if (error) {
+    // ... (error state remains the same)
     return (
       <div className="bg-slate-800 rounded-lg overflow-hidden">
         <div className="bg-slate-700 px-6 py-4 border-b border-slate-600">
           <h2 className="text-white text-lg font-semibold">{title}</h2>
         </div>
-        <div className="p-6">
-          <div className="text-red-400 text-sm">
-            경기 정보를 불러올 수 없습니다.
-          </div>
-        </div>
+        <div className="p-6"><div className="text-red-400 text-sm">경기 정보를 불러올 수 없습니다.</div></div>
       </div>
     );
   }
 
   if (fixtures.length === 0) {
+    // ... (empty state remains the same)
     return (
       <div className="bg-slate-800 rounded-lg overflow-hidden">
         <div className="bg-slate-700 px-6 py-4 border-b border-slate-600">
           <h2 className="text-white text-lg font-semibold">{title}</h2>
         </div>
-        <div className="p-6">
-          <div className="text-slate-400 text-sm">
-            경기가 없습니다.
-          </div>
-        </div>
+        <div className="p-6"><div className="text-slate-400 text-sm">경기가 없습니다.</div></div>
       </div>
     );
   }
 
-  // Group fixtures by round for better organization
   const rounds = fixtures.reduce((acc, fixture) => {
     const round = fixture.round || 'N/A';
     if (!acc[round]) {
@@ -80,7 +63,7 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
     }
     acc[round].push(fixture);
     return acc;
-  }, {} as Record<string, FixtureData[]>);
+  }, {} as Record<string, DatabaseFixture[]>);
 
   const sortedRounds = Object.keys(rounds).sort((a, b) => {
     const aNum = parseInt(a.replace(/\D/g, '')) || 0;
@@ -108,7 +91,7 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
                 </div>
               )}
               <div className="space-y-3">
-                {rounds[round].map((fixture: FixtureData) => (
+                {rounds[round].map((fixture: DatabaseFixture) => (
                   <TheSportsDBFixtureRow
                     key={fixture.id}
                     fixture={fixture}
@@ -125,7 +108,7 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
 }
 
 interface TheSportsDBFixtureRowProps {
-  fixture: FixtureData;
+  fixture: DatabaseFixture;
   showScores: boolean;
 }
 
@@ -133,7 +116,7 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
   const isCompleted = fixture.status === 'FINISHED';
   const hasScore = fixture.homeScore !== null && fixture.awayScore !== null;
 
-  const formatDateKorean = (fixture: FixtureData) => {
+  const formatDateKorean = (fixture: DatabaseFixture) => {
     try {
       const date = new Date(fixture.date);
       if (isNaN(date.getTime())) return fixture.date;
@@ -144,8 +127,8 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
     }
   };
 
-  const formatStatus = (status: Match['status']) => {
-    const statusMap: Record<Match['status'], string> = {
+  const formatStatus = (status: DatabaseFixture['status']) => {
+    const statusMap: Record<DatabaseFixture['status'], string> = {
       'SCHEDULED': '예정',
       'FINISHED': '종료',
       'POSTPONED': '연기',
@@ -162,8 +145,11 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4 flex-1 min-w-0">
             <div className="flex items-center space-x-2 flex-1 min-w-0">
-              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={`Team ID: ${fixture.homeTeamId}`}>
-                Team {fixture.homeTeamId}
+              {fixture.homeTeam?.badgeUrl && (
+                <img src={fixture.homeTeam.badgeUrl} alt={fixture.homeTeam.name} className="w-5 h-5 object-contain" />
+              )}
+              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.homeTeam?.name || fixture.homeTeamId}>
+                {fixture.homeTeam?.name || `Team ${fixture.homeTeamId}`}
               </span>
             </div>
 
@@ -186,9 +172,12 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
             </div>
 
             <div className="flex items-center space-x-2 flex-1 justify-end min-w-0">
-              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right" title={`Team ID: ${fixture.awayTeamId}`}>
-                Team {fixture.awayTeamId}
+              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right" title={fixture.awayTeam?.name || fixture.awayTeamId}>
+                {fixture.awayTeam?.name || `Team ${fixture.awayTeamId}`}
               </span>
+              {fixture.awayTeam?.badgeUrl && (
+                <img src={fixture.awayTeam.badgeUrl} alt={fixture.awayTeam.name} className="w-5 h-5 object-contain" />
+              )}
             </div>
           </div>
         </div>
