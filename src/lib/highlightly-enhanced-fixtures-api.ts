@@ -1,30 +1,17 @@
-// Highlightly Enhanced fixtures API with statistics and real-time data
+// src/lib/highlightly-enhanced-fixtures-api.ts
+// REFACTORED VERSION: This file now queries the new 'v2_events_enhanced' view.
 import { supabase } from './supabaseClient';
+import type { Match } from '@/types/domain';
 
-export interface HighlightlyEnhancedFixture {
-  // TheSportsDB 기본 데이터
-  idEvent: string;
-  strEvent: string;
-  strHomeTeam: string;
-  strAwayTeam: string;
-  dateEvent: string;
-  strStatus: string;
-  intRound: number;
-  intHomeScore?: number;
-  intAwayScore?: number;
-  strVenue?: string;
-  idLeague: string;
-  strSeason: string;
-  
-  // Highlightly 향상 데이터
+// This interface now largely reflects the 'v2_events_enhanced' view.
+// It extends the base Match for compatibility and adds Highlightly-specific fields.
+export interface HighlightlyEnhancedFixture extends Match {
   highlightly_event_id?: string;
   live_status?: string;
   live_minute?: number;
   live_period?: string;
   live_score_home?: number;
   live_score_away?: number;
-  
-  // 고급 통계
   possession_home?: number;
   possession_away?: number;
   shots_home?: number;
@@ -41,26 +28,14 @@ export interface HighlightlyEnhancedFixture {
   red_cards_away?: number;
   ht_score_home?: number;
   ht_score_away?: number;
-  
-  // 특수 지표
   momentum?: number;
   intensity?: number;
-  
-  // 메타데이터
   highlightly_last_updated?: string;
   highlightly_sync_status?: string;
-  
-  // 파생 필드
   is_live?: boolean;
   possession_difference?: number;
   shot_accuracy_home?: number;
   shot_accuracy_away?: number;
-  
-  // 기존 호환성
-  id: string;
-  round: string;
-  status: string;
-  venue: string;
 }
 
 /**
@@ -71,31 +46,29 @@ export async function fetchHighlightlyEnhancedRecentMatches(
   season: number = 2025,
   limit: number = 10
 ): Promise<HighlightlyEnhancedFixture[]> {
-  console.log(`🔍 Highlightly 향상된 최근 경기 조회: ${leagueSlug}, 시즌 ${season}`);
+  console.log(`[v2] 🔍 Highlightly 향상된 최근 경기 조회: ${leagueSlug}, 시즌 ${season}`);
   
-  // Convert slug to TheSportsDB league ID
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
                              leagueSlug.replace('league-', '');
   
   try {
     const { data, error } = await supabase
-      .from('events_enhanced')
+      .from('v2_events_enhanced')
       .select('*')
-      .eq('"idLeague"', theSportsDBLeagueId)
-      .eq('"strSeason"', String(season))
-      .eq('"strStatus"', 'Match Finished')
-      .order('"dateEvent"', { ascending: false })
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .eq('status', 'FINISHED')
+      .order('date', { ascending: false })
       .limit(limit);
       
     if (error) throw error;
     
-    console.log(`✅ ${data?.length || 0}개 Highlightly 향상된 최근 경기 조회됨`);
-    
-    return (data || []).map(mapToHighlightlyEnhancedFixture);
+    console.log(`[v2] ✅ ${data?.length || 0}개 Highlightly 향상된 최근 경기 조회됨`);
+    return data || [];
     
   } catch (error) {
-    console.error('❌ Highlightly 향상된 최근 경기 조회 실패:', error);
+    console.error('❌ [v2] Highlightly 향상된 최근 경기 조회 실패:', error);
     throw error;
   }
 }
@@ -103,12 +76,12 @@ export async function fetchHighlightlyEnhancedRecentMatches(
 /**
  * 향상된 예정 경기 데이터 조회 (Highlightly 데이터 포함)
  */
-export async function fetchHighlightlyEnhancedUpcomingMatches(
+export async function fetchEnhancedUpcomingFixtures(
   leagueSlug: string,
   season: number = 2025,
   limit: number = 10
 ): Promise<HighlightlyEnhancedFixture[]> {
-  console.log(`🔮 Highlightly 향상된 예정 경기 조회: ${leagueSlug}, 시즌 ${season}`);
+  console.log(`[v2] 🔮 Highlightly 향상된 예정 경기 조회: ${leagueSlug}, 시즌 ${season}`);
   
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
@@ -116,24 +89,33 @@ export async function fetchHighlightlyEnhancedUpcomingMatches(
   
   try {
     const { data, error } = await supabase
-      .from('events_enhanced')
+      .from('v2_events_enhanced')
       .select('*')
-      .eq('"idLeague"', theSportsDBLeagueId)
-      .eq('"strSeason"', String(season))
-      .eq('"strStatus"', 'Not Started')
-      .order('"dateEvent"', { ascending: true })
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .in('status', ['SCHEDULED', 'POSTPONED'])
+      .order('date', { ascending: true })
       .limit(limit);
       
     if (error) throw error;
     
-    console.log(`✅ ${data?.length || 0}개 Highlightly 향상된 예정 경기 조회됨`);
-    
-    return (data || []).map(mapToHighlightlyEnhancedFixture);
+    console.log(`[v2] ✅ ${data?.length || 0}개 Highlightly 향상된 예정 경기 조회됨`);
+    return data || [];
     
   } catch (error) {
-    console.error('❌ Highlightly 향상된 예정 경기 조회 실패:', error);
+    console.error('❌ [v2] Highlightly 향상된 예정 경기 조회 실패:', error);
     throw error;
   }
+}
+
+export async function fetchEnhancedTeamUpcomingFixtures(
+  teamId: number,
+  limit: number = 10
+): Promise<HighlightlyEnhancedFixture[]> {
+  console.log(`[v2] 🔮 Highlightly 향상된 팀 예정 경기 조회: ${teamId}`);
+  // This function can be implemented similarly to fetchHighlightlyEnhancedUpcomingMatches
+  // but filtering by teamId. For now, returning empty array.
+  return Promise.resolve([]);
 }
 
 /**
@@ -143,33 +125,32 @@ export async function fetchHighlightlyLiveMatches(
   leagueSlug?: string,
   season: number = 2025
 ): Promise<HighlightlyEnhancedFixture[]> {
-  console.log(`📺 Highlightly 라이브 경기 조회: ${leagueSlug || '전체'}, 시즌 ${season}`);
+  console.log(`[v2] 📺 Highlightly 라이브 경기 조회: ${leagueSlug || '전체'}, 시즌 ${season}`);
   
   try {
     let query = supabase
-      .from('events_enhanced')
+      .from('v2_events_enhanced')
       .select('*')
-      .eq('"strSeason"', String(season))
-      .eq('live_status', 'live')
-      .order('"dateEvent"', { ascending: true });
+      .eq('season', String(season))
+      .eq('live_status', 'live') // This column comes from the 'events_highlightly_enhanced' table
+      .order('date', { ascending: true });
     
     if (leagueSlug) {
       const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                                  leagueSlug === 'k-league-2' ? '4822' : 
                                  leagueSlug.replace('league-', '');
-      query = query.eq('"idLeague"', theSportsDBLeagueId);
+      query = query.eq('leagueId', theSportsDBLeagueId);
     }
     
     const { data, error } = await query;
       
     if (error) throw error;
     
-    console.log(`✅ ${data?.length || 0}개 Highlightly 라이브 경기 조회됨`);
-    
-    return (data || []).map(mapToHighlightlyEnhancedFixture);
+    console.log(`[v2] ✅ ${data?.length || 0}개 Highlightly 라이브 경기 조회됨`);
+    return data || [];
     
   } catch (error) {
-    console.error('❌ Highlightly 라이브 경기 조회 실패:', error);
+    console.error('❌ [v2] Highlightly 라이브 경기 조회 실패:', error);
     throw error;
   }
 }
@@ -180,23 +161,22 @@ export async function fetchHighlightlyLiveMatches(
 export async function fetchHighlightlyEnhancedMatchDetails(
   eventId: string
 ): Promise<HighlightlyEnhancedFixture | null> {
-  console.log(`🎯 Highlightly 향상된 경기 상세 조회: ${eventId}`);
+  console.log(`[v2] 🎯 Highlightly 향상된 경기 상세 조회: ${eventId}`);
   
   try {
     const { data, error } = await supabase
-      .from('events_enhanced')
+      .from('v2_events_enhanced')
       .select('*')
-      .eq('"idEvent"', eventId)
+      .eq('id', eventId) // <-- 변경: idEvent -> id
       .single();
       
     if (error) throw error;
     
-    console.log(`✅ Highlightly 향상된 경기 상세 조회됨: ${eventId}`);
-    
-    return data ? mapToHighlightlyEnhancedFixture(data) : null;
+    console.log(`[v2] ✅ Highlightly 향상된 경기 상세 조회됨: ${eventId}`);
+    return data || null;
     
   } catch (error) {
-    console.error('❌ Highlightly 향상된 경기 상세 조회 실패:', error);
+    console.error(`❌ [v2] Highlightly 향상된 경기 상세 조회 실패:`, error);
     return null;
   }
 }
@@ -209,7 +189,7 @@ export async function fetchHighlightlyMatchesWithStatistics(
   season: number = 2025,
   limit: number = 20
 ): Promise<HighlightlyEnhancedFixture[]> {
-  console.log(`📊 Highlightly 통계 데이터 있는 경기 조회: ${leagueSlug}, 시즌 ${season}`);
+  console.log(`[v2] 📊 Highlightly 통계 데이터 있는 경기 조회: ${leagueSlug}, 시즌 ${season}`);
   
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
@@ -217,95 +197,30 @@ export async function fetchHighlightlyMatchesWithStatistics(
   
   try {
     const { data, error } = await supabase
-      .from('events_enhanced')
+      .from('v2_events_enhanced')
       .select('*')
-      .eq('"idLeague"', theSportsDBLeagueId)
-      .eq('"strSeason"', String(season))
-      .not('possession_home', 'is', null)
-      .not('shots_home', 'is', null)
-      .order('"dateEvent"', { ascending: false })
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .not('possession_home', 'is', null) // This column comes from the 'events_highlightly_enhanced' table
+      .not('shots_home', 'is', null) // This column comes from the 'events_highlightly_enhanced' table
+      .order('date', { ascending: false })
       .limit(limit);
       
     if (error) throw error;
     
-    console.log(`✅ ${data?.length || 0}개 Highlightly 통계 데이터 있는 경기 조회됨`);
-    
-    return (data || []).map(mapToHighlightlyEnhancedFixture);
+    console.log(`[v2] ✅ ${data?.length || 0}개 Highlightly 통계 데이터 있는 경기 조회됨`);
+    return data || [];
     
   } catch (error) {
-    console.error('❌ Highlightly 통계 데이터 있는 경기 조회 실패:', error);
+    console.error('❌ [v2] Highlightly 통계 데이터 있는 경기 조회 실패:', error);
     throw error;
   }
 }
 
-/**
- * 데이터베이스 결과를 HighlightlyEnhancedFixture 형식으로 변환
- */
-function mapToHighlightlyEnhancedFixture(data: any): HighlightlyEnhancedFixture {
-  return {
-    // TheSportsDB 기본 데이터
-    idEvent: data.idEvent,
-    strEvent: data.strEvent,
-    strHomeTeam: data.strHomeTeam,
-    strAwayTeam: data.strAwayTeam,
-    dateEvent: data.dateEvent,
-    strStatus: data.strStatus,
-    intRound: data.intRound,
-    intHomeScore: data.intHomeScore,
-    intAwayScore: data.intAwayScore,
-    strVenue: data.strVenue,
-    idLeague: data.idLeague,
-    strSeason: data.strSeason,
-    
-    // Highlightly 향상 데이터
-    highlightly_event_id: data.highlightly_event_id,
-    live_status: data.live_status,
-    live_minute: data.live_minute,
-    live_period: data.live_period,
-    live_score_home: data.live_score_home,
-    live_score_away: data.live_score_away,
-    
-    // 고급 통계
-    possession_home: data.possession_home,
-    possession_away: data.possession_away,
-    shots_home: data.shots_home,
-    shots_away: data.shots_away,
-    shots_on_target_home: data.shots_on_target_home,
-    shots_on_target_away: data.shots_on_target_away,
-    corners_home: data.corners_home,
-    corners_away: data.corners_away,
-    fouls_home: data.fouls_home,
-    fouls_away: data.fouls_away,
-    yellow_cards_home: data.yellow_cards_home,
-    yellow_cards_away: data.yellow_cards_away,
-    red_cards_home: data.red_cards_home,
-    red_cards_away: data.red_cards_away,
-    ht_score_home: data.ht_score_home,
-    ht_score_away: data.ht_score_away,
-    
-    // 특수 지표
-    momentum: data.momentum,
-    intensity: data.intensity,
-    
-    // 메타데이터
-    highlightly_last_updated: data.highlightly_last_updated,
-    highlightly_sync_status: data.highlightly_sync_status,
-    
-    // 파생 필드
-    is_live: data.is_live,
-    possession_difference: data.possession_difference,
-    shot_accuracy_home: data.shot_accuracy_home,
-    shot_accuracy_away: data.shot_accuracy_away,
-    
-    // 기존 호환성
-    id: data.idEvent,
-    round: String(data.intRound),
-    status: data.strStatus,
-    venue: data.strVenue || '',
-  };
-}
+// The mapToHighlightlyEnhancedFixture function is no longer needed as the view
+// now returns data in the desired shape, and the interface extends Match.
 
-// 유틸리티 함수들
+// 유틸리티 함수들 (변경 필요 없음)
 
 /**
  * 경기 상태 한국어 변환
@@ -314,13 +229,12 @@ export function getHighlightlyMatchStatusKorean(status: string, liveStatus?: str
   if (liveStatus === 'live') return '진행중';
   
   const statusMap: Record<string, string> = {
-    'not_started': '예정',
-    'finished': '종료',
-    'Not Started': '예정',
-    'Match Finished': '종료',
-    'TBD': '미정',
-    'Postponed': '연기',
-    'Cancelled': '취소',
+    'SCHEDULED': '예정',
+    'FINISHED': '종료',
+    'POSTPONED': '연기',
+    'CANCELED': '취소',
+    'IN_PLAY': '진행중',
+    'UNKNOWN': '미정',
   };
   
   return statusMap[status] || status;
@@ -334,7 +248,7 @@ export function getHighlightlyPossessionAdvantage(possessionHome?: number, posse
   difference: number;
   display: string;
 } {
-  if (!possessionHome || !possessionAway) {
+  if (possessionHome === undefined || possessionAway === undefined || possessionHome === null || possessionAway === null) {
     return { team: 'equal', difference: 0, display: '정보 없음' };
   }
   
@@ -361,7 +275,7 @@ export function calculateHighlightlyShotAccuracy(shots?: number, shotsOnTarget?:
   accuracy: number | null;
   display: string;
 } {
-  if (!shots || !shotsOnTarget || shots === 0) {
+  if (shots === undefined || shotsOnTarget === undefined || shots === null || shotsOnTarget === null || shots === 0) {
     return { accuracy: null, display: '정보 없음' };
   }
   
@@ -380,7 +294,7 @@ export function getHighlightlyMatchIntensity(intensity?: number): {
   display: string;
   color: string;
 } {
-  if (!intensity) {
+  if (intensity === undefined || intensity === null) {
     return { level: 'medium', display: '보통', color: 'gray' };
   }
   
@@ -403,7 +317,7 @@ export function getHighlightlyMatchMomentum(momentum?: number): {
   strength: 'weak' | 'moderate' | 'strong';
   display: string;
 } {
-  if (!momentum) {
+  if (momentum === undefined || momentum === null) {
     return { direction: 'neutral', strength: 'weak', display: '균등' };
   }
   

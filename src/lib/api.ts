@@ -224,25 +224,24 @@ export async function fetchLeagueStats(leagueId: number, season: number = Number
       .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
       .eq("season", String(season)), // <-- 변경: season 컬럼 사용
     supabase
-      .from("fixtures")
-      .select("home_score, away_score")
-      .eq("league_id", leagueId)
-      .eq("season_year", season)
-      .not("home_score", "is", null)
-      .not("away_score", "is", null)
+      .from("events_v2") // <-- 변경: events_v2 테이블 사용
+      .select("homeScore, awayScore") // <-- 변경: Match 도메인 모델의 필드명 사용
+      .eq("leagueId", String(leagueId)) // <-- 변경: leagueId 컬럼 사용 (number -> string)
+      .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+      .eq("status", "FINISHED") // <-- 변경: Match 도메인 status 사용 (경기 완료된 경우만 집계)
   ]);
 
   const totalTeams = standingsResult.data?.length || 0;
   const completedMatches = fixturesResult.data || [];
   const totalMatches = completedMatches.length;
   
-  // standings_v2 (domain 모델) 데이터에서 골 통계 계산
+  // standings_v2 (domain 모델) 데이터에서 골 통계 계산 (기존 로직 유지)
   const totalGoalsFromStandings = standingsResult.data?.reduce((sum, team) => 
-    sum + (team.goalsFor || 0), 0) || 0; // <-- 변경: goalsFor 필드 사용
+    sum + (team.goalsFor || 0), 0) || 0;
   
-  // Fixtures가 없는 경우 standings 데이터 사용
+  // events_v2에서 가져온 데이터로 총 골 계산
   const totalGoals = totalMatches > 0 
-    ? completedMatches.reduce((sum, match) => sum + (match.home_score || 0) + (match.away_score || 0), 0)
+    ? completedMatches.reduce((sum, match) => sum + (match.homeScore || 0) + (match.awayScore || 0), 0)
     : totalGoalsFromStandings;
 
   // 매치 수 계산 (standings_v2 데이터 기반)
@@ -371,7 +370,8 @@ export interface UpcomingFixture {
 }
 
 export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 10): Promise<UpcomingFixture[]> {
-  // If leagueId is provided, try TheSportsDB first
+  /*
+  // If leagueId is provided, try TheSportsDB first (existing hybrid logic)
   if (leagueId) {
     try {
       const thesportsdbFixtures = await getLeagueFixturesHybrid(leagueId, 'upcoming');
@@ -394,60 +394,57 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
             logo_url: null,
           },
           venue: fixture.strVenue || 'TBD',
-          league_id: leagueId,
+          league_id: parseInt(fixture.idLeague),
         }));
       }
     } catch (error) {
       console.warn('TheSportsDB upcoming fixtures failed, falling back to database:', error);
     }
   }
+  */
 
-  // Fallback to database query
-  const today = new Date().toISOString().split('T')[0];
+  // Fallback to database query from events_v2
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
   let query = supabase
-    .from("fixtures")
-    .select(`
-      id, match_date, status, round, home_team_id, away_team_id, league_id,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
-      venue_name
-    `)
-    .gte("match_date", today)
-    .in("status", ["TBD", "NS", "PST", "scheduled"]) // Updated status values
-    .order("match_date", { ascending: true })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
+    .gte("date", today) // <-- 변경: date 컬럼 사용
+    .in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]) // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: true }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (leagueId) {
-    query = query.eq("league_id", leagueId);
+    query = query.eq("leagueId", String(leagueId)); // <-- 변경: leagueId 컬럼 사용, number -> string 변환
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching upcoming fixtures:", error);
+    console.error("Error fetching upcoming fixtures from events_v2:", error);
     return [];
   }
 
   if (!data) return [];
 
-  return data.map(fixture => ({
-    id: Number(fixture.id),
-    date_utc: String(fixture.match_date),
-    status: String(fixture.status),
-    round: String(fixture.round),
+  // Match (events_v2) 데이터를 UpcomingFixture 타입으로 변환
+  return data.map(match => ({
+    id: Number(match.id), // Match.id (string) -> UpcomingFixture.id (number)
+    date_utc: String(match.date), // Match.date -> UpcomingFixture.date_utc
+    status: String(match.status), // Match.status -> UpcomingFixture.status
+    round: String(match.round || 'N/A'), // Match.round -> UpcomingFixture.round
     home_team: {
-      id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
+      id: Number(match.homeTeamId), // Match.homeTeamId -> UpcomingFixture.home_team.id
+      name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
     away_team: {
-      id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
+      id: Number(match.awayTeamId), // Match.awayTeamId -> UpcomingFixture.away_team.id
+      name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
-    venue: fixture.venue_name || undefined,
-    league_id: Number(fixture.league_id),
+    venue: match.venueName || undefined, // Match.venueName -> UpcomingFixture.venue
+    league_id: Number(match.leagueId), // Match.leagueId -> UpcomingFixture.league_id (number)
   }));
 }
 
@@ -479,21 +476,19 @@ export interface RoundFixture {
  */
 export async function getLatestCompletedRound(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<string | null> {
   const { data, error } = await supabase
-    .from("fixtures")
-    .select("round, match_date")
-    .eq("league_id", leagueId)
-    .eq("season_year", season)
-    .in("status", ["FT", "AET", "PEN"]) // Finished statuses
-    .not("home_score", "is", null)
-    .not("away_score", "is", null)
-    .order("match_date", { ascending: false })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("round, date") // <-- 변경: round, date 컬럼 사용
+    .eq("leagueId", String(leagueId)) // <-- 변경: leagueId 컬럼 사용 (number -> string)
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .eq("status", "FINISHED") // <-- 변경: Match 도메인 status 사용, 점수 null 여부 대신
+    .order("date", { ascending: false }) // <-- 변경: date 컬럼 사용
     .limit(1);
 
   if (error || !data || data.length === 0) {
     return null;
   }
 
-  return data[0].round;
+  return data[0].round || null; // Match.round는 string | undefined
 }
 
 /**
@@ -501,19 +496,19 @@ export async function getLatestCompletedRound(leagueId: number, season: number =
  */
 export async function getNextUpcomingRound(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<string | null> {
   const { data, error } = await supabase
-    .from("fixtures")
-    .select("round, match_date")
-    .eq("league_id", leagueId)
-    .eq("season_year", season)
-    .in("status", ["TBD", "NS", "PST", "scheduled"])
-    .order("match_date", { ascending: true })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("round, date") // <-- 변경: round, date 컬럼 사용
+    .eq("leagueId", String(leagueId)) // <-- 변경: leagueId 컬럼 사용 (number -> string)
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]) // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: true }) // <-- 변경: date 컬럼 사용
     .limit(1);
 
   if (error || !data || data.length === 0) {
     return null;
   }
 
-  return data[0].round;
+  return data[0].round || null; // Match.round는 string | undefined
 }
 
 /**
@@ -525,45 +520,40 @@ export async function fetchFixturesByRound(
   season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)
 ): Promise<RoundFixture[]> {
   const { data, error } = await supabase
-    .from("fixtures")
-    .select(`
-      id, match_date, status, round, home_team_id, away_team_id, league_id,
-      home_score, away_score,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
-      venue_name
-    `)
-    .eq("league_id", leagueId)
-    .eq("round", round)
-    .eq("season_year", season)
-    .order("match_date", { ascending: true });
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
+    .eq("leagueId", String(leagueId)) // <-- 변경: leagueId 컬럼 사용 (number -> string)
+    .eq("round", round) // <-- 변경: round 컬럼 사용
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .order("date", { ascending: true }); // <-- 변경: date 컬럼 사용
 
   if (error) {
-    console.error("Error fetching fixtures by round:", error);
+    console.error("Error fetching fixtures by round from events_v2:", error);
     return [];
   }
 
   if (!data) return [];
 
-  return data.map(fixture => ({
-    id: Number(fixture.id),
-    date_utc: String(fixture.match_date),
-    status_short: String(fixture.status),
-    round: String(fixture.round),
+  // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
+  return data.map(match => ({
+    id: Number(match.id), // Match.id (string) -> RoundFixture.id (number)
+    date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
+    status_short: String(match.status), // Match.status -> RoundFixture.status_short
+    round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
     home_team: {
-      id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
+      id: Number(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id
+      name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
     away_team: {
-      id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
+      id: Number(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id
+      name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
-    home_goals: fixture.home_score,
-    away_goals: fixture.away_score,
-    venue: fixture.venue_name || undefined,
-    league_id: Number(fixture.league_id),
+    home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
+    away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
+    venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
+    league_id: Number(match.leagueId), // Match.leagueId -> RoundFixture.league_id (number)
   }));
 }
 
@@ -711,7 +701,8 @@ export async function fetchTeamStatistics(teamId: number, season: number = Numbe
 }
 
 export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 5): Promise<UpcomingFixture[]> {
-  // Try TheSportsDB first
+  /*
+  // Try TheSportsDB first (existing hybrid logic)
   try {
     const thesportsdbFixtures = await getTeamFixturesHybrid(teamId, 'upcoming');
     
@@ -725,7 +716,7 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
         home_team: {
           id: parseInt(fixture.idHomeTeam || '0'),
           name: fixture.strHomeTeam || 'TBD',
-          logo_url: null, // TheSportsDB doesn't provide team logos in fixtures
+          logo_url: null,
         },
         away_team: {
           id: parseInt(fixture.idAwayTeam || '0'),
@@ -739,54 +730,52 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
   } catch (error) {
     console.warn('TheSportsDB team upcoming fixtures failed, falling back to database:', error);
   }
+  */
 
-  // Fallback to database query
-  const today = new Date().toISOString().split('T')[0];
+  // Fallback to database query from events_v2
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
   const { data, error } = await supabase
-    .from("fixtures")
-    .select(`
-      id, match_date, status, round, home_team_id, away_team_id, league_id,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
-      venue_name
-    `)
-    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-    .gte("match_date", today)
-    .in("status", ["TBD", "NS", "PST", "scheduled"])
-    .order("match_date", { ascending: true })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
+    .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`) // <-- 변경: homeTeamId, awayTeamId 컬럼 사용
+    .gte("date", today) // <-- 변경: date 컬럼 사용
+    .in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]) // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: true }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error("Error fetching team upcoming fixtures:", error);
+    console.error("Error fetching team upcoming fixtures from events_v2:", error);
     return [];
   }
 
   if (!data) return [];
 
-  return data.map(fixture => ({
-    id: Number(fixture.id),
-    date_utc: String(fixture.match_date),
-    status: String(fixture.status),
-    round: String(fixture.round),
+  // Match (events_v2) 데이터를 UpcomingFixture 타입으로 변환
+  return data.map(match => ({
+    id: Number(match.id), // Match.id (string) -> UpcomingFixture.id (number)
+    date_utc: String(match.date), // Match.date -> UpcomingFixture.date_utc
+    status: String(match.status), // Match.status -> UpcomingFixture.status
+    round: String(match.round || 'N/A'), // Match.round -> UpcomingFixture.round
     home_team: {
-      id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
+      id: Number(match.homeTeamId), // Match.homeTeamId -> UpcomingFixture.home_team.id
+      name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
     away_team: {
-      id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
+      id: Number(match.awayTeamId), // Match.awayTeamId -> UpcomingFixture.away_team.id
+      name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
-    venue: fixture.venue_name || undefined,
-    league_id: Number(fixture.league_id),
+    venue: match.venueName || undefined, // Match.venueName -> UpcomingFixture.venue
+    league_id: Number(match.leagueId), // Match.leagueId -> UpcomingFixture.league_id (number)
   }));
 }
 
 // New function for fetching recent fixtures with TheSportsDB hybrid strategy
 export async function fetchRecentFixtures(leagueId?: number, limit: number = 10): Promise<RoundFixture[]> {
-  // If leagueId is provided, try TheSportsDB first
+  /*
+  // If leagueId is provided, try TheSportsDB first (existing hybrid logic)
   if (leagueId) {
     try {
       const thesportsdbFixtures = await getLeagueFixturesHybrid(leagueId, 'previous');
@@ -818,62 +807,59 @@ export async function fetchRecentFixtures(leagueId?: number, limit: number = 10)
       console.warn('TheSportsDB recent fixtures failed, falling back to database:', error);
     }
   }
+  */
 
-  // Fallback to database query
-  const today = new Date().toISOString().split('T')[0];
+  // Fallback to database query from events_v2
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
   let query = supabase
-    .from("fixtures")
-    .select(`
-      id, match_date, status, round, home_team_id, away_team_id, league_id,
-      home_score, away_score,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
-      venue_name
-    `)
-    .lt("match_date", today)
-    .in("status", ["FT", "AET", "PEN"]) // Finished statuses
-    .order("match_date", { ascending: false })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
+    .lt("date", today) // <-- 변경: date 컬럼 사용
+    .eq("status", "FINISHED") // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: false }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (leagueId) {
-    query = query.eq("league_id", leagueId);
+    query = query.eq("leagueId", String(leagueId)); // <-- 변경: leagueId 컬럼 사용, number -> string 변환
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching recent fixtures:", error);
+    console.error("Error fetching recent fixtures from events_v2:", error);
     return [];
   }
 
   if (!data) return [];
 
-  return data.map(fixture => ({
-    id: Number(fixture.id),
-    date_utc: String(fixture.match_date),
-    status_short: String(fixture.status),
-    round: String(fixture.round),
+  // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
+  return data.map(match => ({
+    id: Number(match.id), // Match.id (string) -> RoundFixture.id (number)
+    date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
+    status_short: String(match.status), // Match.status -> RoundFixture.status_short
+    round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
     home_team: {
-      id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
+      id: Number(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id
+      name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
     away_team: {
-      id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
+      id: Number(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id
+      name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
-    home_goals: fixture.home_score,
-    away_goals: fixture.away_score,
-    venue: fixture.venue_name || undefined,
-    league_id: Number(fixture.league_id),
+    home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
+    away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
+    venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
+    league_id: Number(match.leagueId), // Match.leagueId -> RoundFixture.league_id (number)
   }));
 }
 
 // New function for fetching team recent fixtures with TheSportsDB hybrid strategy
 export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5): Promise<RoundFixture[]> {
-  // Try TheSportsDB first
+  /*
+  // Try TheSportsDB first (existing hybrid logic)
   try {
     const thesportsdbFixtures = await getTeamFixturesHybrid(teamId, 'previous');
     
@@ -903,51 +889,47 @@ export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5)
   } catch (error) {
     console.warn('TheSportsDB team recent fixtures failed, falling back to database:', error);
   }
+  */
 
-  // Fallback to database query
-  const today = new Date().toISOString().split('T')[0];
+  // Fallback to database query from events_v2
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
   const { data, error } = await supabase
-    .from("fixtures")
-    .select(`
-      id, match_date, status, round, home_team_id, away_team_id, league_id,
-      home_score, away_score,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_url),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_url),
-      venue_name
-    `)
-    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-    .lt("match_date", today)
-    .in("status", ["FT", "AET", "PEN"]) // Finished statuses
-    .order("match_date", { ascending: false })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
+    .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`) // <-- 변경: homeTeamId, awayTeamId 컬럼 사용
+    .lt("date", today) // <-- 변경: date 컬럼 사용
+    .eq("status", "FINISHED") // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: false }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error("Error fetching team recent fixtures:", error);
+    console.error("Error fetching team recent fixtures from events_v2:", error);
     return [];
   }
 
   if (!data) return [];
 
-  return data.map(fixture => ({
-    id: Number(fixture.id),
-    date_utc: String(fixture.match_date),
-    status_short: String(fixture.status),
-    round: String(fixture.round),
+  // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
+  return data.map(match => ({
+    id: Number(match.id), // Match.id (string) -> RoundFixture.id (number)
+    date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
+    status_short: String(match.status), // Match.status -> RoundFixture.status_short
+    round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
     home_team: {
-      id: Number(fixture.home_team_id),
-      name: String(Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.name : (fixture.home_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.home_team) ? (fixture.home_team as any)[0]?.logo_url : (fixture.home_team as any)?.logo_url || null,
+      id: Number(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id
+      name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
     away_team: {
-      id: Number(fixture.away_team_id),
-      name: String(Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.name : (fixture.away_team as any)?.name || "Unknown"),
-      logo_url: Array.isArray(fixture.away_team) ? (fixture.away_team as any)[0]?.logo_url : (fixture.away_team as any)?.logo_url || null,
+      id: Number(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id
+      name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+      logo_url: null,
     },
-    home_goals: fixture.home_score,
-    away_goals: fixture.away_score,
-    venue: fixture.venue_name || undefined,
-    league_id: Number(fixture.league_id),
+    home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
+    away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
+    venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
+    league_id: Number(match.leagueId), // Match.leagueId -> RoundFixture.league_id (number)
   }));
 }
 
@@ -1009,22 +991,42 @@ export interface TheSportsDBEvent {
  * Fetch league events from pure TheSportsDB events table
  */
 export async function fetchLeagueEvents(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TheSportsDBEvent[]> {
-  // Map internal league IDs to TheSportsDB league IDs
+  // Map internal league IDs to TheSportsDB league IDs (existing logic)
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
 
   const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("strSeason", String(season))
-    .order("dateEvent", { ascending: true });
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("*") // <-- 변경: 모든 컬럼을 선택 (Match 도메인 모델과 일치)
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .order("date", { ascending: true }); // <-- 변경: date 컬럼 사용
 
   if (error) {
-    console.error("Error fetching league events:", error);
+    console.error("Error fetching league events from events_v2:", error);
     return [];
   }
 
-  return data || [];
+  if (!data) return [];
+
+  // Match (events_v2) 데이터를 TheSportsDBEvent 타입으로 변환
+  return data.map(match => ({
+    idEvent: String(match.id), // Match.id -> TheSportsDBEvent.idEvent
+    strEvent: `Match: ${match.homeTeamId} vs ${match.awayTeamId}`, // 더미 값, 실제 이벤트 이름은 sourceIds에서 추출 필요
+    idLeague: String(match.leagueId),
+    strSeason: String(match.season),
+    intRound: String(match.round || 'N/A'),
+    dateEvent: String(match.date).split('T')[0], // Match.date (ISO) -> TheSportsDBEvent.dateEvent (YYYY-MM-DD)
+    strTime: String(match.date).split('T')[1]?.split('Z')[0] || '00:00:00', // Match.date (ISO) -> TheSportsDBEvent.strTime
+    strStatus: String(match.status), // Match.status -> TheSportsDBEvent.strStatus
+    idHomeTeam: String(match.homeTeamId),
+    idAwayTeam: String(match.awayTeamId),
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
+    strVenue: match.venueName || null,
+    // 기타 TheSportsDBEvent 필드들은 현재 Match 모델에 없으므로 null 또는 기본값 처리
+    // 예: strHomeTeam, strAwayTeam, strLeague, strBadge 등
+    // 실제 사용 시 프론트엔드에서 필요한 필드에 대해 추가적인 룩업 또는 데이터 보강 필요
+  }));
 }
 
 /**
@@ -1032,24 +1034,41 @@ export async function fetchLeagueEvents(leagueId: number, season: number = Numbe
  */
 export async function fetchUpcomingEvents(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
 
   const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("strSeason", String(season))
-    .gte("dateEvent", today)
-    .in("strStatus", ["Not Started", "TBD", "scheduled"])
-    .order("dateEvent", { ascending: true })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("*") // <-- 변경: 모든 컬럼을 선택 (Match 도메인 모델과 일치)
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .gte("date", today) // <-- 변경: date 컬럼 사용
+    .in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]) // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: true }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error("Error fetching upcoming events:", error);
+    console.error("Error fetching upcoming events from events_v2:", error);
     return [];
   }
 
-  return data || [];
+  if (!data) return [];
+
+  // Match (events_v2) 데이터를 TheSportsDBEvent 타입으로 변환
+  return data.map(match => ({
+    idEvent: String(match.id),
+    strEvent: `Match: ${match.homeTeamId} vs ${match.awayTeamId}`, // 더미 값, 실제 이벤트 이름은 sourceIds에서 추출 필요
+    idLeague: String(match.leagueId),
+    strSeason: String(match.season),
+    intRound: String(match.round || 'N/A'),
+    dateEvent: String(match.date).split('T')[0],
+    strTime: String(match.date).split('T')[1]?.split('Z')[0] || '00:00:00',
+    strStatus: String(match.status),
+    idHomeTeam: String(match.homeTeamId),
+    idAwayTeam: String(match.awayTeamId),
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
+    strVenue: match.venueName || null,
+  }));
 }
 
 /**
@@ -1057,24 +1076,41 @@ export async function fetchUpcomingEvents(leagueId: number, season: number = Num
  */
 export async function fetchRecentEvents(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
 
   const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("strSeason", String(season))
-    .lt("dateEvent", today)
-    .eq("strStatus", "Match Finished")
-    .order("dateEvent", { ascending: false })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("*") // <-- 변경: 모든 컬럼을 선택 (Match 도메인 모델과 일치)
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .lt("date", today) // <-- 변경: date 컬럼 사용
+    .eq("status", "FINISHED") // <-- 변경: Match 도메인 status 사용
+    .order("date", { ascending: false }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error("Error fetching recent events:", error);
+    console.error("Error fetching recent events from events_v2:", error);
     return [];
   }
 
-  return data || [];
+  if (!data) return [];
+
+  // Match (events_v2) 데이터를 TheSportsDBEvent 타입으로 변환
+  return data.map(match => ({
+    idEvent: String(match.id),
+    strEvent: `Match: ${match.homeTeamId} vs ${match.awayTeamId}`, // 더미 값, 실제 이벤트 이름은 sourceIds에서 추출 필요
+    idLeague: String(match.leagueId),
+    strSeason: String(match.season),
+    intRound: String(match.round || 'N/A'),
+    dateEvent: String(match.date).split('T')[0],
+    strTime: String(match.date).split('T')[1]?.split('Z')[0] || '00:00:00',
+    strStatus: String(match.status),
+    idHomeTeam: String(match.homeTeamId),
+    idAwayTeam: String(match.awayTeamId),
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
+    strVenue: match.venueName || null,
+  }));
 }
 
 /**
@@ -1084,39 +1120,73 @@ export async function fetchEventsByRound(leagueId: number, round: string, season
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
 
   const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("idLeague", theSportsDBLeagueId)
-    .eq("strSeason", String(season))
-    .eq("intRound", round)
-    .order("dateEvent", { ascending: true });
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("*") // <-- 변경: 모든 컬럼을 선택 (Match 도메인 모델과 일치)
+    .eq("leagueId", theSportsDBLeagueId) // <-- 변경: leagueId 컬럼 사용
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .eq("round", round) // <-- 변경: round 컬럼 사용
+    .order("date", { ascending: true }); // <-- 변경: date 컬럼 사용
 
   if (error) {
-    console.error("Error fetching events by round:", error);
+    console.error("Error fetching events by round from events_v2:", error);
     return [];
   }
 
-  return data || [];
+  if (!data) return [];
+
+  // Match (events_v2) 데이터를 TheSportsDBEvent 타입으로 변환
+  return data.map(match => ({
+    idEvent: String(match.id),
+    strEvent: `Match: ${match.homeTeamId} vs ${match.awayTeamId}`, // 더미 값, 실제 이벤트 이름은 sourceIds에서 추출 필요
+    idLeague: String(match.leagueId),
+    strSeason: String(match.season),
+    intRound: String(match.round || 'N/A'),
+    dateEvent: String(match.date).split('T')[0],
+    strTime: String(match.date).split('T')[1]?.split('Z')[0] || '00:00:00',
+    strStatus: String(match.status),
+    idHomeTeam: String(match.homeTeamId),
+    idAwayTeam: String(match.awayTeamId),
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
+    strVenue: match.venueName || null,
+  }));
 }
 
 /**
  * Fetch team events from events table
  */
-export async function fetchTeamEvents(teamName: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
+export async function fetchTeamEvents(teamId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
   const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("strSeason", String(season))
-    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
-    .order("dateEvent", { ascending: false })
+    .from("events_v2") // <-- 변경: events_v2 테이블 사용
+    .select("*") // <-- 변경: 모든 컬럼을 선택 (Match 도메인 모델과 일치)
+    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+    .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`) // <-- 변경: homeTeamId, awayTeamId 컬럼 사용, teamName -> teamId
+    .order("date", { ascending: false }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error("Error fetching team events:", error);
+    console.error("Error fetching team events from events_v2:", error);
     return [];
   }
 
-  return data || [];
+  if (!data) return [];
+
+  // Match (events_v2) 데이터를 TheSportsDBEvent 타입으로 변환
+  return data.map(match => ({
+    idEvent: String(match.id),
+    strEvent: `Match: ${match.homeTeamId} vs ${match.awayTeamId}`,
+    idLeague: String(match.leagueId),
+    strSeason: String(match.season),
+    intRound: String(match.round || 'N/A'),
+    dateEvent: String(match.date).split('T')[0],
+    strTime: String(match.date).split('T')[1]?.split('Z')[0] || '00:00:00',
+    strStatus: String(match.status),
+    idHomeTeam: String(match.homeTeamId),
+    idAwayTeam: String(match.awayTeamId),
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
+    strVenue: match.venueName || null,
+  }));
 }
 
 // ========== NEW TEAM PAGE API FUNCTIONS (TheSportsDB Schema) ==========
@@ -1150,35 +1220,54 @@ export async function fetchTeamStandingsData(
   teamName: string
 ): Promise<TeamStandings | null> {
   const { data, error } = await supabase
-    .from('standings')
-    .select('*')
-    .eq('idLeague', idLeague)
-    .eq('strSeason', season) // Fixed: use strSeason instead of season
-    .eq('strTeam', teamName)
+    .from('standings_v2') // <-- 변경: standings_v2 테이블 사용
+    .select('*') // <-- Match 도메인 모델과 일치
+    .eq('leagueId', idLeague) // <-- 변경: leagueId 컬럼 사용
+    .eq('season', season) // <-- 변경: season 컬럼 사용
+    .eq('teamName', teamName) // <-- 변경: teamName 컬럼 사용
     .maybeSingle();
 
   if (error) {
-    console.error('Error fetching team standings:', error);
+    console.error('Error fetching team standings from standings_v2:', error);
     return null; // Non-critical, return null instead of throwing
   }
 
-  return data;
+  if (!data) return null;
+
+  // Match (standings_v2) 데이터를 TeamStandings 타입으로 변환
+  // TeamStandings 타입의 필드가 많으므로 일부는 null 처리
+  return {
+    team_id: Number(data.teamId || 0), // Match.teamId -> TeamStandings.team_id (number)
+    team_name: String(data.teamName || "Unknown"),
+    short_name: null, // domain 모델에 short_name 없으므로 null
+    crest_url: data.teamBadgeUrl || null, // Match.teamBadgeUrl -> TeamStandings.crest_url
+    rank: Number(data.rank || 0),
+    points: Number(data.points || 0),
+    played: Number(data.gamesPlayed || 0),
+    win: Number(data.wins || 0),
+    draw: Number(data.draws || 0),
+    lose: Number(data.losses || 0),
+    goals_for: Number(data.goalsFor || 0),
+    goals_against: Number(data.goalsAgainst || 0),
+    goals_diff: Number(data.goalDifference || 0),
+    form: data.form || null,
+  };
 }
 
 /**
  * Fetch events for a specific team
  */
 export async function fetchTeamEventsData(
-  teamName: string,
+  teamId: string, // <-- teamName 대신 teamId 사용
   season: string,
   limit?: number
-): Promise<EventFromDB[]> {
+): Promise<Match[]> { // <-- EventFromDB[] 대신 Match[] 반환
   let query = supabase
-    .from('events')
-    .select('*')
-    .eq('strSeason', season)
-    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
-    .order('dateEvent', { ascending: false });
+    .from('events_v2') // <-- 변경: events_v2 테이블 사용
+    .select('*') // <-- Match 도메인 모델과 일치
+    .eq('season', season) // <-- 변경: season 컬럼 사용
+    .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`) // <-- 변경: homeTeamId, awayTeamId 컬럼 사용
+    .order('date', { ascending: false }); // <-- 변경: date 컬럼 사용
 
   if (limit) {
     query = query.limit(limit);
@@ -1187,11 +1276,11 @@ export async function fetchTeamEventsData(
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching team events:', error);
+    console.error('Error fetching team events from events_v2:', error);
     throw error;
   }
 
-  return data || [];
+  return data || []; // 이미 Match[] 형태이므로 추가 매핑 불필요
 }
 
 /**
@@ -1217,18 +1306,18 @@ export async function fetchEventLiveData(idEvent: string): Promise<EventLiveData
  * Calculate form guide (W/D/L) from recent team events
  */
 export async function fetchTeamFormGuide(
-  teamName: string,
+  teamId: string, // <-- teamName 대신 teamId 사용
   season: string,
   limit: number = 5
 ): Promise<FormResult[]> {
-  const events = await fetchTeamEventsData(teamName, season, limit);
+  const events = await fetchTeamEventsData(teamId, season, limit);
 
   return events
-    .filter(event => event.intHomeScore !== null && event.intAwayScore !== null)
+    .filter(event => event.homeScore !== undefined && event.awayScore !== undefined && event.homeScore !== null && event.awayScore !== null) // <-- 변경: Match 모델의 필드명 사용
     .map(event => {
-      const isHome = event.strHomeTeam === teamName;
-      const teamScore = isHome ? event.intHomeScore : event.intAwayScore;
-      const oppScore = isHome ? event.intAwayScore : event.intHomeScore;
+      const isHome = event.homeTeamId === teamId; // <-- 변경: homeTeamId로 비교
+      const teamScore = isHome ? event.homeScore : event.awayScore; // <-- 변경: Match 모델의 필드명 사용
+      const oppScore = isHome ? event.awayScore : event.homeScore; // <-- 변경: Match 모델의 필드명 사용
 
       if (teamScore! > oppScore!) return 'W';
       if (teamScore! < oppScore!) return 'L';
@@ -1240,56 +1329,56 @@ export async function fetchTeamFormGuide(
  * Fetch upcoming events for a team
  */
 export async function fetchTeamUpcomingEventsData(
-  teamName: string,
+  teamId: string, // <-- teamName 대신 teamId 사용
   season: string,
   limit: number = 5
-): Promise<EventFromDB[]> {
-  const today = new Date().toISOString().split('T')[0];
+): Promise<Match[]> { // <-- EventFromDB[] 대신 Match[] 반환
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
 
   const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .eq('strSeason', season)
-    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
-    .gte('dateEvent', today)
-    .order('dateEvent', { ascending: true })
+    .from('events_v2') // <-- 변경: events_v2 테이블 사용
+    .select('*') // <-- Match 도메인 모델과 일치
+    .eq('season', season) // <-- 변경: season 컬럼 사용
+    .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`) // <-- 변경: homeTeamId, awayTeamId 컬럼 사용
+    .gte('date', today) // <-- 변경: date 컬럼 사용
+    .in('status', ["SCHEDULED", "UNKNOWN", "POSTPONED"]) // <-- 변경: Match 도메인 status 사용
+    .order('date', { ascending: true }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error('Error fetching team upcoming events:', error);
+    console.error('Error fetching team upcoming events from events_v2:', error);
     return [];
   }
 
-  return data || [];
+  return data || []; // 이미 Match[] 형태이므로 추가 매핑 불필요
 }
 
 /**
  * Fetch recent completed events for a team
  */
 export async function fetchTeamRecentEventsData(
-  teamName: string,
+  teamId: string, // <-- teamName 대신 teamId 사용
   season: string,
   limit: number = 5
-): Promise<EventFromDB[]> {
-  const today = new Date().toISOString().split('T')[0];
+): Promise<Match[]> { // <-- EventFromDB[] 대신 Match[] 반환
+  const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
 
   const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .eq('strSeason', season)
-    .or(`strHomeTeam.eq.${teamName},strAwayTeam.eq.${teamName}`)
-    .lt('dateEvent', today)
-    .not('intHomeScore', 'is', null)
-    .not('intAwayScore', 'is', null)
-    .order('dateEvent', { ascending: false })
+    .from('events_v2') // <-- 변경: events_v2 테이블 사용
+    .select('*') // <-- Match 도메인 모델과 일치
+    .eq('season', season) // <-- 변경: season 컬럼 사용
+    .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`) // <-- 변경: homeTeamId, awayTeamId 컬럼 사용
+    .lt('date', today) // <-- 변경: date 컬럼 사용
+    .eq('status', "FINISHED") // <-- 변경: Match 도메인 status 사용 (점수 null 여부 대신)
+    .order('date', { ascending: false }) // <-- 변경: date 컬럼 사용
     .limit(limit);
 
   if (error) {
-    console.error('Error fetching team recent events:', error);
+    console.error('Error fetching team recent events from events_v2:', error);
     return [];
   }
 
-  return data || [];
+  return data || []; // 이미 Match[] 형태이므로 추가 매핑 불필요
 }
 
 /**

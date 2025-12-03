@@ -1,40 +1,28 @@
 // src/components/TheSportsDBFixturesSection.tsx
+// REFACTORED to use the new Match domain model from events_v2
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { 
   fetchRecentMatches,
-  fetchUpcomingMatches,
-  type DatabaseFixture 
+  fetchUpcomingMatches
 } from '@/lib/database-fixtures-api';
+import type { Match } from '@/types/domain';
 
-// Utility function to convert any time to Korean timezone (KST = UTC+9)
-const convertToKoreanTime = (dateStr: string): Date => {
-  const date = new Date(dateStr);
-  
-  // If the date is invalid, try parsing differently
-  if (isNaN(date.getTime())) {
-    throw new Error(`Invalid date: ${dateStr}`);
-  }
-  
-  // Check if the date is already in UTC (assumes most API dates are UTC)
-  // Add 9 hours for Korean Standard Time
-  return new Date(date.getTime() + (9 * 60 * 60 * 1000));
-};
+// The component will now work directly with the Match model
+type FixtureData = Match;
 
 interface TheSportsDBFixturesSectionProps {
   leagueId?: number; // Legacy support
   leagueSlug?: string; // New slug-based approach
 }
 
-interface FixturesCardProps {
+function FixturesCard({ title, fixtures, isLoading, error, showScores = false }: {
   title: string;
-  fixtures: DatabaseFixture[];
+  fixtures: FixtureData[];
   isLoading: boolean;
   error?: Error | null;
   showScores?: boolean;
-}
-
-function FixturesCard({ title, fixtures, isLoading, error, showScores = false }: FixturesCardProps) {
+}) {
   if (isLoading) {
     return (
       <div className="bg-slate-800 rounded-lg overflow-hidden">
@@ -86,19 +74,18 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
 
   // Group fixtures by round for better organization
   const rounds = fixtures.reduce((acc, fixture) => {
-    const round = String(fixture.intRound);
+    const round = fixture.round || 'N/A';
     if (!acc[round]) {
       acc[round] = [];
     }
     acc[round].push(fixture);
     return acc;
-  }, {} as Record<string, DatabaseFixture[]>);
+  }, {} as Record<string, FixtureData[]>);
 
   const sortedRounds = Object.keys(rounds).sort((a, b) => {
-    // Sort rounds numerically
-    const aNum = parseInt(a.replace(/\D/g, ''));
-    const bNum = parseInt(b.replace(/\D/g, ''));
-    return showScores ? bNum - aNum : aNum - bNum; // Recent: descending, Upcoming: ascending
+    const aNum = parseInt(a.replace(/\D/g, '')) || 0;
+    const bNum = parseInt(b.replace(/\D/g, '')) || 0;
+    return showScores ? bNum - aNum : aNum - bNum;
   });
 
   return (
@@ -121,7 +108,7 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
                 </div>
               )}
               <div className="space-y-3">
-                {rounds[round].map((fixture: DatabaseFixture) => (
+                {rounds[round].map((fixture: FixtureData) => (
                   <TheSportsDBFixtureRow
                     key={fixture.id}
                     fixture={fixture}
@@ -138,77 +125,57 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
 }
 
 interface TheSportsDBFixtureRowProps {
-  fixture: DatabaseFixture;
+  fixture: FixtureData;
   showScores: boolean;
 }
 
 function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowProps) {
-  const isCompleted = fixture.strStatus === 'Match Finished';
-  const hasScore = fixture.intHomeScore !== null && fixture.intAwayScore !== null;
+  const isCompleted = fixture.status === 'FINISHED';
+  const hasScore = fixture.homeScore !== null && fixture.awayScore !== null;
 
-  // Format fixture date and time in Korean timezone
-  const formatDateKorean = (fixture: DatabaseFixture) => {
+  const formatDateKorean = (fixture: FixtureData) => {
     try {
-      // DatabaseFixture uses dateEvent field (format: "2025-04-27")
-      const date = new Date(fixture.dateEvent);
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return fixture.dateEvent; // Return raw date if parsing fails
-      }
-      
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      
-      // For upcoming matches, we might not have specific times
-      return `${month}/${day}`;
+      const date = new Date(fixture.date);
+      if (isNaN(date.getTime())) return fixture.date;
+      return `${date.getMonth() + 1}/${date.getDate()}`;
     } catch (error) {
       console.warn('Date formatting error:', error);
-      return fixture.dateEvent;
+      return fixture.date;
     }
   };
 
-  // Format status for display
-  const formatStatus = (status: string) => {
-    const statusMap: Record<string, string> = {
-      'Not Started': '예정',
-      'Match Finished': '종료',
-      'TBD': '미정',
-      'Postponed': '연기',
-      'Cancelled': '취소',
+  const formatStatus = (status: Match['status']) => {
+    const statusMap: Record<Match['status'], string> = {
+      'SCHEDULED': '예정',
+      'FINISHED': '종료',
+      'POSTPONED': '연기',
+      'CANCELED': '취소',
+      'IN_PLAY': '진행중',
+      'UNKNOWN': '미정'
     };
     return statusMap[status] || status;
   };
 
   return (
     <div className="bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
-      {/* Main Content */}
       <div className="p-4">
         <div className="flex items-center justify-between">
-          {/* Teams */}
           <div className="flex items-center space-x-4 flex-1 min-w-0">
-            {/* Home Team */}
             <div className="flex items-center space-x-2 flex-1 min-w-0">
-{/* Team badges not available in database */}
-              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.strHomeTeam}>
-                {fixture.strHomeTeam}
+              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={`Team ID: ${fixture.homeTeamId}`}>
+                Team {fixture.homeTeamId}
               </span>
             </div>
 
-            {/* Score or VS */}
             <div className="flex items-center justify-center px-3">
               {showScores && hasScore ? (
                 <div className="flex items-center space-x-2">
-                  <span className={`text-lg font-bold ${
-                    isCompleted ? 'text-white' : 'text-slate-300'
-                  }`}>
-                    {fixture.intHomeScore}
+                  <span className={`text-lg font-bold ${isCompleted ? 'text-white' : 'text-slate-300'}`}>
+                    {fixture.homeScore}
                   </span>
                   <span className="text-slate-400 text-sm">-</span>
-                  <span className={`text-lg font-bold ${
-                    isCompleted ? 'text-white' : 'text-slate-300'
-                  }`}>
-                    {fixture.intAwayScore}
+                  <span className={`text-lg font-bold ${isCompleted ? 'text-white' : 'text-slate-300'}`}>
+                    {fixture.awayScore}
                   </span>
                 </div>
               ) : (
@@ -218,18 +185,15 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
               )}
             </div>
 
-            {/* Away Team */}
             <div className="flex items-center space-x-2 flex-1 justify-end min-w-0">
-              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right" title={fixture.strAwayTeam}>
-                {fixture.strAwayTeam}
+              <span className="text-white text-sm font-medium min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right" title={`Team ID: ${fixture.awayTeamId}`}>
+                Team {fixture.awayTeamId}
               </span>
-{/* Team badges not available in database */}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Date, Status, and Venue Info */}
       <div className="px-4 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
           <div className="flex items-center flex-wrap gap-2 text-slate-400">
@@ -238,15 +202,15 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
             </span>
             <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
               isCompleted ? 'bg-green-600 text-white' : 
-              fixture.strStatus === 'Not Started' ? 'bg-blue-600 text-white' :
+              fixture.status === 'SCHEDULED' ? 'bg-blue-600 text-white' :
               'bg-slate-600 text-slate-300'
             }`}>
-              {formatStatus(fixture.strStatus)}
+              {formatStatus(fixture.status)}
             </span>
           </div>
-          {fixture.strVenue && (
-            <div className="text-slate-500 text-xs sm:max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.strVenue}>
-              📍 {fixture.strVenue}
+          {fixture.venueName && (
+            <div className="text-slate-500 text-xs sm:max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap" title={fixture.venueName}>
+              📍 {fixture.venueName}
             </div>
           )}
         </div>
@@ -261,58 +225,40 @@ export default function TheSportsDBFixturesSection({
 }: TheSportsDBFixturesSectionProps) {
   const [activeTab, setActiveTab] = useState<'recent' | 'upcoming'>('recent');
 
-  // Convert legacy leagueId to slug if needed
   const effectiveLeagueSlug = leagueSlug || (leagueId ? 
     (leagueId === 4001 || leagueId === 1 ? 'k-league-1' : 
      leagueId === 4002 || leagueId === 2 ? 'k-league-2' : 
      `league-${leagueId}`) : 'k-league-1');
 
-  // Fetch recent matches using database
   const { 
     data: recentFixtures = [], 
     isLoading: recentLoading, 
     error: recentError 
   } = useQuery({
-    queryKey: ["databaseRecentFixtures", effectiveLeagueSlug],
-    queryFn: () => {
-      console.log(`🔍 Fetching recent matches for: ${effectiveLeagueSlug}`);
-      return fetchRecentMatches(effectiveLeagueSlug, 2025, 10);
-    },
+    queryKey: ["v2-databaseRecentFixtures", effectiveLeagueSlug],
+    queryFn: () => fetchRecentMatches(effectiveLeagueSlug, 2025, 10),
     enabled: !!effectiveLeagueSlug,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
-  // Fetch upcoming matches using database
   const { 
     data: upcomingFixtures = [], 
     isLoading: upcomingLoading, 
     error: upcomingError 
   } = useQuery({
-    queryKey: ["databaseUpcomingFixtures", effectiveLeagueSlug],
-    queryFn: () => {
-      console.log(`🔮 Fetching upcoming matches for: ${effectiveLeagueSlug}`);
-      return fetchUpcomingMatches(effectiveLeagueSlug, 2025, 10);
-    },
+    queryKey: ["v2-databaseUpcomingFixtures", effectiveLeagueSlug],
+    queryFn: () => fetchUpcomingMatches(effectiveLeagueSlug, 2025, 10),
     enabled: !!effectiveLeagueSlug,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const isLoading = recentLoading || upcomingLoading;
   const error = recentError || upcomingError;
 
-  // Debug logging
-  console.log(`📊 Fixtures Debug - League: ${effectiveLeagueSlug}`, {
-    recentFixtures: recentFixtures?.length || 0,
-    upcomingFixtures: upcomingFixtures?.length || 0,
-    isLoading,
-    error: error?.message || null
-  });
-
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
       <div className="bg-slate-800 rounded-lg overflow-hidden">
         <div className="flex border-b border-slate-700">
           <button
@@ -346,8 +292,6 @@ export default function TheSportsDBFixturesSection({
             )}
           </button>
         </div>
-
-        {/* Tab Content */}
         <div className="p-6">
           {activeTab === 'recent' ? (
             <div className="space-y-3">
@@ -368,7 +312,7 @@ export default function TheSportsDBFixturesSection({
                   최근 경기가 없습니다.
                 </div>
               ) : (
-                recentFixtures.slice(0, 10).map((fixture: DatabaseFixture) => (
+                recentFixtures.slice(0, 10).map((fixture: FixtureData) => (
                   <TheSportsDBFixtureRow
                     key={fixture.id}
                     fixture={fixture}
@@ -396,7 +340,7 @@ export default function TheSportsDBFixturesSection({
                   예정된 경기가 없습니다.
                 </div>
               ) : (
-                upcomingFixtures.slice(0, 10).map((fixture: DatabaseFixture) => (
+                upcomingFixtures.slice(0, 10).map((fixture: FixtureData) => (
                   <TheSportsDBFixtureRow
                     key={fixture.id}
                     fixture={fixture}
@@ -408,8 +352,6 @@ export default function TheSportsDBFixturesSection({
           )}
         </div>
       </div>
-
-      {/* API Source Info */}
       <div className="text-center">
         <div className="text-slate-500 text-xs">
           제공: TheSportsDB • 리그: {effectiveLeagueSlug}

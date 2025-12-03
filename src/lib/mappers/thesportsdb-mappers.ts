@@ -1,6 +1,6 @@
 // src/lib/mappers/thesportsdb-mappers.ts
 
-import type { Standing } from '@/types/domain';
+import type { Standing, Match } from '@/types/domain';
 
 // This interface is based on the structure from TheSportsDB API
 // and is co-located here for mapping purposes.
@@ -44,29 +44,101 @@ export function mapTheSportsDBStandingToDomain(rawStanding: TheSportsDBStanding)
   };
 
   return {
-    // We use the source's league and team IDs for now.
-    // A more advanced implementation might map these to internal UUIDs.
     leagueId: rawStanding.idLeague,
     teamId: rawStanding.idTeam,
     season: rawStanding.strSeason || new Date().getFullYear().toString(),
-
     rank: safeParseInt(rawStanding.intRank),
     teamName: rawStanding.strTeam,
     teamBadgeUrl: rawStanding.strBadge,
-
     gamesPlayed: safeParseInt(rawStanding.intPlayed),
     wins: safeParseInt(rawStanding.intWin),
     draws: safeParseInt(rawStanding.intDraw),
     losses: safeParseInt(rawStanding.intLoss),
-
     points: safeParseInt(rawStanding.intPoints),
     goalsFor: safeParseInt(rawStanding.intGoalsFor),
     goalsAgainst: safeParseInt(rawStanding.intGoalsAgainst),
     goalDifference: safeParseInt(rawStanding.intGoalDifference),
-
     form: rawStanding.strForm || undefined,
     description: rawStanding.strDescription || undefined,
-
     lastUpdated: rawStanding.dateUpdated || new Date().toISOString(),
+  };
+}
+
+// --- Event / Match Mapping ---
+
+// This interface is based on the structure from TheSportsDB eventsseason.php API
+export interface TheSportsDBEvent {
+  idEvent: string;
+  strEvent: string;
+  idLeague: string;
+  strSeason: string;
+  intRound?: string;
+  dateEvent: string;
+  strTime?: string;
+  strStatus?: string;
+  idHomeTeam?: string;
+  idAwayTeam?: string;
+  intHomeScore?: string;
+  intAwayScore?: string;
+  strVenue?: string;
+}
+
+/**
+ * Maps a raw event object from TheSportsDB API to our standardized `Match` domain model.
+ * @param rawEvent The raw event object from TheSportsDB.
+ * @returns A standardized `Match` object.
+ */
+export function mapTheSportsDBEventToDomain(rawEvent: TheSportsDBEvent): Match {
+  const safeParseInt = (value: string | undefined | null): number | undefined => {
+    if (value === undefined || value === null || value.trim() === '') {
+      return undefined;
+    }
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? undefined : parsed;
+  };
+
+  const toDomainStatus = (status: string | undefined): Match['status'] => {
+    switch (status) {
+      case 'Match Finished':
+        return 'FINISHED';
+      case 'Not Started':
+      case 'Time To Be Defined':
+        return 'SCHEDULED';
+      case 'Postponed':
+        return 'POSTPONED';
+      case 'Cancelled':
+        return 'CANCELED';
+      case 'In Play': // Hypothetical, but good to handle
+        return 'IN_PLAY';
+      default:
+        return 'UNKNOWN';
+    }
+  };
+  
+  // TheSportsDB often provides just a date and a separate time.
+  // We combine them into a single ISO 8601 string.
+  const createISOString = (date: string, time: string | undefined): string => {
+    if (!date) return new Date().toISOString(); // Fallback
+    const timePart = time || '00:00:00';
+    // Assume UTC if no timezone info is provided.
+    // The 'Z' is crucial for creating a correct UTC date.
+    return `${date}T${timePart}Z`;
+  };
+
+  return {
+    id: rawEvent.idEvent,
+    leagueId: rawEvent.idLeague,
+    season: rawEvent.strSeason,
+    round: rawEvent.intRound || undefined,
+    date: createISOString(rawEvent.dateEvent, rawEvent.strTime),
+    status: toDomainStatus(rawEvent.strStatus),
+    homeTeamId: rawEvent.idHomeTeam || '0',
+    awayTeamId: rawEvent.idAwayTeam || '0',
+    homeScore: safeParseInt(rawEvent.intHomeScore),
+    awayScore: safeParseInt(rawEvent.intAwayScore),
+    venueName: rawEvent.strVenue || undefined,
+    sourceIds: {
+      thesportsdb: rawEvent.idEvent,
+    },
   };
 }

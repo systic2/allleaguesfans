@@ -1,304 +1,212 @@
-// Database-based fixtures API - No CORS issues
+// src/lib/database-fixtures-api.ts
+// REFACTORED VERSION: This file now queries the new 'events_v2' table
+// and uses the standardized 'Match' domain model.
 import { supabase } from './supabaseClient';
+import type { Match } from '@/types/domain';
 
-export interface DatabaseFixture {
-  id: string;
-  idEvent: string;
-  strEvent: string;
-  strHomeTeam: string;
-  strAwayTeam: string;
-  dateEvent: string;
-  strStatus: string;
-  intRound: number;
-  intHomeScore?: number;
-  intAwayScore?: number;
-  strVenue?: string;
-  idLeague: string;
-  strSeason: string;
-  round: string;
-  status: string;
-  venue: string;
-}
+// The return type can now be our standard Match model or a specific one if needed.
+// For simplicity, we'll have the functions return Match[] directly.
+export type DatabaseFixture = Match;
 
 /**
- * Get recent completed matches (highest round with "Match Finished")
+ * Get recent completed matches from the latest completed round using events_v2.
  */
 export async function fetchRecentMatches(
   leagueSlug: string,
   season: number = 2025,
   limit: number = 10
 ): Promise<DatabaseFixture[]> {
-  console.log(`🔍 Fetching recent matches for ${leagueSlug}, season ${season}`);
+  console.log(`[v2] 🔍 Fetching recent matches for ${leagueSlug}, season ${season}`);
   
-  // Convert slug to TheSportsDB league ID
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
                              leagueSlug.replace('league-', '');
   
   try {
-    // Get all completed rounds and sort numerically in JavaScript
     const { data: allRoundsData, error: roundError } = await supabase
-      .from('events')
-      .select('intRound')
-      .eq('idLeague', theSportsDBLeagueId)
-      .eq('strSeason', String(season))
-      .eq('strStatus', 'Match Finished');
+      .from('events_v2')
+      .select('round')
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .eq('status', 'FINISHED');
     
     if (roundError) throw roundError;
     
-    // Find the highest round number numerically
-    const uniqueRounds = [...new Set(allRoundsData?.map(r => parseInt(r.intRound)).filter(r => !isNaN(r)) || [])];
-    const latestRound = Math.max(...uniqueRounds);
-    
+    const uniqueRounds = [...new Set(allRoundsData?.map(r => parseInt(r.round || '0')).filter(r => !isNaN(r) && r > 0) || [])];
     if (uniqueRounds.length === 0) {
-      console.log('❌ No completed matches found');
+      console.log('❌ No completed matches found in events_v2');
       return [];
     }
+    const latestRound = Math.max(...uniqueRounds);
     
-    console.log(`📅 Latest completed round: ${latestRound}`);
+    console.log(`[v2] 📅 Latest completed round: ${latestRound}`);
     
-    // Get matches from the latest completed round
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        idEvent,
-        strEvent,
-        strHomeTeam,
-        strAwayTeam,
-        dateEvent,
-        strStatus,
-        intRound,
-        intHomeScore,
-        intAwayScore,
-        strVenue,
-        idLeague,
-        strSeason
-      `)
-      .eq('idLeague', theSportsDBLeagueId)
-      .eq('strSeason', String(season))
-      .eq('strStatus', 'Match Finished')
-      .eq('intRound', String(latestRound))
-      .order('dateEvent', { ascending: false })
+      .from('events_v2')
+      .select('*')
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .eq('status', 'FINISHED')
+      .eq('round', String(latestRound))
+      .order('date', { ascending: false })
       .limit(limit);
       
     if (error) throw error;
     
-    console.log(`✅ Found ${data?.length || 0} recent matches from round ${latestRound}`);
-    
-    // Map database fields to interface
-    const mappedData = (data || []).map(fixture => ({
-      ...fixture,
-      id: fixture.idEvent,
-      round: String(fixture.intRound),
-      status: fixture.strStatus,
-      venue: fixture.strVenue || ''
-    }));
-    
-    return mappedData;
+    console.log(`[v2] ✅ Found ${data?.length || 0} recent matches from round ${latestRound}`);
+    return data || [];
     
   } catch (error) {
-    console.error('❌ Error fetching recent matches:', error);
+    console.error('❌ [v2] Error fetching recent matches:', error);
     throw error;
   }
 }
 
 /**
- * Get upcoming matches (lowest round with "Not Started")
+ * Get upcoming matches from the next upcoming round using events_v2.
  */
 export async function fetchUpcomingMatches(
   leagueSlug: string,
   season: number = 2025,
   limit: number = 10
 ): Promise<DatabaseFixture[]> {
-  console.log(`🔍 Fetching upcoming matches for ${leagueSlug}, season ${season}`);
+  console.log(`[v2] 🔍 Fetching upcoming matches for ${leagueSlug}, season ${season}`);
   
-  // Convert slug to TheSportsDB league ID
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
                              leagueSlug.replace('league-', '');
   
   try {
-    // Get all upcoming rounds and sort numerically in JavaScript
     const { data: allUpcomingRoundsData, error: roundError } = await supabase
-      .from('events')
-      .select('intRound')
-      .eq('idLeague', theSportsDBLeagueId)
-      .eq('strSeason', String(season))
-      .eq('strStatus', 'Not Started');
+      .from('events_v2')
+      .select('round')
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .in('status', ['SCHEDULED', 'POSTPONED']);
     
     if (roundError) throw roundError;
-    
-    // Find the lowest round number numerically
-    const uniqueUpcomingRounds = [...new Set(allUpcomingRoundsData?.map(r => parseInt(r.intRound)).filter(r => !isNaN(r)) || [])];
-    const nextRound = Math.min(...uniqueUpcomingRounds);
-    
+
+    const uniqueUpcomingRounds = [...new Set(allUpcomingRoundsData?.map(r => parseInt(r.round || '0')).filter(r => !isNaN(r) && r > 0) || [])];
     if (uniqueUpcomingRounds.length === 0) {
-      console.log('❌ No upcoming matches found');
+      console.log('❌ No upcoming matches found in events_v2');
       return [];
     }
+    const nextRound = Math.min(...uniqueUpcomingRounds);
     
-    console.log(`📅 Next upcoming round: ${nextRound}`);
+    console.log(`[v2] 📅 Next upcoming round: ${nextRound}`);
     
-    // Get matches from the next upcoming round
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        idEvent,
-        strEvent,
-        strHomeTeam,
-        strAwayTeam,
-        dateEvent,
-        strStatus,
-        intRound,
-        intHomeScore,
-        intAwayScore,
-        strVenue,
-        idLeague,
-        strSeason
-      `)
-      .eq('idLeague', theSportsDBLeagueId)
-      .eq('strSeason', String(season))
-      .eq('strStatus', 'Not Started')
-      .eq('intRound', String(nextRound))
-      .order('dateEvent', { ascending: true })
+      .from('events_v2')
+      .select('*')
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .in('status', ['SCHEDULED', 'POSTPONED'])
+      .eq('round', String(nextRound))
+      .order('date', { ascending: true })
       .limit(limit);
       
     if (error) throw error;
     
-    console.log(`✅ Found ${data?.length || 0} upcoming matches from round ${nextRound}`);
-    
-    // Map database fields to interface
-    const mappedData = (data || []).map(fixture => ({
-      ...fixture,
-      id: fixture.idEvent,
-      round: String(fixture.intRound),
-      status: fixture.strStatus,
-      venue: fixture.strVenue || ''
-    }));
-    
-    return mappedData;
+    console.log(`[v2] ✅ Found ${data?.length || 0} upcoming matches from round ${nextRound}`);
+    return data || [];
     
   } catch (error) {
-    console.error('❌ Error fetching upcoming matches:', error);
+    console.error('❌ [v2] Error fetching upcoming matches:', error);
     throw error;
   }
 }
 
 /**
- * Get matches by specific round
+ * Get matches by specific round using events_v2.
  */
 export async function fetchMatchesByRound(
   leagueSlug: string,
   round: number,
   season: number = 2025
 ): Promise<DatabaseFixture[]> {
-  console.log(`🔍 Fetching round ${round} matches for ${leagueSlug}, season ${season}`);
+  console.log(`[v2] 🔍 Fetching round ${round} matches for ${leagueSlug}, season ${season}`);
   
-  // Convert slug to TheSportsDB league ID
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
                              leagueSlug.replace('league-', '');
   
   try {
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        idEvent,
-        strEvent,
-        strHomeTeam,
-        strAwayTeam,
-        dateEvent,
-        strStatus,
-        intRound,
-        intHomeScore,
-        intAwayScore,
-        strVenue,
-        idLeague,
-        strSeason
-      `)
-      .eq('idLeague', theSportsDBLeagueId)
-      .eq('strSeason', String(season))
-      .eq('intRound', round)
-      .order('dateEvent', { ascending: true });
+      .from('events_v2')
+      .select('*')
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season))
+      .eq('round', String(round))
+      .order('date', { ascending: true });
       
     if (error) throw error;
     
-    console.log(`✅ Found ${data?.length || 0} matches in round ${round}`);
-    
-    // Map database fields to interface
-    const mappedData = (data || []).map(fixture => ({
-      ...fixture,
-      id: fixture.idEvent,
-      round: String(fixture.intRound),
-      status: fixture.strStatus,
-      venue: fixture.strVenue || ''
-    }));
-    
-    return mappedData;
+    console.log(`[v2] ✅ Found ${data?.length || 0} matches in round ${round}`);
+    return data || [];
     
   } catch (error) {
-    console.error(`❌ Error fetching round ${round} matches:`, error);
+    console.error(`❌ [v2] Error fetching round ${round} matches:`, error);
     throw error;
   }
 }
 
 /**
- * Get all rounds with match counts for navigation
+ * Get all rounds with match counts for navigation using events_v2.
  */
 export async function fetchRoundSummary(
   leagueSlug: string,
   season: number = 2025
-): Promise<{ round: number; matchCount: number; status: string }[]> {
-  console.log(`🔍 Fetching round summary for ${leagueSlug}, season ${season}`);
+): Promise<{ round: string; matchCount: number; status: 'COMPLETED' | 'IN_PROGRESS' | 'SCHEDULED' }[]> {
+  console.log(`[v2] 🔍 Fetching round summary for ${leagueSlug}, season ${season}`);
   
-  // Convert slug to TheSportsDB league ID
   const theSportsDBLeagueId = leagueSlug === 'k-league-1' ? '4689' : 
                              leagueSlug === 'k-league-2' ? '4822' : 
                              leagueSlug.replace('league-', '');
   
   try {
     const { data, error } = await supabase
-      .from('events')
-      .select('intRound, strStatus')
-      .eq('idLeague', theSportsDBLeagueId)
-      .eq('strSeason', String(season));
+      .from('events_v2')
+      .select('round, status')
+      .eq('leagueId', theSportsDBLeagueId)
+      .eq('season', String(season));
       
     if (error) throw error;
     
-    // Group by round and count matches
-    const roundSummary = new Map<number, { matchCount: number; statuses: string[] }>();
+    const roundSummary = new Map<string, { matchCount: number; statuses: Match['status'][] }>();
     
     data?.forEach(event => {
-      const round = event.intRound;
+      const round = event.round || 'N/A';
       if (!roundSummary.has(round)) {
         roundSummary.set(round, { matchCount: 0, statuses: [] });
       }
       const roundData = roundSummary.get(round)!;
       roundData.matchCount++;
-      roundData.statuses.push(event.strStatus);
+      roundData.statuses.push(event.status as Match['status']);
     });
     
-    // Convert to array and determine overall status
     const result = Array.from(roundSummary.entries()).map(([round, data]) => {
-      const allFinished = data.statuses.every(status => status === 'Match Finished');
-      const anyStarted = data.statuses.some(status => status !== 'Not Started');
+      const allFinished = data.statuses.every(status => status === 'FINISHED');
+      const anyStarted = data.statuses.some(status => status !== 'SCHEDULED');
       
-      let status = 'Not Started';
-      if (allFinished) status = 'Completed';
-      else if (anyStarted) status = 'In Progress';
+      let status: 'COMPLETED' | 'IN_PROGRESS' | 'SCHEDULED' = 'SCHEDULED';
+      if (allFinished) {
+        status = 'COMPLETED';
+      } else if (anyStarted) {
+        status = 'IN_PROGRESS';
+      }
       
       return {
         round,
         matchCount: data.matchCount,
         status
       };
-    }).sort((a, b) => a.round - b.round);
+    }).sort((a, b) => (parseInt(a.round) || 0) - (parseInt(b.round) || 0));
     
-    console.log(`✅ Found ${result.length} rounds`);
+    console.log(`[v2] ✅ Found ${result.length} rounds`);
     return result;
     
   } catch (error) {
-    console.error('❌ Error fetching round summary:', error);
+    console.error('❌ [v2] Error fetching round summary:', error);
     throw error;
   }
 }

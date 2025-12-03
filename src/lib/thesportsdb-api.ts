@@ -1,9 +1,15 @@
-// TheSportsDB API Integration - Frontend Types & Functions
+// src/lib/thesportsdb-api.ts
+// REFACTORED VERSION: Uses events_v2 and Match domain model
 import { supabase } from "@/lib/supabaseClient";
+import type { Match } from "@/types/domain"; // Import the Match domain model
 
 // ========================================
 // TheSportsDB Native Types (No Transformation)
 // ========================================
+
+// Interfaces for TheSportsDB entities (Leagues, Teams, Players, Events)
+// These are kept for reference and potential use with external API calls,
+// but the functions below will primarily return the Match domain model.
 
 export interface TheSportsDBLeague {
   idLeague: string;
@@ -18,20 +24,14 @@ export interface TheSportsDBLeague {
   strWebsite?: string;
   intDivision?: string;
   idCup?: string;
-  
-  // External API IDs
   idSoccerXML?: string;
   idAPIfootball?: string;
   highlightly_id?: number;
-  
-  // Social Media
   strFacebook?: string;
   strInstagram?: string;
   strTwitter?: string;
   strYoutube?: string;
   strRSS?: string;
-  
-  // Descriptions
   strDescriptionEN?: string;
   strDescriptionDE?: string;
   strDescriptionFR?: string;
@@ -47,8 +47,6 @@ export interface TheSportsDBLeague {
   strDescriptionNO?: string;
   strDescriptionPL?: string;
   strDescriptionIL?: string;
-  
-  // Media Assets
   strBadge?: string;
   strLogo?: string;
   strBanner?: string;
@@ -58,14 +56,10 @@ export interface TheSportsDBLeague {
   strFanart2?: string;
   strFanart3?: string;
   strFanart4?: string;
-  
-  // Other
   strTvRights?: string;
   strNaming?: string;
   strComplete?: string;
   strLocked?: string;
-  
-  // Timestamps
   created_at?: string;
   updated_at?: string;
 }
@@ -78,8 +72,6 @@ export interface TheSportsDBTeam {
   intFormedYear?: string;
   strSport?: string;
   strCountry?: string;
-  
-  // League Associations
   strLeague?: string;
   idLeague?: string;
   strLeague2?: string;
@@ -88,22 +80,16 @@ export interface TheSportsDBTeam {
   idLeague3?: string;
   strLeague4?: string;
   idLeague4?: string;
-  
-  // External API IDs
   idESPN?: string;
   idAPIfootball?: string;
   intLoved?: string;
   highlightly_id?: number;
-  
-  // Colors
   strColour1?: string;
   strColour2?: string;
   strColour3?: string;
   strColour4?: string;
   strColour5?: string;
   strColour6?: string;
-  
-  // Media Assets
   strBadge?: string;
   strLogo?: string;
   strBanner?: string;
@@ -112,15 +98,11 @@ export interface TheSportsDBTeam {
   strFanart2?: string;
   strFanart3?: string;
   strFanart4?: string;
-  
-  // Stadium
   strStadium?: string;
   strStadiumThumb?: string;
   strStadiumDescription?: string;
   strStadiumLocation?: string;
   intStadiumCapacity?: string;
-  
-  // Descriptions
   strDescriptionEN?: string;
   strDescriptionDE?: string;
   strDescriptionFR?: string;
@@ -136,21 +118,15 @@ export interface TheSportsDBTeam {
   strDescriptionNO?: string;
   strDescriptionPL?: string;
   strDescriptionIL?: string;
-  
-  // Social Media
   strWebsite?: string;
   strFacebook?: string;
   strTwitter?: string;
   strInstagram?: string;
   strYoutube?: string;
   strRSS?: string;
-  
-  // Other
   strGender?: string;
   strKeywords?: string;
   strLocked?: string;
-  
-  // Timestamps
   created_at?: string;
   updated_at?: string;
 }
@@ -164,8 +140,6 @@ export interface TheSportsDBPlayer {
   strSport?: string;
   strPosition?: string;
   strNumber?: string;
-  
-  // Personal Information
   dateBorn?: string;
   strBirthLocation?: string;
   strNationality?: string;
@@ -173,21 +147,15 @@ export interface TheSportsDBPlayer {
   strHeight?: string;
   strWeight?: string;
   strStatus?: string;
-  
-  // Career Information
   dateSigned?: string;
   strSigning?: string;
   strWage?: string;
   strOutfitter?: string;
   strKit?: string;
   strAgent?: string;
-  
-  // External API IDs
   idAPIfootball?: string;
   idPlayerManager?: string;
   strLocked?: string;
-  
-  // Media Assets
   strThumb?: string;
   strCutout?: string;
   strRender?: string;
@@ -196,8 +164,6 @@ export interface TheSportsDBPlayer {
   strFanart2?: string;
   strFanart3?: string;
   strFanart4?: string;
-  
-  // Descriptions
   strDescriptionEN?: string;
   strDescriptionDE?: string;
   strDescriptionFR?: string;
@@ -213,15 +179,11 @@ export interface TheSportsDBPlayer {
   strDescriptionNO?: string;
   strDescriptionPL?: string;
   strDescriptionIL?: string;
-  
-  // Social Media
   strWebsite?: string;
   strFacebook?: string;
   strTwitter?: string;
   strInstagram?: string;
   strYoutube?: string;
-  
-  // Timestamps
   created_at?: string;
   updated_at?: string;
 }
@@ -234,29 +196,21 @@ export interface TheSportsDBEvent {
   idLeague?: string;
   strLeague?: string;
   strSeason?: string;
-  
-  // Teams
   idHomeTeam?: string;
   idAwayTeam?: string;
   strHomeTeam?: string;
   strAwayTeam?: string;
-  
-  // Scores
   intHomeScore?: string;
   intAwayScore?: string;
   intHomeScoreET?: string;
   intAwayScoreET?: string;
   intHomeScorePen?: string;
   intAwayScorePen?: string;
-  
-  // Date and Time
   dateEvent?: string;
   dateEventLocal?: string;
   strTime?: string;
   strTimeLocal?: string;
   strTimestamp?: string;
-  
-  // Match Information
   intRound?: string;
   strResult?: string;
   strVenue?: string;
@@ -265,25 +219,10 @@ export interface TheSportsDBEvent {
   strPoster?: string;
   strStatus?: string;
   strPostponed?: string;
-  
-  // External API IDs
   idAPIfootball?: string;
   strLocked?: string;
-  
-  // Media Assets
-  strThumb?: string;
-  strBanner?: string;
-  strMap?: string;
-  strTweet1?: string;
-  strTweet2?: string;
-  strTweet3?: string;
-  strVideo?: string;
-  
-  // Highlights
   highlightly_id?: number;
   strHighlights?: string;
-  
-  // Timestamps
   created_at?: string;
   updated_at?: string;
 }
@@ -292,42 +231,11 @@ export interface TheSportsDBScheduleResponse {
   schedule: TheSportsDBEvent[];
 }
 
-// Our normalized fixture type for the application
-export interface TheSportsDBFixture {
-  id: string;
-  event_name: string;
-  league_id: string;
-  league_name: string;
-  home_team: {
-    id: string;
-    name: string;
-    badge_url: string;
-  };
-  away_team: {
-    id: string;
-    name: string;
-    badge_url: string;
-  };
-  round: string;
-  home_score: number | null;
-  away_score: number | null;
-  date_utc: string; // ISO timestamp
-  date_local: string;
-  time_utc: string;
-  time_local: string;
-  venue: string;
-  status: string;
-  is_finished: boolean;
-  is_upcoming: boolean;
-  thumb_url: string;
-}
-
 // Utility function to make API calls with proper headers (DEVELOPMENT ONLY)
 async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
-  // CORS FIX: TheSportsDB v2 API has CORS restrictions, use database data instead
-  console.warn('TheSportsDB API call blocked due to CORS restrictions. Using database fallback.');
-  throw new Error('TheSportsDB API disabled due to CORS restrictions. Use database data instead.');
-  
+  // This function is for direct external API calls.
+  // It is currently not used by the Supabase-based event fetching functions below.
+  // Keeping it here for future potential direct API usage or reference.
   const API_BASE_URL = 'https://www.thesportsdb.com/api/v2/json';
   const API_KEY = import.meta.env.VITE_THESPORTSDB_API_KEY || '460915';
   const url = `${API_BASE_URL}${endpoint}`;
@@ -349,178 +257,144 @@ async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
-// Transform TheSportsDB event to our normalized format
-function transformTheSportsDBEvent(event: TheSportsDBEvent): TheSportsDBFixture {
-  const isFinished = event.strStatus === 'Match Finished';
-  const isUpcoming = event.strStatus === 'Not Started' || event.strStatus === 'TBD';
-  
-  return {
-    id: event.idEvent || '',
-    event_name: event.strEvent || '',
-    league_id: event.idLeague || '',
-    league_name: event.strLeague || '',
-    home_team: {
-      id: event.idHomeTeam || '',
-      name: event.strHomeTeam || '',
-      badge_url: '', // TheSportsDB Event에는 팀 배지가 없음
-    },
-    away_team: {
-      id: event.idAwayTeam || '',
-      name: event.strAwayTeam || '',
-      badge_url: '', // TheSportsDB Event에는 팀 배지가 없음
-    },
-    round: event.intRound || '',
-    home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
-    away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
-    date_utc: event.strTimestamp || '',
-    date_local: event.dateEventLocal || '',
-    time_utc: event.strTime || '',
-    time_local: event.strTimeLocal || '',
-    venue: event.strVenue || '',
-    status: event.strStatus || '',
-    is_finished: isFinished,
-    is_upcoming: isUpcoming,
-    thumb_url: event.strThumb || '',
-  };
-}
-
-// API Functions
+// API Functions - All functions now return Match[] from events_v2
 
 /**
- * Fetch upcoming fixtures for a specific league from database
- * Returns only fixtures from the next upcoming round (lowest round number with "Not Started" status)
+ * Fetch upcoming fixtures for a specific league from events_v2
+ * Returns only fixtures from the next upcoming round (lowest round number with "SCHEDULED" status)
  */
-export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
+export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Match[]> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString();
 
-    // First, get all upcoming fixtures to find the next round
     const { data: upcomingData, error: upcomingError } = await supabase
-      .from('events')
+      .from('events_v2')
       .select('*')
-      .eq('idLeague', leagueId)
-      .eq('strStatus', 'Not Started')
-      .gte('dateEvent', today)
-      .order('intRound', { ascending: true })
-      .order('dateEvent', { ascending: true });
+      .eq('leagueId', leagueId)
+      .in('status', ['SCHEDULED', 'POSTPONED']) // Use Match domain status
+      .gte('date', today)
+      .order('date', { ascending: true });
 
     if (upcomingError) {
-      console.error('Database error fetching league upcoming fixtures:', upcomingError);
+      console.error('Database error fetching league upcoming fixtures from events_v2:', upcomingError);
       return [];
     }
 
     if (!upcomingData || upcomingData.length === 0) {
-      console.warn(`No upcoming fixtures data for league ${leagueId}`);
+      console.warn(`No upcoming fixtures data for league ${leagueId} in events_v2`);
       return [];
     }
 
     // Find the lowest round number (next upcoming round)
-    const nextRound = upcomingData[0].intRound;
+    const nextRoundNumber = upcomingData[0].round;
 
     // Filter to only include fixtures from the next round
     const nextRoundFixtures = upcomingData.filter(
-      (fixture) => fixture.intRound === nextRound
+      (match) => match.round === nextRoundNumber
     );
 
-    return nextRoundFixtures.map(transformTheSportsDBEvent);
+    return nextRoundFixtures || []; // Already Match[] type
   } catch (error) {
-    console.error('Error fetching league upcoming fixtures:', error);
+    console.error('Error fetching league upcoming fixtures from events_v2:', error);
     return [];
   }
 }
 
 /**
- * Fetch previous/completed fixtures for a specific league from database
+ * Fetch previous/completed fixtures for a specific league from events_v2
  */
-export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<TheSportsDBFixture[]> {
+export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<Match[]> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('events')
+      .from('events_v2')
       .select('*')
-      .eq('idLeague', leagueId)
-      .lt('dateEvent', today)
-      .order('dateEvent', { ascending: false })
+      .eq('leagueId', leagueId)
+      .eq('status', 'FINISHED') // Use Match domain status
+      .lt('date', today)
+      .order('date', { ascending: false })
       .limit(15);
 
     if (error) {
-      console.error('Database error fetching league previous fixtures:', error);
+      console.error('Database error fetching league previous fixtures from events_v2:', error);
       return [];
     }
 
     if (!data || data.length === 0) {
-      console.warn(`No previous fixtures data for league ${leagueId}`);
+      console.warn(`No previous fixtures data for league ${leagueId} in events_v2`);
       return [];
     }
 
-    return data.map(transformTheSportsDBEvent);
+    return data || []; // Already Match[] type
   } catch (error) {
-    console.error('Error fetching league previous fixtures:', error);
+    console.error('Error fetching league previous fixtures from events_v2:', error);
     return [];
   }
 }
 
 /**
- * Fetch upcoming fixtures for a specific team from database
+ * Fetch upcoming fixtures for a specific team from events_v2
  */
-export async function fetchTeamUpcomingFixtures(teamId: string): Promise<TheSportsDBFixture[]> {
+export async function fetchTeamUpcomingFixtures(teamId: string): Promise<Match[]> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('events')
+      .from('events_v2')
       .select('*')
-      .or(`idHomeTeam.eq.${teamId},idAwayTeam.eq.${teamId}`)
-      .gte('dateEvent', today)
-      .order('dateEvent', { ascending: true })
+      .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
+      .in('status', ['SCHEDULED', 'POSTPONED']) // Use Match domain status
+      .gte('date', today)
+      .order('date', { ascending: true })
       .limit(15);
 
     if (error) {
-      console.error('Database error fetching team upcoming fixtures:', error);
+      console.error('Database error fetching team upcoming fixtures from events_v2:', error);
       return [];
     }
 
     if (!data || data.length === 0) {
-      console.warn(`No upcoming fixtures data for team ${teamId}`);
+      console.warn(`No upcoming fixtures data for team ${teamId} in events_v2`);
       return [];
     }
 
-    return data.map(transformTheSportsDBEvent);
+    return data || []; // Already Match[] type
   } catch (error) {
-    console.error('Error fetching team upcoming fixtures:', error);
+    console.error('Error fetching team upcoming fixtures from events_v2:', error);
     return [];
   }
 }
 
 /**
- * Fetch previous/completed fixtures for a specific team from database
+ * Fetch previous/completed fixtures for a specific team from events_v2
  */
-export async function fetchTeamPreviousFixtures(teamId: string): Promise<TheSportsDBFixture[]> {
+export async function fetchTeamPreviousFixtures(teamId: string): Promise<Match[]> {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('events')
+      .from('events_v2')
       .select('*')
-      .or(`idHomeTeam.eq.${teamId},idAwayTeam.eq.${teamId}`)
-      .lt('dateEvent', today)
-      .order('dateEvent', { ascending: false })
+      .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
+      .eq('status', 'FINISHED') // Use Match domain status
+      .lt('date', today)
+      .order('date', { ascending: false })
       .limit(15);
 
     if (error) {
-      console.error('Database error fetching team previous fixtures:', error);
+      console.error('Database error fetching team previous fixtures from events_v2:', error);
       return [];
     }
 
     if (!data || data.length === 0) {
-      console.warn(`No previous fixtures data for team ${teamId}`);
+      console.warn(`No previous fixtures data for team ${teamId} in events_v2`);
       return [];
     }
 
-    return data.map(transformTheSportsDBEvent);
+    return data || []; // Already Match[] type
   } catch (error) {
-    console.error('Error fetching team previous fixtures:', error);
+    console.error('Error fetching team previous fixtures from events_v2:', error);
     return [];
   }
 }
@@ -530,35 +404,35 @@ export async function fetchTeamPreviousFixtures(teamId: string): Promise<TheSpor
 /**
  * Fetch upcoming fixtures for K League 1 (League ID: 4689)
  */
-export async function fetchKLeague1UpcomingFixtures(): Promise<TheSportsDBFixture[]> {
+export async function fetchKLeague1UpcomingFixtures(): Promise<Match[]> {
   return fetchLeagueUpcomingFixtures('4689');
 }
 
 /**
  * Fetch previous fixtures for K League 1 (League ID: 4689)
  */
-export async function fetchKLeague1PreviousFixtures(): Promise<TheSportsDBFixture[]> {
+export async function fetchKLeague1PreviousFixtures(): Promise<Match[]> {
   return fetchLeaguePreviousFixtures('4689');
 }
 
 /**
  * Fetch upcoming fixtures for K League 2 (League ID: 4822)
  */
-export async function fetchKLeague2UpcomingFixtures(): Promise<TheSportsDBFixture[]> {
+export async function fetchKLeague2UpcomingFixtures(): Promise<Match[]> {
   return fetchLeagueUpcomingFixtures('4822');
 }
 
 /**
  * Fetch previous fixtures for K League 2 (League ID: 4822)
  */
-export async function fetchKLeague2PreviousFixtures(): Promise<TheSportsDBFixture[]> {
+export async function fetchKLeague2PreviousFixtures(): Promise<Match[]> {
   return fetchLeaguePreviousFixtures('4822');
 }
 
 // Combined function to get both upcoming and recent fixtures for a league
 export async function fetchLeagueFixtures(leagueId: string): Promise<{
-  upcoming: TheSportsDBFixture[];
-  recent: TheSportsDBFixture[];
+  upcoming: Match[];
+  recent: Match[];
 }> {
   const [upcoming, recent] = await Promise.all([
     fetchLeagueUpcomingFixtures(leagueId),
@@ -573,8 +447,8 @@ export async function fetchLeagueFixtures(leagueId: string): Promise<{
 
 // Combined function to get both upcoming and recent fixtures for a team
 export async function fetchTeamFixtures(teamId: string): Promise<{
-  upcoming: TheSportsDBFixture[];
-  recent: TheSportsDBFixture[];
+  upcoming: Match[];
+  recent: Match[];
 }> {
   const [upcoming, recent] = await Promise.all([
     fetchTeamUpcomingFixtures(teamId),

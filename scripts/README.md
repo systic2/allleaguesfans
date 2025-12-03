@@ -8,13 +8,12 @@
 애플리케이션의 핵심 데이터 동기화 로직을 포함하는 디렉토리입니다. 외부 API (TheSportsDB, Highlightly, K League API 등)로부터 데이터를 가져와 Supabase 데이터베이스에 저장하는 스크립트들이 위치합니다.
 
 ### 주요 스크립트:
-*   `orchestrator.ts`: 새로운 표준화된 데이터 모델을 사용하는 메인 동기화 스크립트입니다. `standings_v2` 테이블에 데이터를 동기화합니다.
+*   `orchestrator.ts`: 새로운 표준화된 데이터 모델을 사용하는 메인 동기화 스크립트입니다. `standings_v2`와 `events_v2` 테이블에 데이터를 동기화합니다.
 *   `sync-highlightly-correct.ts`: Highlightly API로부터 데이터를 가져와 처리하는 스크립트 (추정).
 *   `sync-all-player-stats.ts`: 모든 플레이어 통계를 동기화하는 스크립트 (추정).
 *   `sync-k1-player-stats.ts`, `sync-k2-player-stats.ts`, `sync-k2-player-stats-direct.ts`: K리그 1 및 2의 플레이어 통계 관련 동기화 스크립트.
 *   `sync-player-statistics.ts`: 일반적인 플레이어 통계 동기화 스크립트.
 *   `sync-player-stats-direct.ts`, `sync-player-stats-from-db.ts`, `sync-player-stats-from-highlightly.ts`, `sync-player-stats-from-thesportsdb.ts`: 다양한 소스에서 플레이어 통계를 가져오는 스크립트.
-*   `sync-thesportsdb-events.ts`: TheSportsDB에서 이벤트(경기) 데이터를 동기화하는 스크립트 (추정).
 *   `02-thesportsdb-api-integration.ts`, `03-highlightly-api-sync.ts`, `3api-data-import.ts`: API 통합 및 데이터 임포트 관련 스크립트.
 *   `import-historical-standings.ts`, `import-team-players.ts`: 과거 데이터 및 팀/선수 데이터 임포트 관련 스크립트.
 *   `cron-sync.sh`: 동기화 스크립트들을 주기적으로 실행하기 위한 쉘 스크립트.
@@ -35,6 +34,7 @@ npx tsx scripts/sync/orchestrator.ts
 *   `01-create-league-id-mapping.sql`, `01-create-thesportsdb-foundation-schema.sql`, `02-create-highlightly-enhanced-schema.sql`, `03-create-player-statistics-schema.sql`: 초기 스키마 생성 및 기초 테이블 설정.
 *   `04-create-standings-v2-schema.sql`: 새로운 표준화된 순위 정보를 저장하기 위한 `standings_v2` 테이블을 생성합니다.
 *   `05-drop-old-standings-table.sql`: 더 이상 사용되지 않는 `standings` 테이블을 삭제합니다.
+*   `08-recreate-highlightly-dependencies.sql`: 오래된 events 관련 객체들을 정리하고, events_v2에 맞춰 의존성을 다시 생성합니다.
 *   `add-highlightly-column-to-events.sql`: 이벤트 테이블에 Highlightly 관련 컬럼 추가.
 *   `create-upsert-player-stats-function.sql`: 플레이어 통계 upsert 함수 생성.
 *   `force-recreate-player-stats.sql`: 플레이어 통계 테이블 강제 재구성.
@@ -48,7 +48,7 @@ Supabase CLI 또는 다른 데이터베이스 관리 도구를 사용하여 스�
 # Supabase CLI를 통해 마이그레이션 실행
 supabase migration up
 # 또는 수동으로 SQL 스크립트 실행
-psql -f scripts/migrations/04-create-standings-v2-schema.sql
+psql -f scripts/migrations/07-drop-old-events-table.sql
 ```
 
 ---
