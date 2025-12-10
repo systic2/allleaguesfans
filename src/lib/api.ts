@@ -2,11 +2,12 @@
 // FIXED VERSION: Updated to match actual database schema
 import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow } from "@/domain/types";
-import { 
+import type { Match, Team } from "@/types/domain"; // Added Match and Team import
+import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers'; // NEW IMPORT
+import {
   getLeagueFixturesHybrid,
   getTeamFixturesHybrid
 } from "@/lib/thesportsdb-fixtures";
-
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -933,59 +934,7 @@ export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5)
   }));
 }
 
-// ---------- TheSportsDB Events API Functions (Pure Schema) ----------
-
-// TheSportsDB Events API Types (Pure Original JSON Structure)
-export interface TheSportsDBEvent {
-  idEvent: string;
-  idAPIfootball?: string;
-  strEvent: string;
-  strEventAlternate?: string;
-  strFilename?: string;
-  strSport?: string;
-  idLeague: string;
-  strLeague: string;
-  strLeagueBadge?: string;
-  strSeason: string;
-  strDescriptionEN?: string;
-  strHomeTeam: string;
-  strAwayTeam: string;
-  intHomeScore?: string;
-  intRound?: string;
-  intAwayScore?: string;
-  intSpectators?: string;
-  strOfficial?: string;
-  strTimestamp?: string;
-  dateEvent: string;
-  dateEventLocal?: string;
-  strTime?: string;
-  strTimeLocal?: string;
-  strGroup?: string;
-  idHomeTeam?: string;
-  strHomeTeamBadge?: string;
-  idAwayTeam?: string;
-  strAwayTeamBadge?: string;
-  intScore?: string;
-  intScoreVotes?: string;
-  strResult?: string;
-  idVenue?: string;
-  strVenue?: string;
-  strCountry?: string;
-  strCity?: string;
-  strPoster?: string;
-  strSquare?: string;
-  strFanart?: string;
-  strThumb?: string;
-  strBanner?: string;
-  strMap?: string;
-  strTweet1?: string;
-  strTweet2?: string;
-  strTweet3?: string;
-  strVideo?: string;
-  strStatus?: string;
-  strPostponed?: string;
-  strLocked?: string;
-}
+// TheSportsDBEvent type is now imported from mappers/thesportsdb-mappers.ts
 
 /**
  * Fetch league events from pure TheSportsDB events table
@@ -1218,7 +1167,7 @@ export async function fetchTeamStandingsData(
   idLeague: string,
   season: string,
   teamName: string
-): Promise<TeamStandings | null> {
+): Promise<TeamStanding | null> {
   const { data, error } = await supabase
     .from('standings_v2') // <-- 변경: standings_v2 테이블 사용
     .select('*') // <-- Match 도메인 모델과 일치

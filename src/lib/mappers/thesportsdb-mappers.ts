@@ -1,6 +1,6 @@
 // src/lib/mappers/thesportsdb-mappers.ts
 
-import type { Standing, Match } from '@/types/domain';
+import type { Standing, Match, Team } from '@/types/domain';
 
 // This interface is based on the structure from TheSportsDB API
 // and is co-located here for mapping purposes.

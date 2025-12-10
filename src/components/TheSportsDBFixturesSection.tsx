@@ -301,7 +301,7 @@ export default function TheSportsDBFixturesSection({
                   최근 경기가 없습니다.
                 </div>
               ) : (
-                recentFixtures.slice(0, 10).map((fixture: FixtureData) => (
+                recentFixtures.slice(0, 10).map((fixture: DatabaseFixture) => (
                   <TheSportsDBFixtureRow
                     key={fixture.id}
                     fixture={fixture}
@@ -329,7 +329,7 @@ export default function TheSportsDBFixturesSection({
                   예정된 경기가 없습니다.
                 </div>
               ) : (
-                upcomingFixtures.slice(0, 10).map((fixture: FixtureData) => (
+                upcomingFixtures.slice(0, 10).map((fixture: DatabaseFixture) => (
                   <TheSportsDBFixtureRow
                     key={fixture.id}
                     fixture={fixture}

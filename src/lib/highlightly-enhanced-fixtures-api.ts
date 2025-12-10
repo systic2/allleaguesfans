@@ -6,6 +6,8 @@ import type { Match } from '@/types/domain';
 // This interface now largely reflects the 'v2_events_enhanced' view.
 // It extends the base Match for compatibility and adds Highlightly-specific fields.
 export interface HighlightlyEnhancedFixture extends Match {
+  homeTeam: Team | null;
+  awayTeam: Team | null;
   highlightly_event_id?: string;
   live_status?: string;
   live_minute?: number;
