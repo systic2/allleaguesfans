@@ -1,7 +1,7 @@
 // src/lib/highlightly-enhanced-fixtures-api.ts
 // REFACTORED VERSION: This file now queries the new 'v2_events_enhanced' view.
 import { supabase } from './supabaseClient';
-import type { Match } from '@/types/domain';
+import type { Match, Team } from '@/types/domain';
 
 // This interface now largely reflects the 'v2_events_enhanced' view.
 // It extends the base Match for compatibility and adds Highlightly-specific fields.

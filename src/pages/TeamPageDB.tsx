@@ -4,18 +4,17 @@ import { useEffect, useState } from "react";
 import {
   fetchTeamFromDB,
   fetchTeamStandingsData,
-  fetchTeamEventsData,
-  fetchEventLiveData,
-  fetchTeamFormGuide,
-  fetchTeamUpcomingEventsData,
-  fetchTeamRecentEventsData,
   fetchPlayersByTeam,
   type PlayerLite,
 } from "@/lib/api";
-import type { TeamFromDB, TeamStandings, EventFromDB, EventLiveData, FormResult } from "@/domain/types";
+import type { Standing } from "@/types/domain"; // ADD new Standing
+import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api"; // ADD MatchWithTeams and fetchTeamFixturesTSDB
 import TeamLineup from "@/components/TeamLineup";
 import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
+
+// Move FormResult definition here or import from shared utility if it exists
+type FormResult = 'W' | 'D' | 'L';
 
 const CURRENT_SEASON = '2025';
 
@@ -54,7 +53,7 @@ export default function TeamPageDB() {
   });
 
   // Fetch team standings
-  const { data: standingsData } = useQuery<TeamStandings | null>({
+  const { data: standingsData } = useQuery<Standing | null>({
     queryKey: ["team-standings-db", teamData?.idLeague, teamData?.strTeam],
     queryFn: () => fetchTeamStandingsData(teamData!.idLeague, CURRENT_SEASON, teamData!.strTeam),
     enabled: !!teamData,
@@ -67,41 +66,34 @@ export default function TeamPageDB() {
     isLoading: playersLoading
   } = useQuery<PlayerLite[]>({
     queryKey: ["team-players-db", teamIdParam],
-    queryFn: () => fetchPlayersByTeam(Number(teamIdParam)),
+    queryFn: () => fetchPlayersByTeam(teamIdParam),
     enabled: !!teamIdParam,
     retry: 2,
   });
 
-  // Fetch all events for the team
+  // Fetch team fixtures (upcoming and recent)
   const {
-    data: allEvents,
-    isLoading: eventsLoading
-  } = useQuery<EventFromDB[]>({
-    queryKey: ["team-events-db", teamData?.strTeam],
-    queryFn: () => fetchTeamEventsData(teamData!.strTeam, CURRENT_SEASON),
-    enabled: !!teamData,
+    data: teamFixtures,
+    isLoading: fixturesLoading,
+    error: fixturesError,
+  } = useQuery<{ upcoming: MatchWithTeams[]; recent: MatchWithTeams[] }>({
+    queryKey: ["team-fixtures-tsdb", teamIdParam, CURRENT_SEASON],
+    queryFn: () => fetchTeamFixturesTSDB(teamIdParam, CURRENT_SEASON),
+    enabled: !!teamIdParam,
     retry: 2,
+    staleTime: 5 * 60 * 1000,
   });
+
+  const upcomingEvents = teamFixtures?.upcoming || [];
+  const recentEvents = teamFixtures?.recent || [];
+  const eventsLoading = fixturesLoading; // Consolidate loading state
+  const eventsError = fixturesError; // Consolidate error state
 
   // Fetch form guide
   const { data: formGuide } = useQuery<FormResult[]>({
-    queryKey: ["team-form-db", teamData?.strTeam],
-    queryFn: () => fetchTeamFormGuide(teamData!.strTeam, CURRENT_SEASON, 5),
-    enabled: !!teamData,
-  });
-
-  // Fetch upcoming events
-  const { data: upcomingEvents } = useQuery<EventFromDB[]>({
-    queryKey: ["team-upcoming-db", teamData?.strTeam],
-    queryFn: () => fetchTeamUpcomingEventsData(teamData!.strTeam, CURRENT_SEASON, 5),
-    enabled: !!teamData,
-  });
-
-  // Fetch recent events
-  const { data: recentEvents } = useQuery<EventFromDB[]>({
-    queryKey: ["team-recent-db", teamData?.strTeam],
-    queryFn: () => fetchTeamRecentEventsData(teamData!.strTeam, CURRENT_SEASON, 5),
-    enabled: !!teamData,
+    queryKey: ["team-form-db", teamIdParam],
+    queryFn: () => fetchTeamFormGuide(teamIdParam, CURRENT_SEASON, 5),
+    enabled: !!teamIdParam,
   });
 
   // Error state
@@ -214,7 +206,7 @@ export default function TeamPageDB() {
                   <>
                     <span>•</span>
                     <span className="text-yellow-400 font-semibold">
-                      {standingsData.intRank}위
+                      {standingsData.rank}위
                     </span>
                   </>
                 )}
@@ -223,10 +215,10 @@ export default function TeamPageDB() {
             {standingsData && (
               <div className="text-right">
                 <div className="text-2xl font-bold text-white">
-                  {standingsData.intPoints}pts
+                  {standingsData.points}pts
                 </div>
                 <div className="text-white/70">
-                  {standingsData.intWin}승 {standingsData.intDraw}무 {standingsData.intLoss}패
+                  {standingsData.win}승 {standingsData.draws}무 {standingsData.losses}패
                 </div>
               </div>
             )}
@@ -266,10 +258,9 @@ export default function TeamPageDB() {
                 </h2>
                 <div className="space-y-3">
                   {recentEvents.map((event) => {
-                    const isHome = event.strHomeTeam === teamData.strTeam;
-                    const opponentName = isHome ? event.strAwayTeam : event.strHomeTeam;
-                    const teamScore = isHome ? event.intHomeScore : event.intAwayScore;
-                    const oppScore = isHome ? event.intAwayScore : event.intHomeScore;
+                    const opponentName = isHome ? event.awayTeam?.name : event.homeTeam?.name;
+                    const teamScore = isHome ? event.homeScore : event.awayScore;
+                    const oppScore = isHome ? event.awayScore : event.homeScore;
 
                     let result: FormResult;
                     if (teamScore! > oppScore!) result = 'W';
@@ -277,13 +268,9 @@ export default function TeamPageDB() {
                     else result = 'D';
 
                     return (
-                      <div key={event.idEvent} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded text-xs font-bold flex items-center justify-center text-white ${getResultColor(result)}`}>
-                            {result}
-                          </div>
+                      <div key={event.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
                           <span className="text-white/60 text-sm w-16">
-                            {formatDate(event.dateEvent)}
+                            {formatDate(event.date)}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-white font-medium">
@@ -292,7 +279,7 @@ export default function TeamPageDB() {
                           </div>
                         </div>
                         <div className="text-white font-bold">
-                          {event.intHomeScore}-{event.intAwayScore}
+                          {event.homeScore}-{event.awayScore}
                         </div>
                       </div>
                     );
@@ -309,14 +296,14 @@ export default function TeamPageDB() {
                 </h2>
                 <div className="space-y-3">
                   {upcomingEvents.map((event) => {
-                    const isHome = event.strHomeTeam === teamData.strTeam;
-                    const opponentName = isHome ? event.strAwayTeam : event.strHomeTeam;
+                    const isHome = event.homeTeamId === teamIdParam;
+                    const opponentName = isHome ? event.awayTeam?.name : event.homeTeam?.name;
 
                     return (
-                      <div key={event.idEvent} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                      <div key={event.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
                         <div className="flex items-center gap-3">
                           <span className="text-white/60 text-sm w-16">
-                            {formatDate(event.dateEvent)}
+                            {formatDate(event.date)}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-white font-medium">
@@ -325,7 +312,7 @@ export default function TeamPageDB() {
                           </div>
                         </div>
                         <div className="text-white/60 text-sm">
-                          Round {event.intRound}
+                          Round {event.round}
                         </div>
                       </div>
                     );
@@ -350,7 +337,7 @@ export default function TeamPageDB() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">경기 수</span>
-                    <span className="text-white font-bold">{standingsData.intPlayed}</span>
+                    <span className="text-white font-bold">{standingsData.gamesPlayed}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">승점</span>
@@ -365,13 +352,13 @@ export default function TeamPageDB() {
                   <div className="flex justify-between">
                     <span className="text-white/70">득실</span>
                     <span className="text-white font-bold">
-                      {standingsData.intGoalsFor} - {standingsData.intGoalsAgainst}
+                      {standingsData.goalsFor} - {standingsData.goalsAgainst}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">득실차</span>
-                    <span className={`font-bold ${standingsData.intGoalDifference! >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {standingsData.intGoalDifference! >= 0 ? '+' : ''}{standingsData.intGoalDifference}
+                    <span className={`font-bold ${standingsData.goalDifference! >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {standingsData.goalDifference! >= 0 ? '+' : ''}{standingsData.goalDifference}
                     </span>
                   </div>
 
@@ -393,25 +380,7 @@ export default function TeamPageDB() {
                   )}
 
                   {/* Home/Away Record */}
-                  {standingsData.intPlayedHome !== null && standingsData.intPlayedAway !== null && (
-                    <div className="pt-3 border-t border-white/10">
-                      <div className="text-sm text-white/70 mb-2">홈 / 원정</div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white/5 rounded p-2">
-                          <div className="text-xs text-white/60 mb-1">홈</div>
-                          <div className="text-white text-sm font-bold">
-                            {standingsData.intWinHome}승 {standingsData.intDrawHome}무 {standingsData.intLossHome}패
-                          </div>
-                        </div>
-                        <div className="bg-white/5 rounded p-2">
-                          <div className="text-xs text-white/60 mb-1">원정</div>
-                          <div className="text-white text-sm font-bold">
-                            {standingsData.intWinAway}승 {standingsData.intDrawAway}무 {standingsData.intLossAway}패
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               </section>
             )}

@@ -969,9 +969,9 @@ export async function fetchLeagueEvents(leagueId: number, season: number = Numbe
     strStatus: String(match.status), // Match.status -> TheSportsDBEvent.strStatus
     idHomeTeam: String(match.homeTeamId),
     idAwayTeam: String(match.awayTeamId),
-    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
-    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
-    strVenue: match.venueName || null,
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : undefined,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : undefined,
+    strVenue: match.venueName || undefined,
     // 기타 TheSportsDBEvent 필드들은 현재 Match 모델에 없으므로 null 또는 기본값 처리
     // 예: strHomeTeam, strAwayTeam, strLeague, strBadge 등
     // 실제 사용 시 프론트엔드에서 필요한 필드에 대해 추가적인 룩업 또는 데이터 보강 필요
@@ -1014,9 +1014,9 @@ export async function fetchUpcomingEvents(leagueId: number, season: number = Num
     strStatus: String(match.status),
     idHomeTeam: String(match.homeTeamId),
     idAwayTeam: String(match.awayTeamId),
-    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
-    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
-    strVenue: match.venueName || null,
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : undefined,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : undefined,
+    strVenue: match.venueName || undefined,
   }));
 }
 
@@ -1056,9 +1056,9 @@ export async function fetchRecentEvents(leagueId: number, season: number = Numbe
     strStatus: String(match.status),
     idHomeTeam: String(match.homeTeamId),
     idAwayTeam: String(match.awayTeamId),
-    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
-    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
-    strVenue: match.venueName || null,
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : undefined,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : undefined,
+    strVenue: match.venueName || undefined,
   }));
 }
 
@@ -1095,9 +1095,9 @@ export async function fetchEventsByRound(leagueId: number, round: string, season
     strStatus: String(match.status),
     idHomeTeam: String(match.homeTeamId),
     idAwayTeam: String(match.awayTeamId),
-    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
-    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
-    strVenue: match.venueName || null,
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : undefined,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : undefined,
+    strVenue: match.venueName || undefined,
   }));
 }
 
@@ -1132,9 +1132,9 @@ export async function fetchTeamEvents(teamId: number, season: number = Number(im
     strStatus: String(match.status),
     idHomeTeam: String(match.homeTeamId),
     idAwayTeam: String(match.awayTeamId),
-    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : null,
-    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : null,
-    strVenue: match.venueName || null,
+    intHomeScore: match.homeScore !== undefined && match.homeScore !== null ? String(match.homeScore) : undefined,
+    intAwayScore: match.awayScore !== undefined && match.awayScore !== null ? String(match.awayScore) : undefined,
+    strVenue: match.venueName || undefined,
   }));
 }
 
