@@ -68,7 +68,7 @@ export default function TeamPageDB() {
     isLoading: playersLoading
   } = useQuery<PlayerLite[]>({
     queryKey: ["team-players-db", teamIdParam],
-    queryFn: () => fetchPlayersByTeam(teamIdParam),
+    queryFn: () => fetchPlayersByTeam(Number(teamIdParam)),
     enabled: !!teamIdParam,
     retry: 2,
   });
@@ -80,7 +80,7 @@ export default function TeamPageDB() {
     error: fixturesError,
   } = useQuery<{ upcoming: MatchWithTeams[]; recent: MatchWithTeams[] }>({
     queryKey: ["team-fixtures-tsdb", teamIdParam, CURRENT_SEASON],
-    queryFn: () => fetchTeamFixturesTSDB(teamIdParam, CURRENT_SEASON),
+    queryFn: () => fetchTeamFixturesTSDB(teamIdParam),
     enabled: !!teamIdParam,
     retry: 2,
     staleTime: 5 * 60 * 1000,
@@ -220,7 +220,7 @@ export default function TeamPageDB() {
                   {standingsData.points}pts
                 </div>
                 <div className="text-white/70">
-                  {standingsData.win}승 {standingsData.draws}무 {standingsData.losses}패
+                  {standingsData.wins}승 {standingsData.draws}무 {standingsData.losses}패
                 </div>
               </div>
             )}
@@ -348,12 +348,12 @@ export default function TeamPageDB() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">승점</span>
-                    <span className="text-white font-bold">{standingsData.intPoints}</span>
+                    <span className="text-white font-bold">{standingsData.points}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">승 / 무 / 패</span>
                     <span className="text-white font-bold">
-                      {standingsData.intWin} / {standingsData.intDraw} / {standingsData.intLoss}
+                      {standingsData.wins} / {standingsData.draws} / {standingsData.losses}
                     </span>
                   </div>
                   <div className="flex justify-between">

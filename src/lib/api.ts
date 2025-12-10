@@ -2,7 +2,7 @@
 // FIXED VERSION: Updated to match actual database schema
 import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow } from "@/domain/types";
-import type { Match, Team } from "@/types/domain"; // Added Match and Team import
+import type { Match, Team, Standing } from "@/types/domain"; // Added Match, Team, and Standing import
 import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers'; // NEW IMPORT
 import {
   getLeagueFixturesHybrid,
@@ -1167,39 +1167,41 @@ export async function fetchTeamStandingsData(
   idLeague: string,
   season: string,
   teamName: string
-): Promise<TeamStanding | null> {
+): Promise<Standing | null> {
   const { data, error } = await supabase
-    .from('standings_v2') // <-- 변경: standings_v2 테이블 사용
-    .select('*') // <-- Match 도메인 모델과 일치
-    .eq('leagueId', idLeague) // <-- 변경: leagueId 컬럼 사용
-    .eq('season', season) // <-- 변경: season 컬럼 사용
-    .eq('teamName', teamName) // <-- 변경: teamName 컬럼 사용
+    .from('standings_v2') // <-- standings_v2 table
+    .select('*') // <-- Selects columns matching Standing domain model
+    .eq('leagueId', idLeague)
+    .eq('season', season)
+    .eq('teamName', teamName)
     .maybeSingle();
 
   if (error) {
     console.error('Error fetching team standings from standings_v2:', error);
-    return null; // Non-critical, return null instead of throwing
+    return null; 
   }
 
   if (!data) return null;
 
-  // Match (standings_v2) 데이터를 TeamStandings 타입으로 변환
-  // TeamStandings 타입의 필드가 많으므로 일부는 null 처리
+  // Map to Standing domain model
   return {
-    team_id: Number(data.teamId || 0), // Match.teamId -> TeamStandings.team_id (number)
-    team_name: String(data.teamName || "Unknown"),
-    short_name: null, // domain 모델에 short_name 없으므로 null
-    crest_url: data.teamBadgeUrl || null, // Match.teamBadgeUrl -> TeamStandings.crest_url
+    leagueId: data.leagueId,
+    teamId: data.teamId,
+    season: data.season,
     rank: Number(data.rank || 0),
+    teamName: data.teamName || "Unknown",
+    teamBadgeUrl: data.teamBadgeUrl,
+    gamesPlayed: Number(data.gamesPlayed || 0),
+    wins: Number(data.wins || 0),
+    draws: Number(data.draws || 0),
+    losses: Number(data.losses || 0),
     points: Number(data.points || 0),
-    played: Number(data.gamesPlayed || 0),
-    win: Number(data.wins || 0),
-    draw: Number(data.draws || 0),
-    lose: Number(data.losses || 0),
-    goals_for: Number(data.goalsFor || 0),
-    goals_against: Number(data.goalsAgainst || 0),
-    goals_diff: Number(data.goalDifference || 0),
-    form: data.form || null,
+    goalsFor: Number(data.goalsFor || 0),
+    goalsAgainst: Number(data.goalsAgainst || 0),
+    goalDifference: Number(data.goalDifference || 0),
+    form: data.form,
+    description: data.description,
+    lastUpdated: data.lastUpdated || new Date().toISOString(),
   };
 }
 
