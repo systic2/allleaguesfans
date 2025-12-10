@@ -5,8 +5,10 @@ import {
   fetchTeamFromDB,
   fetchTeamStandingsData,
   fetchPlayersByTeam,
+  fetchTeamFormGuide, // ADDED fetchTeamFormGuide
   type PlayerLite,
 } from "@/lib/api";
+import type { TeamFromDB } from "@/domain/types"; // ADDED import for TeamFromDB
 import type { Standing } from "@/types/domain"; // ADD new Standing
 import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api"; // ADD MatchWithTeams and fetchTeamFixturesTSDB
 import TeamLineup from "@/components/TeamLineup";
@@ -202,7 +204,7 @@ export default function TeamPageDB() {
                 <span>{teamData.strCountry}</span>
                 <span>•</span>
                 <span>{leagueName}</span>
-                {standingsData?.intRank && (
+                {standingsData?.rank && (
                   <>
                     <span>•</span>
                     <span className="text-yellow-400 font-semibold">
@@ -258,6 +260,7 @@ export default function TeamPageDB() {
                 </h2>
                 <div className="space-y-3">
                   {recentEvents.map((event) => {
+                    const isHome = event.homeTeamId === teamIdParam; // ADDED missing definition
                     const opponentName = isHome ? event.awayTeam?.name : event.homeTeam?.name;
                     const teamScore = isHome ? event.homeScore : event.awayScore;
                     const oppScore = isHome ? event.awayScore : event.homeScore;
@@ -269,6 +272,10 @@ export default function TeamPageDB() {
 
                     return (
                       <div key={event.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded text-xs font-bold flex items-center justify-center text-white ${getResultColor(result)}`}>
+                            {result}
+                          </div>
                           <span className="text-white/60 text-sm w-16">
                             {formatDate(event.date)}
                           </span>
@@ -333,7 +340,7 @@ export default function TeamPageDB() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-white/70">순위</span>
-                    <span className="text-white font-bold">{standingsData.intRank}위</span>
+                    <span className="text-white font-bold">{standingsData.rank}위</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">경기 수</span>
