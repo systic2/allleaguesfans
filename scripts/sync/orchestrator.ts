@@ -138,7 +138,44 @@ class DataOrchestrator {
 
   async syncEvents() {
     console.log(`\n🚀 Starting Orchestrated Events Sync for season ${SEASON_YEAR}...`);
-    // ... (rest of the function is the same, now it should succeed)
+    
+    let totalEventsImported = 0;
+
+    for (const league of this.leagueMapping) {
+      try {
+        console.log(`\n⚽ [Events] Processing ${league.name}...`);
+        
+        const rawEvents = await this.client.getLeagueEvents(league.id, SEASON_YEAR);
+        if (rawEvents.length === 0) {
+          console.log(`🟡 No events found for ${league.name}. Skipping.`);
+          continue;
+        }
+
+        console.log(`[ACL] 🛡️  Mapping ${rawEvents.length} events...`);
+        const domainEvents: Match[] = rawEvents.map(mapTheSportsDBEventToDomain);
+
+        console.log(`[DB] 🧹 Clearing existing events for ${league.name} in '${EVENTS_V2_TABLE}'...`);
+        await supa.from(EVENTS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);
+        
+        console.log(`[DB] 💾 Inserting ${domainEvents.length} events into '${EVENTS_V2_TABLE}'...`);
+        const { data: eventsData, error: eventsInsertError } = await supa.from(EVENTS_V2_TABLE).insert(domainEvents).select();
+
+        if (eventsInsertError) {
+          console.error(`[DB] ❌ Event insert failed for ${league.name}:`, eventsInsertError);
+          continue;
+        }
+        totalEventsImported += eventsData.length;
+        console.log(`[DB] ✅ Successfully imported ${eventsData.length} events for ${league.name}.`);
+
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+      } catch (error) {
+        console.error(`❌ A critical error occurred while processing events for ${league.name}:`, error);
+      }
+    }
+    
+    console.log(`\n🎉 Orchestrated Events Sync Finished!`);
+    console.log(`   - Total Events Imported: ${totalEventsImported}`);
   }
 }
 
