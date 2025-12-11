@@ -350,7 +350,7 @@ export async function fetchHistoricalChampions(leagueId: number): Promise<Histor
 
 // ---------- Fixtures with corrected column names ----------
 export interface UpcomingFixture {
-  id: number;
+  id: string;
   date_utc: string;
   status: string;
   round: string;
@@ -395,7 +395,7 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
 
   // Match (events_v2) 데이터를 UpcomingFixture 타입으로 변환
   return data.map(match => ({
-    id: Number(match.id), // Match.id (string) -> UpcomingFixture.id (number)
+    id: String(match.id), // Match.id (string) -> UpcomingFixture.id (number)
     date_utc: String(match.date), // Match.date -> UpcomingFixture.date_utc
     status: String(match.status), // Match.status -> UpcomingFixture.status
     round: String(match.round || 'N/A'), // Match.round -> UpcomingFixture.round
@@ -417,7 +417,7 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
 // ====== ROUND-BASED FIXTURES API (FIXED) ======
 
 export interface RoundFixture {
-  id: number;
+  id: string;
   date_utc: string;
   status_short: string;
   round: string;
@@ -477,51 +477,7 @@ export async function getNextUpcomingRound(leagueId: number, season: number = Nu
   return data[0].round || null; // Match.round는 string | undefined
 }
 
-/**
- * Fetch all fixtures from a specific round (FIXED)
- */
-export async function fetchFixturesByRound(
-  leagueId: number, 
-  round: string, 
-  season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)
-): Promise<RoundFixture[]> {
-  const { data, error } = await supabase
-    .from("events_v2") // <-- 변경: events_v2 테이블 사용
-    .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
-    .eq("leagueId", String(leagueId)) // <-- 변경: leagueId 컬럼 사용 (number -> string)
-    .eq("round", round) // <-- 변경: round 컬럼 사용
-    .eq("season", String(season)) // <-- 변경: season 컬럼 사용
-    .order("date", { ascending: true }); // <-- 변경: date 컬럼 사용
 
-  if (error) {
-    console.error("Error fetching fixtures by round from events_v2:", error);
-    return [];
-  }
-
-  if (!data) return [];
-
-  // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
-  return data.map(match => ({
-    id: Number(match.id), // Match.id (string) -> RoundFixture.id (number)
-    date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
-    status_short: String(match.status), // Match.status -> RoundFixture.status_short
-    round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
-    home_team: {
-      id: Number(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id
-      name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
-      logo_url: null,
-    },
-    away_team: {
-      id: Number(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id
-      name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
-      logo_url: null,
-    },
-    home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
-    away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
-    venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
-    league_id: Number(match.leagueId), // Match.leagueId -> RoundFixture.league_id (number)
-  }));
-}
 
 /**
  * Fetch recent completed fixtures from the latest completed round
@@ -587,9 +543,53 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
 }
 
 // Legacy functions for compatibility - need to implement properly for team pages
-export async function fetchPlayersByTeam(_teamId: number): Promise<PlayerLite[]> {
-  console.warn("fetchPlayersByTeam needs implementation with correct schema");
-  return [];
+export async function fetchPlayersByTeam(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamPlayer[]> {
+  const { data: playersData, error: playersError } = await supabase
+    .from('players')
+    .select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber')
+    .eq('idTeam', teamId)
+    .order('strNumber', { ascending: true, nullsFirst: false });
+
+  if (playersError) {
+    console.error('Error fetching players:', playersError);
+    return [];
+  }
+
+  if (!playersData || playersData.length === 0) {
+    return [];
+  }
+
+  // Fetch all player statistics for the team for the current season
+  const { data: statsData, error: statsError } = await supabase
+    .from('player_statistics')
+    .select('idPlayer, goals, assists, appearances, yellow_cards, red_cards')
+    .eq('idTeam', teamId)
+    .eq('strSeason', String(season));
+
+  if (statsError) {
+    console.warn('Error fetching player statistics:', statsError);
+    // Continue without statistics if there's an error
+  }
+
+  const playerStatsMap = new Map<string, Partial<PlayerStatistics>>();
+  if (statsData) {
+    statsData.forEach(stat => {
+      playerStatsMap.set(stat.idPlayer, stat);
+    });
+  }
+
+  // Combine player data with their statistics
+  return playersData.map(player => {
+    const stats = playerStatsMap.get(player.idPlayer) || {};
+    return {
+      ...player,
+      goals: stats.goals ?? 0,
+      assists: stats.assists ?? 0,
+      appearances: stats.appearances ?? 0,
+      yellow_cards: stats.yellow_cards ?? 0,
+      red_cards: stats.red_cards ?? 0,
+    };
+  });
 }
 
 export async function fetchPlayer(_id: number): Promise<PlayerLite | null> {
@@ -599,23 +599,21 @@ export async function fetchPlayer(_id: number): Promise<PlayerLite | null> {
 
 // Team-related types and functions (placeholder - need to implement based on actual schema)
 export type TeamDetails = {
-  id: number;
-  name: string;
-  code: string | null;
-  country: string;
-  founded: number | null;
-  logo_url: string | null;
-  venue_name: string | null;
-  venue_capacity: number | null;
-  venue_city: string | null;
-  current_position: number | null;
-  points: number | null;
-  matches_played: number | null;
-  wins: number | null;
-  draws: number | null;
-  losses: number | null;
-  goals_for: number | null;
-  goals_against: number | null;
+  id: string; // From teams_v2.id
+  name: string; // From teams_v2.name
+  nameKorean: string | null; // From teams_v2.nameKorean
+  badgeUrl: string | null; // From teams_v2.badgeUrl
+
+  // From standings_v2 (if available for current season)
+  current_position?: number | null;
+  points?: number | null;
+  matches_played?: number | null; // gamesPlayed
+  wins?: number | null;
+  draws?: number | null;
+  losses?: number | null;
+  goals_for?: number | null;
+  goals_against?: number | null;
+  goal_difference?: number | null;
 };
 
 export type TeamFixture = {
@@ -651,9 +649,53 @@ export type TeamStatistics = {
   away_record: { wins: number; draws: number; losses: number };
 };
 
-export async function fetchTeamDetails(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamDetails | null> {
-  console.warn("fetchTeamDetails needs implementation with correct schema");
-  return null;
+export async function fetchTeamDetails(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamDetails | null> {
+  const { data: teamData, error: teamError } = await supabase
+    .from('teams_v2')
+    .select('id, name, nameKorean, badgeUrl')
+    .eq('id', teamId)
+    .maybeSingle();
+
+  if (teamError) {
+    console.error('Error fetching team from teams_v2:', teamError);
+    return null;
+  }
+  if (!teamData) {
+    return null;
+  }
+
+  // Attempt to fetch current standing for the team in either K League 1 or K League 2
+  // Prioritize K League 1 if both exist for a team, or just pick one if in multiple
+  const { data: standingData, error: standingError } = await supabase
+    .from('standings_v2')
+    .select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId')
+    .eq('teamId', teamId)
+    .eq('season', String(season))
+    .in('leagueId', ['4689', '4822']) // K League 1 (4689) or K League 2 (4822)
+    .order('leagueId', { ascending: true }) // Prioritize K League 1 if team is in both
+    .limit(1)
+    .maybeSingle();
+
+  if (standingError) {
+    console.warn(`Error fetching standing for team ${teamId}:`, standingError);
+    // Continue without standing data
+  }
+
+  return {
+    id: teamData.id,
+    name: teamData.name,
+    nameKorean: teamData.nameKorean,
+    badgeUrl: teamData.badgeUrl,
+    current_position: standingData?.rank ?? null,
+    points: standingData?.points ?? null,
+    matches_played: standingData?.gamesPlayed ?? null,
+    wins: standingData?.wins ?? null,
+    draws: standingData?.draws ?? null,
+    losses: standingData?.losses ?? null,
+    goals_for: standingData?.goalsFor ?? null,
+    goals_against: standingData?.goalsAgainst ?? null,
+    goal_difference: standingData?.goalDifference ?? null,
+  };
 }
 
 export async function fetchTeamFixtures(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), _limit: number = 10): Promise<TeamFixture[]> {
@@ -666,7 +708,7 @@ export async function fetchTeamStatistics(_teamId: number, _season: number = Num
   return null;
 }
 
-export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 5): Promise<UpcomingFixture[]> {
+export async function fetchTeamUpcomingFixtures(teamId: string, limit: number = 5): Promise<UpcomingFixture[]> {
   // Fallback to database query from events_v2
   const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
@@ -688,7 +730,7 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
 
   // Match (events_v2) 데이터를 UpcomingFixture 타입으로 변환
   return data.map(match => ({
-    id: Number(match.id), // Match.id (string) -> UpcomingFixture.id (number)
+    id: String(match.id), // Match.id (string) -> UpcomingFixture.id (number)
     date_utc: String(match.date), // Match.date -> UpcomingFixture.date_utc
     status: String(match.status), // Match.status -> UpcomingFixture.status
     round: String(match.round || 'N/A'), // Match.round -> UpcomingFixture.round
@@ -735,7 +777,7 @@ export async function fetchRecentFixtures(leagueId?: number, limit: number = 10)
 
   // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
   return data.map(match => ({
-    id: Number(match.id), // Match.id (string) -> RoundFixture.id (number)
+    id: String(match.id), // Match.id (string) -> RoundFixture.id (number)
     date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
     status_short: String(match.status), // Match.status -> RoundFixture.status_short
     round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
@@ -757,7 +799,7 @@ export async function fetchRecentFixtures(leagueId?: number, limit: number = 10)
 }
 
 // New function for fetching team recent fixtures with TheSportsDB hybrid strategy
-export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5): Promise<RoundFixture[]> {
+export async function fetchTeamRecentFixtures(teamId: string, limit: number = 5): Promise<RoundFixture[]> {
   // Fallback to database query from events_v2
   const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
@@ -779,7 +821,7 @@ export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5)
 
   // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
   return data.map(match => ({
-    id: Number(match.id), // Match.id (string) -> RoundFixture.id (number)
+    id: String(match.id), // Match.id (string) -> RoundFixture.id (number)
     date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
     status_short: String(match.status), // Match.status -> RoundFixture.status_short
     round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
@@ -1204,11 +1246,17 @@ export async function fetchTeamRecentEventsData(
  */
 export interface TeamPlayer {
   idPlayer: string;
-  strPlayer: string;
-  strTeam: string;
-  idTeam: string;
-  strPosition: string | null;
-  strNumber: string | null;
+  strPlayer: string; // Player name
+  strTeam: string; // Team name
+  idTeam: string; // Team ID
+  strPosition: string | null; // Position
+  strNumber: string | null; // Jersey number
+  // Stats from player_statistics
+  goals?: number;
+  assists?: number;
+  appearances?: number;
+  yellow_cards?: number;
+  red_cards?: number;
 }
 
 /**
