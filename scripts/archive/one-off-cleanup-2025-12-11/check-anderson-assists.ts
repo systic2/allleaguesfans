@@ -45,7 +45,7 @@ async function checkAndersonAssists() {
 
   console.log(`📋 Suwon FC 매핑된 경기: ${events?.length}개\n`);
 
-  let assistsByMatch: any[] = [];
+  const assistsByMatch: any[] = [];
 
   for (const event of events || []) {
     const url = `https://sports.highlightly.net/football/events/${event.highlightly_match_id}`;

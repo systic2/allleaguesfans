@@ -46,7 +46,7 @@ async function verifySabbagGoals() {
 
   let completedMatches = 0;
   let mappedMatches = 0;
-  let goalsByMatch: any[] = [];
+  const goalsByMatch: any[] = [];
 
   for (const e of events || []) {
     const isSuwonHome = e.strHomeTeam === 'Suwon FC';

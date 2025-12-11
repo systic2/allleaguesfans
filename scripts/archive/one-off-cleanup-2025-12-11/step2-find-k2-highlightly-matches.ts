@@ -123,7 +123,7 @@ async function matchEvents() {
   const highlightlyMatches = await fetchHighlightlyMatches();
 
   let matchedCount = 0;
-  let unmatchedEvents: any[] = [];
+  const unmatchedEvents: any[] = [];
 
   console.log('\n🔄 매칭 진행 중...\n');
 

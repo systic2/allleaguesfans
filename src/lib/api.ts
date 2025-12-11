@@ -2,12 +2,10 @@
 // FIXED VERSION: Updated to match actual database schema
 import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow } from "@/domain/types";
-import type { Match, Team, Standing } from "@/types/domain"; // Added Match, Team, and Standing import
+import type { Match, Standing } from "@/types/domain"; // Added Match, Team, and Standing import
 import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers'; // NEW IMPORT
-import {
-  getLeagueFixturesHybrid,
-  getTeamFixturesHybrid
-} from "@/lib/thesportsdb-fixtures";
+
+
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -371,39 +369,6 @@ export interface UpcomingFixture {
 }
 
 export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 10): Promise<UpcomingFixture[]> {
-  /*
-  // If leagueId is provided, try TheSportsDB first (existing hybrid logic)
-  if (leagueId) {
-    try {
-      const thesportsdbFixtures = await getLeagueFixturesHybrid(leagueId, 'upcoming');
-      
-      if (thesportsdbFixtures.length > 0) {
-        // Convert TheSportsDBEvent to UpcomingFixture format
-        return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
-          id: parseInt(fixture.idEvent),
-          date_utc: fixture.dateEvent,
-          status: fixture.strStatus || 'TBD',
-          round: `Round ${fixture.intRound}`,
-          home_team: {
-            id: parseInt(fixture.idHomeTeam || '0'),
-            name: fixture.strHomeTeam || 'TBD',
-            logo_url: null, // TheSportsDB doesn't provide team logos in fixtures
-          },
-          away_team: {
-            id: parseInt(fixture.idAwayTeam || '0'),
-            name: fixture.strAwayTeam || 'TBD',
-            logo_url: null,
-          },
-          venue: fixture.strVenue || 'TBD',
-          league_id: parseInt(fixture.idLeague),
-        }));
-      }
-    } catch (error) {
-      console.warn('TheSportsDB upcoming fixtures failed, falling back to database:', error);
-    }
-  }
-  */
-
   // Fallback to database query from events_v2
   const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
@@ -622,12 +587,12 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
 }
 
 // Legacy functions for compatibility - need to implement properly for team pages
-export async function fetchPlayersByTeam(teamId: number): Promise<PlayerLite[]> {
+export async function fetchPlayersByTeam(_teamId: number): Promise<PlayerLite[]> {
   console.warn("fetchPlayersByTeam needs implementation with correct schema");
   return [];
 }
 
-export async function fetchPlayer(id: number): Promise<PlayerLite | null> {
+export async function fetchPlayer(_id: number): Promise<PlayerLite | null> {
   console.warn("fetchPlayer needs implementation with correct schema");
   return null;
 }
@@ -686,53 +651,22 @@ export type TeamStatistics = {
   away_record: { wins: number; draws: number; losses: number };
 };
 
-export async function fetchTeamDetails(teamId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamDetails | null> {
+export async function fetchTeamDetails(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamDetails | null> {
   console.warn("fetchTeamDetails needs implementation with correct schema");
   return null;
 }
 
-export async function fetchTeamFixtures(teamId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TeamFixture[]> {
+export async function fetchTeamFixtures(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), _limit: number = 10): Promise<TeamFixture[]> {
   console.warn("fetchTeamFixtures needs implementation with correct schema");
   return [];
 }
 
-export async function fetchTeamStatistics(teamId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStatistics | null> {
+export async function fetchTeamStatistics(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStatistics | null> {
   console.warn("fetchTeamStatistics needs implementation with correct schema");
   return null;
 }
 
 export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 5): Promise<UpcomingFixture[]> {
-  /*
-  // Try TheSportsDB first (existing hybrid logic)
-  try {
-    const thesportsdbFixtures = await getTeamFixturesHybrid(teamId, 'upcoming');
-    
-    if (thesportsdbFixtures.length > 0) {
-      // Convert TheSportsDBEvent to UpcomingFixture format
-      return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
-        id: parseInt(fixture.idEvent),
-        date_utc: fixture.dateEvent,
-        status: fixture.strStatus || 'TBD',
-        round: `Round ${fixture.intRound}`,
-        home_team: {
-          id: parseInt(fixture.idHomeTeam || '0'),
-          name: fixture.strHomeTeam || 'TBD',
-          logo_url: null,
-        },
-        away_team: {
-          id: parseInt(fixture.idAwayTeam || '0'),
-          name: fixture.strAwayTeam || 'TBD',
-          logo_url: null,
-        },
-        venue: fixture.strVenue || 'TBD',
-        league_id: parseInt(fixture.idLeague),
-      }));
-    }
-  } catch (error) {
-    console.warn('TheSportsDB team upcoming fixtures failed, falling back to database:', error);
-  }
-  */
-
   // Fallback to database query from events_v2
   const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
@@ -775,41 +709,6 @@ export async function fetchTeamUpcomingFixtures(teamId: number, limit: number = 
 
 // New function for fetching recent fixtures with TheSportsDB hybrid strategy
 export async function fetchRecentFixtures(leagueId?: number, limit: number = 10): Promise<RoundFixture[]> {
-  /*
-  // If leagueId is provided, try TheSportsDB first (existing hybrid logic)
-  if (leagueId) {
-    try {
-      const thesportsdbFixtures = await getLeagueFixturesHybrid(leagueId, 'previous');
-      
-      if (thesportsdbFixtures.length > 0) {
-        // Convert TheSportsDBEvent to RoundFixture format
-        return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
-          id: parseInt(fixture.idEvent),
-          date_utc: fixture.dateEvent,
-          status_short: fixture.strStatus || 'TBD',
-          round: `Round ${fixture.intRound}`,
-          home_team: {
-            id: parseInt(fixture.idHomeTeam || '0'),
-            name: fixture.strHomeTeam || 'TBD',
-            logo_url: null,
-          },
-          away_team: {
-            id: parseInt(fixture.idAwayTeam || '0'),
-            name: fixture.strAwayTeam || 'TBD',
-            logo_url: null,
-          },
-          home_goals: fixture.intHomeScore,
-          away_goals: fixture.intAwayScore,
-          venue: fixture.strVenue || 'TBD',
-          league_id: leagueId,
-        }));
-      }
-    } catch (error) {
-      console.warn('TheSportsDB recent fixtures failed, falling back to database:', error);
-    }
-  }
-  */
-
   // Fallback to database query from events_v2
   const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
@@ -859,39 +758,6 @@ export async function fetchRecentFixtures(leagueId?: number, limit: number = 10)
 
 // New function for fetching team recent fixtures with TheSportsDB hybrid strategy
 export async function fetchTeamRecentFixtures(teamId: number, limit: number = 5): Promise<RoundFixture[]> {
-  /*
-  // Try TheSportsDB first (existing hybrid logic)
-  try {
-    const thesportsdbFixtures = await getTeamFixturesHybrid(teamId, 'previous');
-    
-    if (thesportsdbFixtures.length > 0) {
-      // Convert TheSportsDBEvent to RoundFixture format
-      return thesportsdbFixtures.slice(0, limit).map((fixture) => ({
-        id: parseInt(fixture.idEvent),
-        date_utc: fixture.dateEvent,
-        status_short: fixture.strStatus || 'TBD',
-        round: `Round ${fixture.intRound}`,
-        home_team: {
-          id: parseInt(fixture.idHomeTeam || '0'),
-          name: fixture.strHomeTeam || 'TBD',
-          logo_url: null,
-        },
-        away_team: {
-          id: parseInt(fixture.idAwayTeam || '0'),
-          name: fixture.strAwayTeam || 'TBD',
-          logo_url: null,
-        },
-        home_goals: fixture.intHomeScore,
-        away_goals: fixture.intAwayScore,
-        venue: fixture.strVenue || 'TBD',
-        league_id: parseInt(fixture.idLeague),
-      }));
-    }
-  } catch (error) {
-    console.warn('TheSportsDB team recent fixtures failed, falling back to database:', error);
-  }
-  */
-
   // Fallback to database query from events_v2
   const today = new Date().toISOString(); // Use ISOString for TIMESTAMPTZ comparison
   
@@ -1140,7 +1006,7 @@ export async function fetchTeamEvents(teamId: number, season: number = Number(im
 
 // ========== NEW TEAM PAGE API FUNCTIONS (TheSportsDB Schema) ==========
 
-import type { TeamFromDB, TeamStandings, EventFromDB, EventLiveData, FormResult } from "@/domain/types";
+import type { TeamFromDB, EventLiveData, FormResult } from "@/domain/types";
 
 /**
  * Fetch team details from teams table by idTeam
