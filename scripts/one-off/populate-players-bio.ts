@@ -41,62 +41,62 @@ async function fetchPlayerDetailsFromTSDB(playerId: string) {
 async function populatePlayersBio() {
   console.log('🚀 Starting Player Bio Population...');
 
-  // 1. Get all players from DB
-  // We process in chunks to avoid memory issues and long running script timeouts if running in some environments,
-  // but for a one-off script, fetching all IDs first is usually fine for < few thousand players.
-  const { data: players, error: fetchError } = await supabase
-    .from('players')
-    .select('idPlayer, strPlayer');
-
-  if (fetchError) {
-    console.error('Error fetching players:', fetchError);
-    return;
-  }
-
-  console.log(`Found ${players.length} players to update.`);
-
-  let updatedCount = 0;
-  let missingCount = 0;
-
-  for (let i = 0; i < players.length; i++) {
-    const player = players[i];
-    process.stdout.write(`[${i + 1}/${players.length}] Processing ${player.strPlayer} (${player.idPlayer})... `); 
-    
-    // 2. Fetch details from TheSportsDB
-    const tsdbPlayer = await fetchPlayerDetailsFromTSDB(player.idPlayer);
-    
-    if (!tsdbPlayer) {
-      console.log(`❌ No data found.`);
-      missingCount++;
-      continue;
-    }
-
-    // 3. Update players table
-    const updates = {
-      strNationality: tsdbPlayer.strNationality,
-      strHeight: tsdbPlayer.strHeight,
-      strWeight: tsdbPlayer.strWeight,
-      dateBorn: tsdbPlayer.dateBorn,
-      strThumb: tsdbPlayer.strThumb,
-      strBirthLocation: tsdbPlayer.strBirthLocation
-    };
-
-    const { error: updateError } = await supabase
+    // 1. Get all players from DB who need updates (missing nationality)
+    const { data: players, error: fetchError } = await supabase
       .from('players')
-      .update(updates)
-      .eq('idPlayer', player.idPlayer);
-
-    if (updateError) {
-      console.log(`❌ Update failed: ${updateError.message}`);
-    } else {
-      console.log(`✅ Updated.`);
-      updatedCount++;
+      .select('idPlayer, strPlayer')
+      .is('strNationality', null); // Only fetch those who haven't been updated
+  
+    if (fetchError) {
+      console.error('Error fetching players:', fetchError);
+      return;
     }
-    
-    // Rate limiting
-    await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
-  }
-
+  
+    console.log(`Found ${players.length} players needing updates.`);
+  
+    let updatedCount = 0;
+    let missingCount = 0;
+  
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i];
+      process.stdout.write(`[${i + 1}/${players.length}] Processing ${player.strPlayer} (${player.idPlayer})... `);
+      
+      // 2. Fetch details from TheSportsDB
+      const tsdbPlayer = await fetchPlayerDetailsFromTSDB(player.idPlayer);
+      
+      if (!tsdbPlayer) {
+        console.log(`❌ No data found.`);
+        missingCount++;
+        // Wait a bit even on failure
+        await new Promise(resolve => setTimeout(resolve, 500));
+        continue;
+      }
+  
+      // 3. Update players table
+      const updates = {
+        strNationality: tsdbPlayer.strNationality,
+        strHeight: tsdbPlayer.strHeight,
+        strWeight: tsdbPlayer.strWeight,
+        dateBorn: tsdbPlayer.dateBorn,
+        strThumb: tsdbPlayer.strThumb,
+        strBirthLocation: tsdbPlayer.strBirthLocation
+      };
+  
+      const { error: updateError } = await supabase
+        .from('players')
+        .update(updates)
+        .eq('idPlayer', player.idPlayer);
+  
+      if (updateError) {
+        console.log(`❌ Update failed: ${updateError.message}`);
+      } else {
+        console.log(`✅ Updated.`);
+        updatedCount++;
+      }
+      
+      // Rate limiting - Increased to 500ms
+      await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
   console.log(`
 🎉 Finished!`);
   console.log(`   - Updated: ${updatedCount}`);
