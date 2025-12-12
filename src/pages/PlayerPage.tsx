@@ -1,36 +1,23 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlayerDetail, type PlayerDetail } from "@/lib/api";
-import { Users, Shield, Zap, Activity } from "lucide-react";
+import { Users, Shield, Zap, Activity, Clock, AlertCircle } from "lucide-react";
 import CrestImg from "@/app/components/CrestImg";
 import FMSubNav from "@/components/FMSubNav";
-
-// FM Style Color Helpers
-const getAttrColor = (val: number) => {
-  if (val >= 16) return "text-emerald-400 font-extrabold shadow-emerald-400/20 drop-shadow-sm";
-  if (val >= 11) return "text-blue-300 font-bold";
-  if (val >= 6) return "text-gray-300 font-medium";
-  return "text-gray-600 font-normal";
-};
-
-const getAttrBg = (val: number) => {
-  if (val >= 16) return "bg-emerald-900/20";
-  return "";
-};
-
-function AttributeRow({ name, value }: { name: string; value: number }) {
-  return (
-    <div className={`flex justify-between items-center py-0.5 px-2 rounded hover:bg-white/5 ${getAttrBg(value)}`}>
-      <span className="text-gray-400 text-sm">{name}</span>
-      <span className={`text-base font-mono ${getAttrColor(value)}`}>{value}</span>
-    </div>
-  );
-}
 
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="bg-[#2a2a2a] text-white px-3 py-1 text-xs font-bold uppercase tracking-wider border-l-4 border-purple-500 mb-2">
       {title}
+    </div>
+  );
+}
+
+function StatItem({ label, value, highlight = false, colorClass = "text-white" }: { label: string, value: number | string, highlight?: boolean, colorClass?: string }) {
+  return (
+    <div className="flex justify-between items-center py-1.5 px-3 rounded hover:bg-white/5 border-b border-white/5 last:border-0">
+      <span className="text-gray-400 text-sm">{label}</span>
+      <span className={`text-base font-mono font-bold ${colorClass}`}>{value}</span>
     </div>
   );
 }
@@ -145,38 +132,66 @@ export default function PlayerPage() {
             </div>
           </div>
 
-          {/* CENTER COLUMN: Attributes (6 cols) */}
+          {/* CENTER COLUMN: Real Statistics (6 cols) */}
           <div className="lg:col-span-6">
             <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm h-full">
-              <SectionHeader title="Attributes" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                {/* Technical */}
-                <div>
-                  <h3 className="text-xs font-bold text-white/30 uppercase mb-3 border-b border-white/5 pb-1">Technical</h3>
-                  <div className="space-y-0.5">
-                    {player.attributes.technical.map(attr => (
-                      <AttributeRow key={attr.name} name={attr.name} value={attr.value} />
-                    ))}
+              <SectionHeader title="2025 Season Statistics" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                
+                {/* Participation */}
+                <div className="bg-white/5 rounded p-3">
+                  <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
+                    <Clock className="w-3 h-3" /> Participation
+                  </h3>
+                  <div className="space-y-1">
+                    <StatItem label="Appearances" value={player.stats.appearances} />
+                    <StatItem label="Minutes Played" value={player.stats.minutesPlayed} />
+                    <StatItem label="Avg Rating" value={player.stats.rating.toFixed(2)} colorClass="text-yellow-400" />
                   </div>
                 </div>
-                {/* Mental */}
-                <div>
-                  <h3 className="text-xs font-bold text-white/30 uppercase mb-3 border-b border-white/5 pb-1">Mental</h3>
-                  <div className="space-y-0.5">
-                    {player.attributes.mental.map(attr => (
-                      <AttributeRow key={attr.name} name={attr.name} value={attr.value} />
-                    ))}
+
+                {/* Attack */}
+                <div className="bg-white/5 rounded p-3">
+                  <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
+                    <Zap className="w-3 h-3" /> Attack
+                  </h3>
+                  <div className="space-y-1">
+                    <StatItem label="Goals" value={player.stats.goals} colorClass="text-emerald-400" />
+                    <StatItem label="Assists" value={player.stats.assists} colorClass="text-blue-400" />
+                    <StatItem label="Penalties Scored" value={`${player.stats.penaltiesScored} / ${player.stats.penaltiesScored + player.stats.penaltiesMissed}`} />
                   </div>
                 </div>
-                {/* Physical */}
-                <div>
-                  <h3 className="text-xs font-bold text-white/30 uppercase mb-3 border-b border-white/5 pb-1">Physical</h3>
-                  <div className="space-y-0.5">
-                    {player.attributes.physical.map(attr => (
-                      <AttributeRow key={attr.name} name={attr.name} value={attr.value} />
-                    ))}
+
+                {/* Discipline */}
+                <div className="bg-white/5 rounded p-3">
+                  <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
+                    <AlertCircle className="w-3 h-3" /> Discipline
+                  </h3>
+                  <div className="space-y-1">
+                    <StatItem label="Yellow Cards" value={player.stats.yellowCards} colorClass="text-yellow-500" />
+                    <StatItem label="Red Cards" value={player.stats.redCards} colorClass="text-red-500" />
+                    <StatItem label="Own Goals" value={player.stats.ownGoals} colorClass="text-red-400" />
                   </div>
                 </div>
+
+                {/* Summary / Form */}
+                <div className="bg-white/5 rounded p-3 flex flex-col items-center justify-center">
+                   <h3 className="text-xs font-bold text-white/50 uppercase mb-2">Form (Last 5)</h3>
+                   <div className="flex gap-1">
+                     {[...Array(5)].map((_, i) => (
+                       <div key={i} className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i < 3 ? 'bg-green-600 text-white' : i === 3 ? 'bg-gray-500 text-white' : 'bg-red-500 text-white'}`}>
+                         {i < 3 ? 'W' : i === 3 ? 'D' : 'L'} {/* Mock Data */}
+                       </div>
+                     ))}
+                   </div>
+                   <div className="mt-4 text-center">
+                     <span className="text-xs text-white/40">Goals / 90min</span>
+                     <div className="text-xl font-mono font-bold text-white">
+                       {player.stats.minutesPlayed > 0 ? (player.stats.goals / (player.stats.minutesPlayed / 90)).toFixed(2) : '0.00'}
+                     </div>
+                   </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -208,35 +223,32 @@ export default function PlayerPage() {
               </div>
             </div>
 
-            {/* Season Stats Summary */}
+            {/* Quick Stats Summary */}
             <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm">
-              <SectionHeader title="Season Stats" />
-              <table className="w-full text-sm mt-2">
-                <thead>
-                  <tr className="text-white/30 text-xs uppercase border-b border-white/5">
-                    <th className="pb-2 text-left">Stat</th>
-                    <th className="pb-2 text-right">Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  <tr>
-                    <td className="py-2 text-white/70">Appearances</td>
-                    <td className="py-2 text-right font-mono font-bold text-white">{player.stats.appearances}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 text-white/70">Goals</td>
-                    <td className="py-2 text-right font-mono font-bold text-emerald-400">{player.stats.goals}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 text-white/70">Assists</td>
-                    <td className="py-2 text-right font-mono font-bold text-blue-400">{player.stats.assists}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 text-white/70">Avg Rating</td>
-                    <td className="py-2 text-right font-mono font-bold text-yellow-400">{player.stats.rating.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <SectionHeader title="Quick Summary" />
+              <div className="space-y-3">
+                 <div className="flex items-center justify-between">
+                   <span className="text-white/60 text-sm">Goals</span>
+                   <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                     <div className="h-full bg-emerald-500" style={{ width: `${Math.min(player.stats.goals * 5, 100)}%` }}></div>
+                   </div>
+                   <span className="text-white font-bold font-mono">{player.stats.goals}</span>
+                 </div>
+                 <div className="flex items-center justify-between">
+                   <span className="text-white/60 text-sm">Assists</span>
+                   <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                     <div className="h-full bg-blue-500" style={{ width: `${Math.min(player.stats.assists * 10, 100)}%` }}></div>
+                   </div>
+                   <span className="text-white font-bold font-mono">{player.stats.assists}</span>
+                 </div>
+                 <div className="flex items-center justify-between">
+                   <span className="text-white/60 text-sm">Apps</span>
+                   <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                     <div className="h-full bg-purple-500" style={{ width: `${Math.min(player.stats.appearances * 2, 100)}%` }}></div>
+                   </div>
+                   <span className="text-white font-bold font-mono">{player.stats.appearances}</span>
+                 </div>
+              </div>
             </div>
           </div>
           
@@ -250,7 +262,7 @@ export default function PlayerPage() {
             
             {player.stats.goals > 5 ? ` He has been in fine form this season, finding the net ${player.stats.goals} times.` : ` He is a hardworking player looking to make his mark on the first team.`}
             
-            Known for his <span className="text-emerald-400">{player.attributes.technical.reduce((a, b) => a.value > b.value ? a : b).name}</span> and <span className="text-emerald-400">{player.attributes.mental.reduce((a, b) => a.value > b.value ? a : b).name}</span>, he is considered a valuable asset to the squad.
+            With {player.stats.appearances} appearances this season, he is {player.stats.appearances > 20 ? 'a key member of the squad' : 'fighting for his place in the team'}.
           </p>
         </div>
       </div>

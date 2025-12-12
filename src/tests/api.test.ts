@@ -281,7 +281,7 @@ describe('API Functions', () => {
   });
 
   describe('fetchPlayerDetail', () => {
-    it('should fetch detailed player info and generate attributes', async () => {
+    it('should fetch detailed player info and real stats', async () => {
       const mockPlayerId = 12345;
       const mockPlayerData = {
         idPlayer: String(mockPlayerId),
@@ -294,7 +294,13 @@ describe('API Functions', () => {
       const mockPlayerStats = {
         goals: 10,
         assists: 5,
-        appearances: 20
+        appearances: 20,
+        minutes_played: 1800,
+        yellow_cards: 2,
+        red_cards: 0,
+        penalties_scored: 1,
+        penalties_missed: 0,
+        own_goals: 0
       };
 
       (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerData)); // players
@@ -306,13 +312,13 @@ describe('API Functions', () => {
       expect(result?.id).toBe(String(mockPlayerId));
       expect(result?.name).toBe('Test Player');
       expect(result?.position).toBe('Forward');
-      expect(result?.stats.goals).toBe(10);
       
-      // Verify attribute generation
-      expect(result?.attributes).toBeDefined();
-      expect(result?.attributes.technical.length).toBeGreaterThan(0);
-      expect(result?.attributes.mental.length).toBeGreaterThan(0);
-      expect(result?.attributes.physical.length).toBeGreaterThan(0);
+      // Verify Real Stats
+      expect(result?.stats.goals).toBe(10);
+      expect(result?.stats.assists).toBe(5);
+      expect(result?.stats.minutesPlayed).toBe(1800);
+      expect(result?.stats.yellowCards).toBe(2);
+      expect(result?.stats.penaltiesScored).toBe(1);
       
       expect(supabase.from).toHaveBeenCalledWith('players');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
