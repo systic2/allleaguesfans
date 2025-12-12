@@ -4,14 +4,29 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), '.env.production') });
+// Try to load from .env first (local dev), fall back to system env
+dotenv.config();
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY; // Need service role for updates
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+
+// Try to find the Service Role Key (Admin) - Prioritizing user's specific key
+let supabaseKey = process.env.VITE_SUPABASE_SERVICE_ROLE || 
+                  process.env.SUPABASE_SERVICE_ROLE_KEY || 
+                  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 
+                  process.env.SERVICE_ROLE_KEY || 
+                  process.env.SUPABASE_SERVICE_KEY;
+
+// Fallback to Anon Key if Service Role Key is missing
+if (!supabaseKey) {
+  console.warn('⚠️  Service Role Key not found. Trying Anonymous Key...');
+  supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+}
+
 const theSportsDBApiKey = process.env.THESPORTSDB_API_KEY || '460915';
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase credentials in .env.production (need SERVICE_ROLE_KEY)');
+  console.error('❌ Missing Supabase credentials.');
+  console.error('   Checked .env for: VITE_SUPABASE_SERVICE_ROLE, SUPABASE_SERVICE_ROLE_KEY, etc.');
   process.exit(1);
 }
 
