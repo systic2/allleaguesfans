@@ -149,30 +149,72 @@ export default function TeamPageDB() {
         
         {/* --- OVERVIEW TAB --- */}
         {currentTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-300">
+            {/* Club Profile Card */}
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
+              <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
+                <LayoutDashboard className="w-3 h-3" /> Club Profile
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-white/50 text-xs uppercase">Full Name</p>
+                  <p className="text-white font-medium">{teamData.name}</p>
+                </div>
+                {teamData.strStadium && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Stadium</p>
+                    <p className="text-white font-medium">{teamData.strStadium}</p>
+                  </div>
+                )}
+                {teamData.intFormedYear && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Founded</p>
+                    <p className="text-white font-medium">{teamData.intFormedYear}</p>
+                  </div>
+                )}
+                {teamData.currentLeagueId && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">League</p>
+                    <p className="text-white font-medium">{teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2'}</p>
+                  </div>
+                )}
+                {standingsData?.rank && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Current Position</p>
+                    <p className="text-white font-medium">{standingsData.rank}위</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Next Match Card */}
-            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm">
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
                 <Calendar className="w-3 h-3" /> Next Match
               </h3>
               {teamFixtures?.upcoming[0] ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col items-center w-1/3">
-                    <div className="w-16 h-16 bg-white/5 rounded-full mb-2 flex items-center justify-center p-2">
-                       <CrestImg src={teamFixtures.upcoming[0].homeTeam?.badgeUrl} alt={teamFixtures.upcoming[0].homeTeam?.name || 'Home Team'} size={48} />
-                    </div> 
-                    <span className="font-bold text-sm text-center truncate w-full">{teamFixtures.upcoming[0].homeTeam?.name || 'Unknown'}</span>
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <div className="flex items-center w-full justify-between">
+                    <div className="flex flex-col items-center w-1/3">
+                      <div className="w-16 h-16 bg-white/5 rounded-full mb-2 flex items-center justify-center p-2">
+                         <CrestImg src={teamFixtures.upcoming[0].homeTeam?.badgeUrl} alt={teamFixtures.upcoming[0].homeTeam?.name || 'Home Team'} size={48} />
+                      </div> 
+                      <span className="font-bold text-sm text-center truncate w-full">{teamFixtures.upcoming[0].homeTeam?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xl font-bold text-white/30">VS</span>
+                    </div>
+                    <div className="flex flex-col items-center w-1/3">
+                      <div className="w-16 h-16 bg-white/5 rounded-full mb-2 flex items-center justify-center p-2">
+                         <CrestImg src={teamFixtures.upcoming[0].awayTeam?.badgeUrl} alt={teamFixtures.upcoming[0].awayTeam?.name || 'Away Team'} size={48} />
+                      </div> 
+                      <span className="font-bold text-sm text-center truncate w-full">{teamFixtures.upcoming[0].awayTeam?.name || 'Unknown'}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xl font-bold text-white/30">VS</span>
-                    <span className="text-xs text-purple-400 mt-1 font-bold">{formatDate(teamFixtures.upcoming[0].date)}</span>
+                  <div className="text-center">
+                    <span className="text-sm text-purple-400 font-bold">{formatDate(teamFixtures.upcoming[0].date)}</span>
+                    <br />
                     <span className="text-xs text-white/50">{formatTime(teamFixtures.upcoming[0].date)}</span>
-                  </div>
-                  <div className="flex flex-col items-center w-1/3">
-                    <div className="w-16 h-16 bg-white/5 rounded-full mb-2 flex items-center justify-center p-2">
-                       <CrestImg src={teamFixtures.upcoming[0].awayTeam?.badgeUrl} alt={teamFixtures.upcoming[0].awayTeam?.name || 'Away Team'} size={48} />
-                    </div> 
-                    <span className="font-bold text-sm text-center truncate w-full">{teamFixtures.upcoming[0].awayTeam?.name || 'Unknown'}</span>
                   </div>
                 </div>
               ) : (
@@ -181,23 +223,32 @@ export default function TeamPageDB() {
             </div>
 
             {/* Recent Results Summary */}
-            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm">
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
                 <BarChart3 className="w-3 h-3" /> Recent Results
               </h3>
               <div className="space-y-2">
-                {teamFixtures?.recent.slice(0, 3).map(match => (
-                  <div key={match.id} className="flex justify-between items-center bg-white/5 p-3 rounded hover:bg-white/10 transition-colors cursor-default border border-white/5">
-                    <div className="flex items-center gap-3">
-                      <ResultBadge result={
-                        match.homeScore === match.awayScore ? 'D' :
-                        (match.homeTeamId === teamIdParam && match.homeScore! > match.awayScore!) || (match.awayTeamId === teamIdParam && match.awayScore! > match.homeScore!) ? 'W' : 'L'
-                      } />
-                      <span className="text-sm text-white/80">vs {match.homeTeamId === teamIdParam ? (match.awayTeam?.name || 'Unknown') : (match.homeTeam?.name || 'Unknown')}</span>
+                {teamFixtures?.recent.slice(0, 5).map(match => { // Changed to slice(0, 5)
+                  const opponent = match.homeTeamId === teamIdParam ? match.awayTeam : match.homeTeam;
+                  const opponentName = opponent?.name || 'Unknown';
+                  const opponentBadge = opponent?.badgeUrl;
+
+                  return (
+                    <div key={match.id} className="flex justify-between items-center bg-white/5 p-3 rounded hover:bg-white/10 transition-colors cursor-default border border-white/5">
+                      <div className="flex items-center gap-2">
+                        <ResultBadge result={
+                          match.homeScore === match.awayScore ? 'D' :
+                          (match.homeTeamId === teamIdParam && match.homeScore! > match.awayScore!) || (match.awayTeamId === teamIdParam && match.awayScore! > match.homeScore!) ? 'W' : 'L'
+                        } />
+                        {opponentBadge && (
+                          <CrestImg src={opponentBadge} alt={opponentName} size={20} className="rounded-full" />
+                        )}
+                        <span className="text-sm text-white/80">{opponentName}</span>
+                      </div>
+                      <span className="font-mono font-bold text-white">{match.homeScore} - {match.awayScore}</span>
                     </div>
-                    <span className="font-mono font-bold text-white">{match.homeScore} - {match.awayScore}</span>
-                  </div>
-                ))}
+                  );
+                })}
                 {(!teamFixtures?.recent || teamFixtures.recent.length === 0) && (
                   <p className="text-white/30 py-4 text-center text-sm">최근 경기 기록이 없습니다.</p>
                 )}
@@ -205,11 +256,11 @@ export default function TeamPageDB() {
             </div>
 
             {/* Squad Snapshot */}
-            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm lg:col-span-2">
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
                 <Users className="w-3 h-3" /> Key Players
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 {players?.slice(0, 4).map(player => (
                   <div key={player.idPlayer} className="bg-white/5 border border-white/5 p-4 rounded-lg flex flex-col items-center text-center hover:bg-white/10 transition-colors">
                     <div className="w-12 h-12 bg-white/10 rounded-full mb-3 flex items-center justify-center text-white/50">
@@ -222,6 +273,77 @@ export default function TeamPageDB() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Compact Team Lineup */}
+            {players && players.length > 0 && (
+              <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
+                <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
+                  <LayoutDashboard className="w-3 h-3" /> Formation
+                </h3>
+                <TeamLineup teamId={Number(teamIdParam)} players={players || []} compact={true} />
+              </div>
+            )}
+
+            {/* Key Staff & Facilities Card */}
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
+              <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
+                <Users className="w-3 h-3" /> Staff & Facilities
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-white/50 text-xs uppercase">Manager</p>
+                  <p className="text-white font-medium">홍길동 (Placeholder)</p>
+                </div>
+                <div>
+                  <p className="text-white/50 text-xs uppercase">Assistant Manager</p>
+                  <p className="text-white font-medium">이순신 (Placeholder)</p>
+                </div>
+                {teamData.strStadium && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Stadium</p>
+                    <p className="text-white font-medium">{teamData.strStadium}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-white/50 text-xs uppercase">Training Ground</p>
+                  <p className="text-white font-medium">Excellent (Placeholder)</p>
+                </div>
+                <div>
+                  <p className="text-white/50 text-xs uppercase">Youth Academy</p>
+                  <p className="text-white font-medium">Good (Placeholder)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Mini League Table Card */}
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
+              <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
+                <BarChart3 className="w-3 h-3" /> League Standing
+              </h3>
+              <div className="space-y-3">
+                {teamData.currentLeagueId && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">League</p>
+                    <p className="text-white font-medium">{teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2'}</p>
+                  </div>
+                )}
+                {standingsData?.rank && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Current Rank</p>
+                    <p className="text-white font-medium">{standingsData.rank}위</p>
+                  </div>
+                )}
+                {standingsData?.points && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Points</p>
+                    <p className="text-white font-medium">{standingsData.points} pts</p>
+                  </div>
+                )}
+                <div className="mt-4 text-center text-white/50 text-xs italic border-t border-white/10 pt-3">
+                  Nearby teams and full league table coming soon.
+                </div>
               </div>
             </div>
           </div>

@@ -699,6 +699,8 @@ export type TeamDetails = {
   name: string; // From teams_v2.name
   nameKorean: string | null; // From teams_v2.nameKorean
   badgeUrl: string | null; // From teams_v2.badgeUrl
+  strStadium?: string | null; // From teams_v2.strStadium
+  intFormedYear?: string | null; // From teams_v2.intFormedYear
 
   // From standings_v2 (if available for current season)
   current_position?: number | null;
@@ -749,7 +751,7 @@ export type TeamStatistics = {
 export async function fetchTeamDetails(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamDetails | null> {
   const { data: teamData, error: teamError } = await supabase
     .from('teams_v2')
-    .select('id, name, nameKorean, badgeUrl')
+    .select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear')
     .eq('id', teamId)
     .maybeSingle();
 
@@ -783,6 +785,8 @@ export async function fetchTeamDetails(teamId: string, season: number = Number(i
     name: teamData.name,
     nameKorean: teamData.nameKorean,
     badgeUrl: teamData.badgeUrl,
+    strStadium: teamData.strStadium,
+    intFormedYear: teamData.intFormedYear,
     current_position: standingData?.rank ?? null,
     points: standingData?.points ?? null,
     matches_played: standingData?.gamesPlayed ?? null,
