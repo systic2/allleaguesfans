@@ -40,7 +40,7 @@ const createMockSupabaseChain = (mockData: any, mockError: any = null) => {
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
   supabase: {
-    from: vi.fn(() => createMockSupabaseChain(null)), // Default chain behavior
+    from: vi.fn(() => createMockSupabaseChain(null)) as any, // Default chain behavior
   },
 }));
 
@@ -77,8 +77,8 @@ describe('API Functions', () => {
       };
 
       // Mock sequence for supabase.from calls
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockTeamData)); // teams_v2
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockStandingData)); // standings_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockTeamData)); // teams_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockStandingData)); // standings_v2
 
       const result: TeamDetails | null = await fetchTeamDetails(mockTeamId, mockSeason);
 
@@ -102,7 +102,7 @@ describe('API Functions', () => {
     });
 
     it('should return null if team not found', async () => {
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(null)); // teams_v2 returns null
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(null)); // teams_v2 returns null
 
       const result = await fetchTeamDetails(mockTeamId, mockSeason);
       expect(result).toBeNull();
@@ -116,8 +116,8 @@ describe('API Functions', () => {
         badgeUrl: 'http://example.com/busan.png',
       };
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockTeamData)); // teams_v2
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(null)); // standings_v2 returns null
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockTeamData)); // teams_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(null)); // standings_v2 returns null
 
       const result: TeamDetails | null = await fetchTeamDetails(mockTeamId, mockSeason);
 
@@ -150,8 +150,8 @@ describe('API Functions', () => {
         { idPlayer: 'p2', goals: 2, assists: 7, appearances: 12, yellow_cards: 2, red_cards: 0 },
       ];
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockPlayersData)); // players
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockStatsData)); // player_statistics
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayersData)); // players
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockStatsData)); // player_statistics
 
       const result: TeamPlayer[] = await fetchPlayersByTeam(mockTeamId, mockSeason);
 
@@ -173,8 +173,8 @@ describe('API Functions', () => {
         { idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'FW', strNumber: '10' },
       ];
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockPlayersData)); // players
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(null)); // player_statistics returns null
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayersData)); // players
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(null)); // player_statistics returns null
 
       const result: TeamPlayer[] = await fetchPlayersByTeam(mockTeamId, mockSeason);
 
@@ -186,7 +186,7 @@ describe('API Functions', () => {
     });
 
     it('should return empty array if no players found', async () => {
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain([])); // players returns empty
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain([])); // players returns empty
 
       const result = await fetchPlayersByTeam(mockTeamId, mockSeason);
       expect(result).toEqual([]);
@@ -203,14 +203,14 @@ describe('API Functions', () => {
         },
       ];
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockFixturesData)); // events_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockFixturesData)); // events_v2
 
       const result: UpcomingFixture[] = await fetchTeamUpcomingFixtures(mockTeamId);
 
       expect(result).toHaveLength(1);
       // Mapped values
       expect(result[0].id).toBe(mockFixturesData[0].id);
-      expect(result[0].home_team.id).toBe(Number(mockTeamId));
+      expect(result[0].home_team.id).toBe(mockTeamId);
       expect(supabase.from).toHaveBeenCalledWith('events_v2');
     });
   });
@@ -225,13 +225,13 @@ describe('API Functions', () => {
         },
       ];
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockFixturesData)); // events_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockFixturesData)); // events_v2
 
       const result: RoundFixture[] = await fetchTeamRecentFixtures(mockTeamId);
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(mockFixturesData[0].id); // 'e2' -> 2
-      expect(result[0].away_team.id).toBe(Number(mockTeamId));
+      expect(result[0].away_team.id).toBe(mockTeamId);
       expect(result[0].home_goals).toBe(1);
       expect(result[0].away_goals).toBe(2);
       expect(supabase.from).toHaveBeenCalledWith('events_v2');
@@ -249,7 +249,7 @@ describe('API Functions', () => {
         { id: 'e3', date: '2025-11-28T00:00:00Z', status: 'FINISHED', homeTeamId: mockTeamId, awayTeamId: 't4', homeScore: 0, awayScore: 1 },
       ];
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockEventsData)); // events_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockEventsData)); // events_v2
 
       const result = await fetchTeamFormGuide(mockTeamId, String(mockSeason), 3);
 
@@ -265,7 +265,7 @@ describe('API Functions', () => {
         { id: 'e2', date: '2025-12-01T00:00:00Z', status: 'FINISHED', homeTeamId: 't3', awayTeamId: mockTeamId, homeScore: 1, awayScore: 1 },
       ];
 
-      (supabase.from as vi.Mock).mockReturnValueOnce(createMockSupabaseChain(mockEventsData)); // events_v2
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockEventsData)); // events_v2
 
       const result = await fetchTeamFormGuide(mockTeamId, String(mockSeason), 2);
       expect(result).toEqual(['D']); // Only the finished match should be included

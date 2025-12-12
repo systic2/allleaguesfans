@@ -4,12 +4,12 @@ import {
   fetchTeamDetails,
   fetchTeamStandingsData,
   fetchPlayersByTeam,
-  fetchTeamFormGuide, // ADDED fetchTeamFormGuide
+  fetchTeamFormGuide,
   type TeamDetails,
   type TeamPlayer,
 } from "@/lib/api";
-import type { Standing } from "@/types/domain"; // ADD new Standing
-import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api"; // ADD MatchWithTeams and fetchTeamFixturesTSDB
+import type { Standing } from "@/types/domain";
+import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api";
 import TeamLineup from "@/components/TeamLineup";
 import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
@@ -57,7 +57,7 @@ export default function TeamPageDB() {
   const { data: standingsData } = useQuery<Standing | null>({
     queryKey: ["team-standings-db", teamData?.currentLeagueId, teamData?.name],
     queryFn: () => fetchTeamStandingsData(teamData!.currentLeagueId!, CURRENT_SEASON, teamData!.name),
-    enabled: !!teamData,
+    enabled: !!teamData?.currentLeagueId && !!teamData?.name,
     retry: 2,
   });
 
@@ -183,8 +183,6 @@ export default function TeamPageDB() {
     return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   };
 
-  const leagueName = teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header Section */}
@@ -200,8 +198,8 @@ export default function TeamPageDB() {
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-white mb-2">{teamData.name}</h1>
               <div className="flex items-center gap-4 text-white/70">
-                {standingsData?.leagueId && (
-                  <span>{standingsData.leagueId === '4689' ? 'K리그1' : 'K리그2'}</span>
+                {teamData.currentLeagueId && (
+                  <span>{teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2'}</span>
                 )}
                 {standingsData?.rank && (
                   <>
@@ -259,7 +257,7 @@ export default function TeamPageDB() {
                 </h2>
                 <div className="space-y-3">
                   {recentEvents.map((event) => {
-                    const isHome = event.homeTeamId === teamIdParam; // ADDED missing definition
+                    const isHome = event.homeTeamId === teamIdParam;
                     const opponentName = isHome ? event.awayTeam?.name : event.homeTeam?.name;
                     const teamScore = isHome ? event.homeScore : event.awayScore;
                     const oppScore = isHome ? event.awayScore : event.homeScore;
@@ -384,14 +382,9 @@ export default function TeamPageDB() {
                       </div>
                     </div>
                   )}
-
-                  {/* Home/Away Record */}
-
                 </div>
               </section>
             )}
-
-
           </div>
         </div>
       </div>
