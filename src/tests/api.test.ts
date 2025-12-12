@@ -96,6 +96,7 @@ describe('API Functions', () => {
         goals_for: 40,
         goals_against: 30,
         goal_difference: 10,
+        currentLeagueId: '4689',
       });
       expect(supabase.from).toHaveBeenCalledWith('teams_v2');
       expect(supabase.from).toHaveBeenCalledWith('standings_v2');
@@ -135,6 +136,7 @@ describe('API Functions', () => {
         goals_for: null,
         goals_against: null,
         goal_difference: null,
+        currentLeagueId: null,
       });
     });
   });
