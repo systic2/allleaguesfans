@@ -1,4 +1,5 @@
 import { type TeamPlayer } from "@/lib/api";
+import { Users } from "lucide-react";
 
 interface TeamLineupProps {
   teamId: number;
@@ -8,30 +9,30 @@ interface TeamLineupProps {
 
 // 포지션별 색상 매핑
 const getPositionColor = (position: string) => {
-  switch (position.toUpperCase()) {
+  switch (position?.toUpperCase()) {
     case 'G':
     case 'GK':
-      return 'bg-yellow-500 border-yellow-400';
+      return 'bg-purple-900 border-purple-700 text-purple-300'; // Goalkeeper
     case 'D':
     case 'RB':
     case 'LB':
     case 'CB':
-      return 'bg-blue-500 border-blue-400';
+      return 'bg-teal-900 border-teal-700 text-teal-300'; // Defender
     case 'M':
     case 'DM':
     case 'CM':
     case 'AM':
     case 'RM':
     case 'LM':
-      return 'bg-green-500 border-green-400';
+      return 'bg-orange-900 border-orange-700 text-orange-300'; // Midfielder
     case 'F':
     case 'ST':
     case 'CF':
     case 'LW':
     case 'RW':
-      return 'bg-red-500 border-red-400';
+      return 'bg-red-900 border-red-700 text-red-300'; // Forward
     default:
-      return 'bg-gray-500 border-gray-400';
+      return 'bg-gray-900 border-gray-700 text-gray-300'; // Default/Unknown
   }
 };
 
@@ -114,7 +115,7 @@ export default function TeamLineup({ teamId, players, className = "" }: TeamLine
                       w-12 h-12 rounded-full border-2 flex items-center justify-center
                       ${colorClass} text-white font-bold text-sm shadow-lg
                     `}>
-                      {Number(player.strNumber) || (index + 1)}
+                      <Users className="w-6 h-6" />
                     </div>
                     
                     {/* 선수 이름 (호버 시 표시) */}

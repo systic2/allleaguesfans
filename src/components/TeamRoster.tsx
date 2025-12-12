@@ -1,21 +1,49 @@
 // TeamRoster.tsx - Team Squad/Roster Display Component
 import { useQuery } from '@tanstack/react-query';
 import { fetchTeamPlayers, type TeamPlayer } from '@/lib/api';
+import { Users } from "lucide-react";
 
 interface TeamRosterProps {
   idTeam: string;
   teamName: string;
 }
 
+// 포지션별 색상 매핑 (FM 스타일)
+const getPositionColor = (position: string) => {
+  switch (position?.toUpperCase()) {
+    case 'G':
+    case 'GK':
+      return 'bg-purple-900 border-purple-700 text-purple-300'; // Goalkeeper
+    case 'D':
+    case 'RB':
+    case 'LB':
+    case 'CB':
+      return 'bg-teal-900 border-teal-700 text-teal-300'; // Defender
+    case 'M':
+    case 'DM':
+    case 'CM':
+    case 'AM':
+    case 'RM':
+    case 'LM':
+      return 'bg-orange-900 border-orange-700 text-orange-300'; // Midfielder
+    case 'F':
+    case 'ST':
+    case 'CF':
+    case 'LW':
+    case 'RW':
+      return 'bg-red-900 border-red-700 text-red-300'; // Forward
+    default:
+      return 'bg-gray-900 border-gray-700 text-gray-300'; // Default/Unknown
+  }
+};
+
 function PlayerCard({ player }: { player: TeamPlayer }) {
+  const positionColorClass = getPositionColor(player.strPosition || 'M');
   return (
-    <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors">
-      <div className="flex items-center space-x-4">
-        {/* Player Icon */}
-        <div className="flex-shrink-0 w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center text-slate-400">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-          </svg>
+    <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors flex items-center gap-4">
+        {/* Player Avatar / Icon */}
+        <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-slate-400 ${positionColorClass}`}>
+          <Users className="w-6 h-6" />
         </div>
 
         {/* Player Info */}
@@ -28,14 +56,13 @@ function PlayerCard({ player }: { player: TeamPlayer }) {
           </div>
           {player.strPosition && (
             <div className="mt-1">
-              <span className="bg-slate-800 px-2 py-0.5 rounded text-xs text-slate-300">
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${positionColorClass}`}>
                 {player.strPosition}
               </span>
             </div>
           )}
         </div>
       </div>
-    </div>
   );
 }
 
