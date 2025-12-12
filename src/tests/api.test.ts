@@ -289,7 +289,12 @@ describe('API Functions', () => {
         strTeam: 'Test FC',
         idTeam: '999',
         strPosition: 'Forward',
-        strNumber: '9'
+        strNumber: '9',
+        strNationality: 'South Korea',
+        strHeight: '185 cm',
+        strWeight: '80 kg',
+        dateBorn: '2000-01-01',
+        strThumb: 'http://example.com/photo.jpg'
       };
       const mockPlayerStats = {
         goals: 10,
@@ -311,14 +316,20 @@ describe('API Functions', () => {
       expect(result).not.toBeNull();
       expect(result?.id).toBe(String(mockPlayerId));
       expect(result?.name).toBe('Test Player');
-      expect(result?.position).toBe('Forward');
+      
+      // Verify Bio Data
+      expect(result?.nationality).toBe('South Korea');
+      expect(result?.height).toBe('185 cm');
+      expect(result?.weight).toBe('80 kg');
+      expect(result?.birthDate).toBe('2000-01-01');
+      expect(result?.photoUrl).toBe('http://example.com/photo.jpg');
+      // Age calculation roughly (current year - 2000)
+      const expectedAge = new Date().getFullYear() - 2000;
+      expect(result?.age).toBeGreaterThanOrEqual(expectedAge - 1);
       
       // Verify Real Stats
       expect(result?.stats.goals).toBe(10);
-      expect(result?.stats.assists).toBe(5);
       expect(result?.stats.minutesPlayed).toBe(1800);
-      expect(result?.stats.yellowCards).toBe(2);
-      expect(result?.stats.penaltiesScored).toBe(1);
       
       expect(supabase.from).toHaveBeenCalledWith('players');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');

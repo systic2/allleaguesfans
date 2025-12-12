@@ -721,6 +721,19 @@ export type PlayerDetail = {
   };
 };
 
+// Helper to calculate age
+function calculateAge(birthDate?: string): number {
+  if (!birthDate) return 0;
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
   const { data: player, error } = await supabase
     .from('players')
@@ -750,15 +763,15 @@ export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail 
     teamId: player.idTeam,
     position: pos,
     jerseyNumber: player.strNumber || '-',
-    photoUrl: null, // No photo in DB currently
+    photoUrl: player.strThumb || null, // Real photo from DB
     
-    // Placeholders
-    nationality: 'Korea Republic',
-    height: '180 cm',
-    weight: '75 kg',
-    age: 24, // Mocked
-    birthDate: '2001-01-01', // Mocked
-    preferredFoot: 'Right',
+    // Biographical Data (Real)
+    nationality: player.strNationality || 'Unknown',
+    height: player.strHeight || '-',
+    weight: player.strWeight || '-',
+    age: calculateAge(player.dateBorn),
+    birthDate: player.dateBorn || '-',
+    preferredFoot: 'Right', // No data in TheSportsDB usually, keep placeholder or 'Unknown'
 
     stats: {
       appearances: stats?.appearances || 0,
@@ -770,7 +783,7 @@ export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail 
       penaltiesScored: stats?.penalties_scored || 0,
       penaltiesMissed: stats?.penalties_missed || 0,
       ownGoals: stats?.own_goals || 0,
-      rating: (Math.random() * (8.5 - 6.0) + 6.0), // Random rating between 6.0 and 8.5
+      rating: (Math.random() * (8.5 - 6.0) + 6.0), // Rating is usually calculated from match events, mocking for now
     },
   };
 }
