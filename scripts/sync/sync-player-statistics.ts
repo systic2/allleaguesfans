@@ -115,7 +115,7 @@ async function getEventDetails(idEvent: string) {
 
 async function findPlayerInDatabase(playerName: string, teamName: string): Promise<any> {
   // Try exact match first
-  let { data, error } = await supa
+  const { data, error } = await supa
     .from('players')
     .select('idPlayer, strPlayer, idTeam, strTeam')
     .eq('strPlayer', playerName)

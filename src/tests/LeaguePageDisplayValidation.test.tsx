@@ -62,7 +62,6 @@ vi.mock("../lib/enhanced-standings-api", () => ({
 
 // Import mocked functions after mocking
 import * as api from '../lib/api';
-import * as thesportsdbApi from '../lib/thesportsdb-api';
 
 // Mock data for testing
 const mockLeagueData = {

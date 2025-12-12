@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { 
   fetchEnhancedUpcomingFixtures, 
-  fetchEnhancedTeamUpcomingFixtures, 
   type HighlightlyEnhancedFixture 
 } from "@/lib/highlightly-enhanced-fixtures-api";
 import { 
