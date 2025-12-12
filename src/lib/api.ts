@@ -688,9 +688,165 @@ export async function fetchPlayersByTeam(teamId: string, season: number = Number
   });
 }
 
-export async function fetchPlayer(_id: number): Promise<PlayerLite | null> {
-  console.warn("fetchPlayer needs implementation with correct schema");
-  return null;
+// Player Details for Profile Page
+export type PlayerAttribute = {
+  name: string;
+  value: number; // 1-20
+};
+
+export type PlayerDetail = {
+  id: string;
+  name: string;
+  teamName: string;
+  teamId: string;
+  position: string;
+  jerseyNumber: string;
+  photoUrl: string | null;
+  
+  // Biographical (Mocked/Placeholder if missing)
+  nationality: string;
+  height: string;
+  weight: string;
+  age: number;
+  birthDate: string;
+  preferredFoot: 'Left' | 'Right' | 'Both';
+  
+  // Stats (Real)
+  stats: {
+    appearances: number;
+    goals: number;
+    assists: number;
+    rating: number; // Mocked
+  };
+
+  // FM Attributes (Mocked based on position)
+  attributes: {
+    technical: PlayerAttribute[];
+    mental: PlayerAttribute[];
+    physical: PlayerAttribute[];
+  };
+};
+
+/**
+ * Helper to generate FM-style attributes based on position
+ */
+function generateAttributes(position: string): PlayerDetail['attributes'] {
+  const isGk = position?.includes('GK');
+  const isDef = position?.includes('D') || position?.includes('B');
+  const isMid = position?.includes('M');
+  const isFwd = position?.includes('F') || position?.includes('S') || position?.includes('W');
+
+  const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  return {
+    technical: [
+      { name: 'Corners', value: isMid ? rand(10, 16) : rand(5, 12) },
+      { name: 'Crossing', value: isFwd || isMid ? rand(10, 17) : rand(5, 13) },
+      { name: 'Dribbling', value: isFwd ? rand(12, 18) : rand(6, 14) },
+      { name: 'Finishing', value: isFwd ? rand(12, 18) : rand(4, 12) },
+      { name: 'First Touch', value: rand(10, 16) },
+      { name: 'Free Kick', value: isMid ? rand(10, 18) : rand(5, 12) },
+      { name: 'Heading', value: isDef ? rand(12, 17) : rand(6, 14) },
+      { name: 'Long Shots', value: isMid || isFwd ? rand(8, 16) : rand(4, 10) },
+      { name: 'Long Throws', value: rand(5, 15) },
+      { name: 'Marking', value: isDef ? rand(12, 17) : rand(4, 10) },
+      { name: 'Passing', value: isMid ? rand(13, 18) : rand(8, 14) },
+      { name: 'Penalty Taking', value: isFwd ? rand(10, 18) : rand(5, 12) },
+      { name: 'Tackling', value: isDef ? rand(12, 18) : rand(4, 10) },
+      { name: 'Technique', value: rand(10, 16) },
+    ],
+    mental: [
+      { name: 'Aggression', value: isDef ? rand(12, 18) : rand(8, 15) },
+      { name: 'Anticipation', value: rand(10, 17) },
+      { name: 'Bravery', value: isDef ? rand(12, 18) : rand(8, 14) },
+      { name: 'Composure', value: rand(10, 16) },
+      { name: 'Concentration', value: isDef || isGk ? rand(12, 17) : rand(8, 14) },
+      { name: 'Decisions', value: isMid ? rand(13, 18) : rand(9, 15) },
+      { name: 'Determination', value: rand(10, 18) },
+      { name: 'Flair', value: isFwd || isMid ? rand(12, 18) : rand(5, 12) },
+      { name: 'Leadership', value: rand(5, 18) },
+      { name: 'Off the Ball', value: isFwd ? rand(13, 18) : rand(8, 14) },
+      { name: 'Positioning', value: isDef || isGk ? rand(13, 18) : rand(5, 12) },
+      { name: 'Teamwork', value: rand(10, 17) },
+      { name: 'Vision', value: isMid ? rand(12, 18) : rand(7, 13) },
+      { name: 'Work Rate', value: rand(10, 18) },
+    ],
+    physical: [
+      { name: 'Acceleration', value: isFwd ? rand(13, 18) : rand(9, 15) },
+      { name: 'Agility', value: isFwd || isMid ? rand(12, 17) : rand(8, 14) },
+      { name: 'Balance', value: rand(9, 16) },
+      { name: 'Jumping Reach', value: isDef ? rand(13, 18) : rand(6, 14) },
+      { name: 'Natural Fitness', value: rand(12, 18) },
+      { name: 'Pace', value: isFwd ? rand(13, 18) : rand(9, 15) },
+      { name: 'Stamina', value: isMid ? rand(14, 19) : rand(10, 16) },
+      { name: 'Strength', value: isDef ? rand(13, 18) : rand(8, 15) },
+    ]
+  };
+}
+
+export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
+  const { data: player, error } = await supabase
+    .from('players')
+    .select('*')
+    .eq('idPlayer', String(playerId))
+    .maybeSingle();
+
+  if (error || !player) {
+    console.error("Player not found:", error);
+    return null;
+  }
+
+  // Fetch Stats
+  const { data: stats } = await supabase
+    .from('player_statistics')
+    .select('goals, assists, appearances')
+    .eq('idPlayer', String(playerId))
+    .eq('strSeason', '2025') // Current Season
+    .maybeSingle();
+
+  const pos = player.strPosition || 'M';
+
+  return {
+    id: player.idPlayer,
+    name: player.strPlayer,
+    teamName: player.strTeam,
+    teamId: player.idTeam,
+    position: pos,
+    jerseyNumber: player.strNumber || '-',
+    photoUrl: null, // No photo in DB currently
+    
+    // Placeholders
+    nationality: 'Korea Republic',
+    height: '180 cm',
+    weight: '75 kg',
+    age: 24, // Mocked
+    birthDate: '2001-01-01', // Mocked
+    preferredFoot: 'Right',
+
+    stats: {
+      appearances: stats?.appearances || 0,
+      goals: stats?.goals || 0,
+      assists: stats?.assists || 0,
+      rating: (Math.random() * (8.5 - 6.0) + 6.0), // Random rating between 6.0 and 8.5
+    },
+
+    attributes: generateAttributes(pos),
+  };
+}
+
+// Update fetchPlayer to use fetchPlayerDetail for compatibility
+export async function fetchPlayer(id: number): Promise<PlayerLite | null> {
+  const detail = await fetchPlayerDetail(id);
+  if (!detail) return null;
+  return {
+    id: Number(detail.id),
+    name: detail.name,
+    position: detail.position,
+    photo_url: detail.photoUrl,
+    team_id: Number(detail.teamId),
+    jersey_number: Number(detail.jerseyNumber),
+    primary_source: 'db'
+  };
 }
 
 // Team-related types and functions (placeholder - need to implement based on actual schema)

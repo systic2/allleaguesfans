@@ -6,10 +6,12 @@ import {
   fetchTeamUpcomingFixtures,
   fetchTeamRecentFixtures,
   fetchTeamFormGuide,
+  fetchPlayerDetail,
   TeamDetails,
   TeamPlayer,
   UpcomingFixture,
   RoundFixture,
+  PlayerDetail,
 } from '@/lib/api';
 
 // Helper to create a mock chain for Supabase methods
@@ -87,6 +89,8 @@ describe('API Functions', () => {
         name: 'Busan IPark',
         nameKorean: '부산 아이파크',
         badgeUrl: 'http://example.com/busan.png',
+        strStadium: undefined,
+        intFormedYear: undefined,
         current_position: 5,
         points: 45,
         matches_played: 30,
@@ -127,6 +131,8 @@ describe('API Functions', () => {
         name: 'Busan IPark',
         nameKorean: '부산 아이파크',
         badgeUrl: 'http://example.com/busan.png',
+        strStadium: undefined,
+        intFormedYear: undefined,
         current_position: null,
         points: null,
         matches_played: null,
@@ -271,6 +277,52 @@ describe('API Functions', () => {
 
       const result = await fetchTeamFormGuide(mockTeamId, String(mockSeason), 2);
       expect(result).toEqual(['D']); // Only the finished match should be included
+    });
+  });
+
+  describe('fetchPlayerDetail', () => {
+    it('should fetch detailed player info and generate attributes', async () => {
+      const mockPlayerId = 12345;
+      const mockPlayerData = {
+        idPlayer: String(mockPlayerId),
+        strPlayer: 'Test Player',
+        strTeam: 'Test FC',
+        idTeam: '999',
+        strPosition: 'Forward',
+        strNumber: '9'
+      };
+      const mockPlayerStats = {
+        goals: 10,
+        assists: 5,
+        appearances: 20
+      };
+
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerData)); // players
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerStats)); // player_statistics
+
+      const result = await fetchPlayerDetail(mockPlayerId);
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(String(mockPlayerId));
+      expect(result?.name).toBe('Test Player');
+      expect(result?.position).toBe('Forward');
+      expect(result?.stats.goals).toBe(10);
+      
+      // Verify attribute generation
+      expect(result?.attributes).toBeDefined();
+      expect(result?.attributes.technical.length).toBeGreaterThan(0);
+      expect(result?.attributes.mental.length).toBeGreaterThan(0);
+      expect(result?.attributes.physical.length).toBeGreaterThan(0);
+      
+      expect(supabase.from).toHaveBeenCalledWith('players');
+      expect(supabase.from).toHaveBeenCalledWith('player_statistics');
+    });
+
+    it('should return null if player not found', async () => {
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(null)); // players returns null
+
+      const result = await fetchPlayerDetail(99999);
+      expect(result).toBeNull();
     });
   });
 });
