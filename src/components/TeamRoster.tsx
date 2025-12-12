@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchTeamPlayers, type TeamPlayer } from '@/lib/api';
 import { Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface TeamRosterProps {
   idTeam: string;
@@ -40,29 +41,31 @@ const getPositionColor = (position: string) => {
 function PlayerCard({ player }: { player: TeamPlayer }) {
   const positionColorClass = getPositionColor(player.strPosition || 'M');
   return (
-    <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors flex items-center gap-4">
-        {/* Player Avatar / Icon */}
-        <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-slate-400 ${positionColorClass}`}>
-          <Users className="w-6 h-6" />
-        </div>
-
-        {/* Player Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2">
-            {player.strNumber && (
-              <span className="text-blue-400 font-bold text-lg">#{player.strNumber}</span>
-            )}
-            <h3 className="text-white font-semibold truncate">{player.strPlayer}</h3>
+    <Link to={`/players/${player.idPlayer}`} className="block">
+      <div className="bg-slate-700 rounded-lg p-4 hover:bg-slate-600 transition-colors flex items-center gap-4 cursor-pointer">
+          {/* Player Avatar / Icon */}
+          <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-slate-400 ${positionColorClass}`}>
+            <Users className="w-6 h-6" />
           </div>
-          {player.strPosition && (
-            <div className="mt-1">
-              <span className={`px-2 py-0.5 rounded text-xs font-medium ${positionColorClass}`}>
-                {player.strPosition}
-              </span>
+
+          {/* Player Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2">
+              {player.strNumber && (
+                <span className="text-blue-400 font-bold text-lg">#{player.strNumber}</span>
+              )}
+              <h3 className="text-white font-semibold truncate">{player.strPlayer}</h3>
             </div>
-          )}
+            {player.strPosition && (
+              <div className="mt-1">
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${positionColorClass}`}>
+                  {player.strPosition}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+    </Link>
   );
 }
 

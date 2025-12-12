@@ -1,4 +1,5 @@
 import { type TeamPlayer } from "@/lib/api";
+import { Link } from "react-router-dom";
 
 interface TeamLineupProps {
   teamId: number;
@@ -114,22 +115,24 @@ export default function TeamLineup({ teamId, players, className = "", compact = 
                   className="flex flex-col items-center justify-center text-center z-10"
                   style={{ gridArea }}
                 >
-                  <div className={`
-                    relative transform transition-all duration-200 
-                    ${compact ? '' : 'hover:scale-110 hover:z-20'}
-                  `}>
+                  <Link to={`/players/${player.idPlayer}`} className="flex flex-col items-center group">
                     <div className={`
-                      ${playerAvatarSize} rounded-full border-2 flex items-center justify-center
-                      ${colorClass} text-white font-bold shadow-lg bg-opacity-90
-                      ${compact ? 'text-[0.65rem]' : 'text-sm'}
+                      relative transform transition-all duration-200 
+                      ${compact ? '' : 'group-hover:scale-110 group-hover:z-20'}
                     `}>
-                      {player.strNumber || player.strPosition?.charAt(0) || '?'}
+                      <div className={`
+                        ${playerAvatarSize} rounded-full border-2 flex items-center justify-center
+                        ${colorClass} text-white font-bold shadow-lg bg-opacity-90
+                        ${compact ? 'text-[0.65rem]' : 'text-sm'}
+                      `}>
+                        {player.strNumber || player.strPosition?.charAt(0) || '?'}
+                      </div>
                     </div>
-                  </div>
-                  <div className={`mt-1 text-white font-semibold leading-tight drop-shadow-md ${playerTextSize}`}>
-                    <div className="truncate w-20 mx-auto px-1 bg-black/30 rounded">{player.strPlayer}</div>
-                    {!compact && <div className="text-gray-300 text-[0.6rem] mt-0.5">{player.strPosition || 'PL'}</div>}
-                  </div>
+                    <div className={`mt-1 text-white font-semibold leading-tight drop-shadow-md ${playerTextSize} group-hover:text-yellow-300 transition-colors`}>
+                      <div className="truncate w-20 mx-auto px-1 bg-black/30 rounded">{player.strPlayer}</div>
+                      {!compact && <div className="text-gray-300 text-[0.6rem] mt-0.5">{player.strPosition || 'PL'}</div>}
+                    </div>
+                  </Link>
                 </div>
               );
             })}
@@ -173,7 +176,7 @@ export default function TeamLineup({ teamId, players, className = "", compact = 
               <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3">Starting XI</h3>
               <div className="grid grid-cols-1 gap-2">
                 {startingXI.map((player) => (
-                  <div key={player.idPlayer} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded transition-colors">
+                  <Link key={player.idPlayer} to={`/players/${player.idPlayer}`} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded transition-colors group">
                     <div className={`
                       w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold
                       ${getPositionColor(player.strPosition || 'M')}
@@ -181,10 +184,10 @@ export default function TeamLineup({ teamId, players, className = "", compact = 
                       {Number(player.strNumber) || '-'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-white text-sm font-medium truncate">{player.strPlayer}</div>
+                      <div className="text-white text-sm font-medium truncate group-hover:text-yellow-300 transition-colors">{player.strPlayer}</div>
                       <div className="text-white/40 text-xs">{player.strPosition}</div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -194,7 +197,7 @@ export default function TeamLineup({ teamId, players, className = "", compact = 
                 <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-3">Substitutes</h3>
                 <div className="grid grid-cols-1 gap-2">
                   {substitutes.map((player) => (
-                    <div key={player.idPlayer} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded transition-colors">
+                    <Link key={player.idPlayer} to={`/players/${player.idPlayer}`} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded transition-colors group">
                       <div className={`
                         w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold
                         ${getPositionColor(player.strPosition || 'M')}
@@ -202,10 +205,10 @@ export default function TeamLineup({ teamId, players, className = "", compact = 
                         {Number(player.strNumber) || '-'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-white text-sm font-medium truncate">{player.strPlayer}</div>
+                        <div className="text-white text-sm font-medium truncate group-hover:text-yellow-300 transition-colors">{player.strPlayer}</div>
                         <div className="text-white/40 text-xs">{player.strPosition}</div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
