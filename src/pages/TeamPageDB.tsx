@@ -14,6 +14,7 @@ import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/li
 import TeamLineup from "@/components/TeamLineup";
 import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
+import FMSubNav from "@/components/FMSubNav";
 
 // Types
 type FormResult = 'W' | 'D' | 'L';
@@ -98,7 +99,7 @@ export default function TeamPageDB() {
   return (
     <div className="text-white font-sans">
       {/* Header Section */}
-      <div className="flex items-center gap-6 border-b border-white/10 pb-6 mb-6">
+      <div className="flex items-center gap-6 p-6 bg-[#1b1b1b]">
         <CrestImg
           src={teamData.badgeUrl}
           alt={teamData.name}
@@ -144,8 +145,11 @@ export default function TeamPageDB() {
         </div>
       </div>
 
+      {/* FM Sub Navigation */}
+      <FMSubNav type="team" basePath={`/teams/${teamIdParam}`} />
+
       {/* Main Content Area */}
-      <div>
+      <div className="p-6 bg-[#1b1b1b] min-h-screen">
         
         {/* --- OVERVIEW TAB --- */}
         {currentTab === 'overview' && (
