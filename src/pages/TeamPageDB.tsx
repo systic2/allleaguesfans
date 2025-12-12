@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import {
-  fetchTeamFromDB,
+  fetchTeamDetails,
   fetchTeamStandingsData,
   fetchPlayersByTeam,
   fetchTeamFormGuide, // ADDED fetchTeamFormGuide
-  type PlayerLite,
+  type TeamDetails,
+  type TeamPlayer,
 } from "@/lib/api";
-import type { TeamFromDB } from "@/domain/types"; // ADDED import for TeamFromDB
 import type { Standing } from "@/types/domain"; // ADD new Standing
 import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api"; // ADD MatchWithTeams and fetchTeamFixturesTSDB
 import TeamLineup from "@/components/TeamLineup";
@@ -46,9 +45,9 @@ export default function TeamPageDB() {
     data: teamData,
     isLoading: teamLoading,
     error: teamError
-  } = useQuery<TeamFromDB | null>({
+  } = useQuery<TeamDetails | null>({
     queryKey: ["team-db", teamIdParam],
-    queryFn: () => fetchTeamFromDB(teamIdParam),
+    queryFn: () => fetchTeamDetails(teamIdParam),
     enabled: !!teamIdParam,
     retry: 3,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -56,8 +55,8 @@ export default function TeamPageDB() {
 
   // Fetch team standings
   const { data: standingsData } = useQuery<Standing | null>({
-    queryKey: ["team-standings-db", teamData?.idLeague, teamData?.strTeam],
-    queryFn: () => fetchTeamStandingsData(teamData!.idLeague, CURRENT_SEASON, teamData!.strTeam),
+    queryKey: ["team-standings-db", teamData?.currentLeagueId, teamData?.name],
+    queryFn: () => fetchTeamStandingsData(teamData!.currentLeagueId!, CURRENT_SEASON, teamData!.name),
     enabled: !!teamData,
     retry: 2,
   });
@@ -66,9 +65,9 @@ export default function TeamPageDB() {
   const {
     data: players,
     isLoading: playersLoading
-  } = useQuery<PlayerLite[]>({
+  } = useQuery<TeamPlayer[]>({
     queryKey: ["team-players-db", teamIdParam],
-    queryFn: () => fetchPlayersByTeam(Number(teamIdParam)),
+    queryFn: () => fetchPlayersByTeam(teamIdParam),
     enabled: !!teamIdParam,
     retry: 2,
   });
@@ -184,7 +183,7 @@ export default function TeamPageDB() {
     return new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   };
 
-  const leagueName = teamData.idLeague === '4689' ? 'K리그1' : 'K리그2';
+  const leagueName = teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -193,17 +192,17 @@ export default function TeamPageDB() {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center gap-6">
             <CrestImg
-              src={teamData.strBadge}
-              alt={teamData.strTeam}
+              src={teamData.badgeUrl}
+              alt={teamData.name}
               size={80}
               className="rounded-lg shadow-lg"
             />
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-white mb-2">{teamData.strTeam}</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">{teamData.name}</h1>
               <div className="flex items-center gap-4 text-white/70">
-                <span>{teamData.strCountry}</span>
-                <span>•</span>
-                <span>{leagueName}</span>
+                {standingsData?.leagueId && (
+                  <span>{standingsData.leagueId === '4689' ? 'K리그1' : 'K리그2'}</span>
+                )}
                 {standingsData?.rank && (
                   <>
                     <span>•</span>
@@ -248,7 +247,7 @@ export default function TeamPageDB() {
             )}
 
             {/* Team Roster Section */}
-            <TeamRoster idTeam={teamIdParam} teamName={teamData.strTeam} />
+            <TeamRoster idTeam={teamIdParam} teamName={teamData.name} />
 
             {/* Recent Fixtures */}
             {eventsLoading ? (
@@ -392,90 +391,7 @@ export default function TeamPageDB() {
               </section>
             )}
 
-            {/* Club Info */}
-            <section className="bg-black/20 rounded-xl p-6 backdrop-blur-sm">
-              <h2 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">
-                🏟️ 클럽 정보
-              </h2>
-              <div className="space-y-3 text-sm">
-                {teamData.strStadium && (
-                  <div>
-                    <div className="text-white/60 mb-1">홈 경기장</div>
-                    <div className="text-white font-medium">{teamData.strStadium}</div>
-                    {teamData.intStadiumCapacity && (
-                      <div className="text-white/50 text-xs mt-1">
-                        수용 인원: {teamData.intStadiumCapacity.toLocaleString()}명
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {teamData.strStadiumLocation && (
-                  <div>
-                    <div className="text-white/60 mb-1">위치</div>
-                    <div className="text-white">{teamData.strStadiumLocation}</div>
-                  </div>
-                )}
-
-                {/* Social Media Links */}
-                {(teamData.strFacebook || teamData.strTwitter || teamData.strInstagram || teamData.strYoutube) && (
-                  <div className="pt-3 border-t border-white/10">
-                    <div className="text-white/60 mb-2">소셜 미디어</div>
-                    <div className="flex flex-wrap gap-2">
-                      {teamData.strFacebook && (
-                        <a
-                          href={teamData.strFacebook}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors"
-                        >
-                          Facebook
-                        </a>
-                      )}
-                      {teamData.strTwitter && (
-                        <a
-                          href={teamData.strTwitter}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-sky-500 hover:bg-sky-600 text-white px-3 py-1 rounded text-xs transition-colors"
-                        >
-                          Twitter
-                        </a>
-                      )}
-                      {teamData.strInstagram && (
-                        <a
-                          href={teamData.strInstagram}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded text-xs transition-colors"
-                        >
-                          Instagram
-                        </a>
-                      )}
-                      {teamData.strYoutube && (
-                        <a
-                          href={teamData.strYoutube}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors"
-                        >
-                          YouTube
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {teamData.strDescriptionKR && (
-                  <div className="pt-3 border-t border-white/10">
-                    <div className="text-white/60 mb-2">클럽 소개</div>
-                    <div className="text-white/80 text-xs leading-relaxed">
-                      {teamData.strDescriptionKR}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
           </div>
         </div>
       </div>

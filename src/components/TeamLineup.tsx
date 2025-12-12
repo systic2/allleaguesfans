@@ -1,8 +1,8 @@
-import { type PlayerLite } from "@/lib/api";
+import { type TeamPlayer } from "@/lib/api";
 
 interface TeamLineupProps {
   teamId: number;
-  players: PlayerLite[];
+  players: TeamPlayer[];
   className?: string;
 }
 
@@ -95,12 +95,12 @@ export default function TeamLineup({ teamId, players, className = "" }: TeamLine
                }}>
             
             {startingXI.map((player, index) => {
-              const gridArea = getPositionGridArea(player.position || 'M', index);
-              const colorClass = getPositionColor(player.position || 'M');
+              const gridArea = getPositionGridArea(player.strPosition || 'M', index);
+              const colorClass = getPositionColor(player.strPosition || 'M');
               
               return (
                 <div
-                  key={player.id}
+                  key={player.idPlayer}
                   className="flex flex-col items-center justify-center"
                   style={{ gridArea }}
                 >
@@ -114,7 +114,7 @@ export default function TeamLineup({ teamId, players, className = "" }: TeamLine
                       w-12 h-12 rounded-full border-2 flex items-center justify-center
                       ${colorClass} text-white font-bold text-sm shadow-lg
                     `}>
-                      {player.jersey_number || (index + 1)}
+                      {Number(player.strNumber) || (index + 1)}
                     </div>
                     
                     {/* 선수 이름 (호버 시 표시) */}
@@ -124,9 +124,9 @@ export default function TeamLineup({ teamId, players, className = "" }: TeamLine
                       opacity-0 group-hover:opacity-100 transition-opacity
                       whitespace-nowrap z-20
                     ">
-                      {player.name}
+                      {player.strPlayer}
                       <br />
-                      <span className="text-gray-300">{player.position || 'PL'}</span>
+                      <span className="text-gray-300">{player.strPosition || 'PL'}</span>
                     </div>
                   </div>
                 </div>
@@ -168,16 +168,16 @@ export default function TeamLineup({ teamId, players, className = "" }: TeamLine
         <h3 className="text-lg font-bold text-white mb-3">선발 명단</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {startingXI.map((player) => (
-            <div key={player.id} className="flex items-center gap-3 p-2 bg-white/5 rounded">
+            <div key={player.idPlayer} className="flex items-center gap-3 p-2 bg-white/5 rounded">
               <div className={`
                 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold
-                ${getPositionColor(player.position || 'M')}
+                ${getPositionColor(player.strPosition || 'M')}
               `}>
-                {player.jersey_number || '?'}
+                {Number(player.strNumber) || '?'}
               </div>
               <div className="flex-1">
-                <div className="text-white font-medium">{player.name}</div>
-                <div className="text-white/60 text-sm">{player.position || '포지션 미정'}</div>
+                <div className="text-white font-medium">{player.strPlayer}</div>
+                <div className="text-white/60 text-sm">{player.strPosition || '포지션 미정'}</div>
               </div>
             </div>
           ))}
@@ -190,16 +190,16 @@ export default function TeamLineup({ teamId, players, className = "" }: TeamLine
           <h3 className="text-lg font-bold text-white mb-3">교체 명단</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {substitutes.slice(0, 7).map((player) => (
-              <div key={player.id} className="flex items-center gap-3 p-2 bg-white/5 rounded">
+              <div key={player.idPlayer} className="flex items-center gap-3 p-2 bg-white/5 rounded">
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold
-                  ${getPositionColor(player.position || 'M')}
+                  ${getPositionColor(player.strPosition || 'M')}
                 `}>
-                  {player.jersey_number || '?'}
+                  {Number(player.strNumber) || '?'}
                 </div>
                 <div className="flex-1">
-                  <div className="text-white font-medium">{player.name}</div>
-                  <div className="text-white/60 text-sm">{player.position || '포지션 미정'}</div>
+                  <div className="text-white font-medium">{player.strPlayer}</div>
+                  <div className="text-white/60 text-sm">{player.strPosition || '포지션 미정'}</div>
                 </div>
               </div>
             ))}

@@ -40,3 +40,6 @@ GITHUB-SETUP.md
 
 # Logs directory
 logs/
+
+# Deprecated pages
+src/pages/TeamPageOld.tsx

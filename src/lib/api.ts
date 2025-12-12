@@ -355,17 +355,17 @@ export interface UpcomingFixture {
   status: string;
   round: string;
   home_team: {
-    id: number;
+    id: string;
     name: string;
     logo_url: string | null;
   };
   away_team: {
-    id: number;
+    id: string;
     name: string;
     logo_url: string | null;
   };
   venue?: string;
-  league_id: number;
+  league_id: string;
 }
 
 export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 10): Promise<UpcomingFixture[]> {
@@ -395,22 +395,22 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
 
   // Match (events_v2) 데이터를 UpcomingFixture 타입으로 변환
   return data.map(match => ({
-    id: String(match.id), // Match.id (string) -> UpcomingFixture.id (number)
+    id: String(match.id), // Match.id (string) -> UpcomingFixture.id (string)
     date_utc: String(match.date), // Match.date -> UpcomingFixture.date_utc
     status: String(match.status), // Match.status -> UpcomingFixture.status
     round: String(match.round || 'N/A'), // Match.round -> UpcomingFixture.round
     home_team: {
-      id: Number(match.homeTeamId), // Match.homeTeamId -> UpcomingFixture.home_team.id
+      id: String(match.homeTeamId), // Match.homeTeamId -> UpcomingFixture.home_team.id (string)
       name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     away_team: {
-      id: Number(match.awayTeamId), // Match.awayTeamId -> UpcomingFixture.away_team.id
+      id: String(match.awayTeamId), // Match.awayTeamId -> UpcomingFixture.away_team.id (string)
       name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     venue: match.venueName || undefined, // Match.venueName -> UpcomingFixture.venue
-    league_id: Number(match.leagueId), // Match.leagueId -> UpcomingFixture.league_id (number)
+    league_id: String(match.leagueId), // Match.leagueId -> UpcomingFixture.league_id (string)
   }));
 }
 
@@ -422,19 +422,19 @@ export interface RoundFixture {
   status_short: string;
   round: string;
   home_team: {
-    id: number;
+    id: string;
     name: string;
     logo_url: string | null;
   };
   away_team: {
-    id: number;
+    id: string;
     name: string;
     logo_url: string | null;
   };
   home_goals: number | null;
   away_goals: number | null;
   venue?: string;
-  league_id: number;
+  league_id: string;
 }
 
 /**
@@ -474,13 +474,109 @@ export async function getNextUpcomingRound(leagueId: number, season: number = Nu
     return null;
   }
 
-  return data[0].round || null; // Match.round는 string | undefined
-}
+    return data[0].round || null; // Match.round는 string | undefined
 
+  }
 
+  
 
-/**
- * Fetch recent completed fixtures from the latest completed round
+  /**
+
+   * Fetch all fixtures from a specific round (FIXED)
+
+   */
+
+  export async function fetchFixturesByRound(
+
+    leagueId: number, 
+
+    round: string, 
+
+    season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)
+
+  ): Promise<RoundFixture[]> {
+
+    const { data, error } = await supabase
+
+      .from("events_v2") // <-- 변경: events_v2 테이블 사용
+
+      .select(`*`) // <-- 변경: 모든 컬럼 선택 (Match 도메인 모델과 일치)
+
+      .eq("leagueId", String(leagueId)) // <-- 변경: leagueId 컬럼 사용 (number -> string)
+
+      .eq("round", round) // <-- 변경: round 컬럼 사용
+
+      .eq("season", String(season)) // <-- 변경: season 컬럼 사용
+
+      .order("date", { ascending: true }); // <-- 변경: date 컬럼 사용
+
+  
+
+    if (error) {
+
+      console.error("Error fetching fixtures by round from events_v2:", error);
+
+      return [];
+
+    }
+
+  
+
+    if (!data) return [];
+
+  
+
+    // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
+
+    return data.map(match => ({
+
+      id: String(match.id), // Match.id (string) -> RoundFixture.id (string)
+
+      date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
+
+      status_short: String(match.status), // Match.status -> RoundFixture.status_short
+
+      round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
+
+      home_team: {
+
+        id: String(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id (string)
+
+        name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+
+        logo_url: null,
+
+      },
+
+      away_team: {
+
+        id: String(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id (string)
+
+        name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
+
+        logo_url: null,
+
+      },
+
+      home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
+
+      away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
+
+      venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
+
+      league_id: String(match.leagueId), // Match.leagueId -> RoundFixture.league_id (string)
+
+    }));
+
+  }
+
+  
+
+  
+
+  /**
+
+   * Fetch recent completed fixtures from the latest completed round
  */
 export async function fetchRecentRoundFixtures(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
   const latestRound = await getLatestCompletedRound(leagueId, season);
@@ -614,6 +710,7 @@ export type TeamDetails = {
   goals_for?: number | null;
   goals_against?: number | null;
   goal_difference?: number | null;
+  currentLeagueId?: string;
 };
 
 export type TeamFixture = {
@@ -695,6 +792,7 @@ export async function fetchTeamDetails(teamId: string, season: number = Number(i
     goals_for: standingData?.goalsFor ?? null,
     goals_against: standingData?.goalsAgainst ?? null,
     goal_difference: standingData?.goalDifference ?? null,
+    currentLeagueId: standingData?.leagueId ?? null,
   };
 }
 
@@ -730,22 +828,22 @@ export async function fetchTeamUpcomingFixtures(teamId: string, limit: number = 
 
   // Match (events_v2) 데이터를 UpcomingFixture 타입으로 변환
   return data.map(match => ({
-    id: String(match.id), // Match.id (string) -> UpcomingFixture.id (number)
+    id: String(match.id), // Match.id (string) -> UpcomingFixture.id (string)
     date_utc: String(match.date), // Match.date -> UpcomingFixture.date_utc
     status: String(match.status), // Match.status -> UpcomingFixture.status
     round: String(match.round || 'N/A'), // Match.round -> UpcomingFixture.round
     home_team: {
-      id: Number(match.homeTeamId), // Match.homeTeamId -> UpcomingFixture.home_team.id
+      id: String(match.homeTeamId), // Match.homeTeamId -> UpcomingFixture.home_team.id (string)
       name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     away_team: {
-      id: Number(match.awayTeamId), // Match.awayTeamId -> UpcomingFixture.away_team.id
+      id: String(match.awayTeamId), // Match.awayTeamId -> UpcomingFixture.away_team.id (string)
       name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     venue: match.venueName || undefined, // Match.venueName -> UpcomingFixture.venue
-    league_id: Number(match.leagueId), // Match.leagueId -> UpcomingFixture.league_id (number)
+    league_id: String(match.leagueId), // Match.leagueId -> UpcomingFixture.league_id (string)
   }));
 }
 
@@ -777,24 +875,24 @@ export async function fetchRecentFixtures(leagueId?: number, limit: number = 10)
 
   // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
   return data.map(match => ({
-    id: String(match.id), // Match.id (string) -> RoundFixture.id (number)
+    id: String(match.id), // Match.id (string) -> RoundFixture.id (string)
     date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
     status_short: String(match.status), // Match.status -> RoundFixture.status_short
     round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
     home_team: {
-      id: Number(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id
+      id: String(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id (string)
       name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     away_team: {
-      id: Number(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id
+      id: String(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id (string)
       name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
     away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
     venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
-    league_id: Number(match.leagueId), // Match.leagueId -> RoundFixture.league_id (number)
+    league_id: String(match.leagueId), // Match.leagueId -> RoundFixture.league_id (string)
   }));
 }
 
@@ -821,24 +919,24 @@ export async function fetchTeamRecentFixtures(teamId: string, limit: number = 5)
 
   // Match (events_v2) 데이터를 RoundFixture 타입으로 변환
   return data.map(match => ({
-    id: String(match.id), // Match.id (string) -> RoundFixture.id (number)
+    id: String(match.id), // Match.id (string) -> RoundFixture.id (string)
     date_utc: String(match.date), // Match.date -> RoundFixture.date_utc
     status_short: String(match.status), // Match.status -> RoundFixture.status_short
     round: String(match.round || 'N/A'), // Match.round -> RoundFixture.round
     home_team: {
-      id: Number(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id
+      id: String(match.homeTeamId), // Match.homeTeamId -> RoundFixture.home_team.id (string)
       name: `Team ${match.homeTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     away_team: {
-      id: Number(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id
+      id: String(match.awayTeamId), // Match.awayTeamId -> RoundFixture.away_team.id (string)
       name: `Team ${match.awayTeamId}`, // 실제 팀 이름은 별도 룩업 필요
       logo_url: null,
     },
     home_goals: match.homeScore, // Match.homeScore -> RoundFixture.home_goals
     away_goals: match.awayScore, // Match.awayScore -> RoundFixture.away_goals
     venue: match.venueName || undefined, // Match.venueName -> RoundFixture.venue
-    league_id: Number(match.leagueId), // Match.leagueId -> RoundFixture.league_id (number)
+    league_id: String(match.leagueId), // Match.leagueId -> RoundFixture.league_id (string)
   }));
 }
 
@@ -1012,7 +1110,7 @@ export async function fetchEventsByRound(leagueId: number, round: string, season
 /**
  * Fetch team events from events table
  */
-export async function fetchTeamEvents(teamId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
+export async function fetchTeamEvents(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TheSportsDBEvent[]> {
   const { data, error } = await supabase
     .from("events_v2") // <-- 변경: events_v2 테이블 사용
     .select("*") // <-- 변경: 모든 컬럼을 선택 (Match 도메인 모델과 일치)
