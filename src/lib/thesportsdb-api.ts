@@ -76,7 +76,7 @@ export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<Matc
         homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
-      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(limit);
@@ -114,7 +114,7 @@ export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Mat
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
       .eq('leagueId', leagueId)
-      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
       .gte('date', today)
       .order('date', { ascending: true });
 
@@ -193,7 +193,7 @@ export async function fetchTeamUpcomingFixtures(teamId: string): Promise<MatchWi
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
       .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
-      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(15);
