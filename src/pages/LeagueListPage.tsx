@@ -34,14 +34,6 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-// Helper to determine season display based on league type
-function getLeagueSeasonDisplay(slug: string): string {
-  if (slug === 'premier-league') {
-    return '시즌 2025-2026';
-  }
-  return '시즌 2025';
-}
-
 function LeagueCard({ league }: { league: LeagueLite }) {
   return (
     <Link
@@ -119,7 +111,7 @@ function LeagueCard({ league }: { league: LeagueLite }) {
         {/* 추가 정보 표시 영역 */}
         <div className="mt-4 pt-4 border-t border-slate-700/50 mt-auto">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>{getLeagueSeasonDisplay(league.slug)}</span>
+            <span>시즌 {league.current_season || '2025'}</span>
           </div>
         </div>
       </div>
