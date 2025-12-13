@@ -74,7 +74,7 @@ describe('TheSportsDB API', () => {
       expect(mockChain.eq).not.toHaveBeenCalled();
 
       // 4. Verify other necessary filters
-      expect(mockChain.in).toHaveBeenCalledWith('status', ['SCHEDULED', 'POSTPONED']);
+      expect(mockChain.in).toHaveBeenCalledWith('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE']);
       expect(mockChain.gte).toHaveBeenCalledWith('date', expect.any(String)); // >= today
       expect(mockChain.limit).toHaveBeenCalledWith(limit);
     });

@@ -151,11 +151,17 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
     'SCHEDULED': '경기 예정',
     'POSTPONED': '연기됨',
     'CANCELED': '취소됨',
+    'FINISHED': '종료',
+    'IN_PLAY': '진행중',
+    'LIVE': '진행중',
   };
 
   const statusColor: Record<string, string> = {
     'SCHEDULED': 'bg-green-900/50 text-green-300 border border-green-700',
     'POSTPONED': 'bg-red-900/50 text-red-300 border border-red-700',
+    'FINISHED': 'bg-slate-700 text-slate-400 border border-slate-600',
+    'IN_PLAY': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    'LIVE': 'bg-red-600 text-white border border-red-500 animate-pulse',
   };
 
   return (
@@ -192,7 +198,17 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
             </Link>
           </div>
           
-          <div className="px-4 text-slate-400 font-bold">VS</div>
+          <div className="px-4 text-slate-400 font-bold text-center min-w-[60px]">
+            {(status === 'FINISHED' || status === 'IN_PLAY' || status === 'LIVE') && 
+             fixture.homeScore !== undefined && fixture.homeScore !== null &&
+             fixture.awayScore !== undefined && fixture.awayScore !== null ? (
+              <span className={`text-xl font-mono ${status === 'IN_PLAY' || status === 'LIVE' ? 'text-red-500' : 'text-white'}`}>
+                {fixture.homeScore} - {fixture.awayScore}
+              </span>
+            ) : (
+              "VS"
+            )}
+          </div>
           
           <div className="flex items-center space-x-3 flex-1 justify-end">
             <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group">

@@ -75,7 +75,7 @@ export interface Match {
   round?: string;
   
   date: string; // ISO 8601 date string
-  status: 'FINISHED' | 'SCHEDULED' | 'POSTPONED' | 'IN_PLAY' | 'CANCELED' | 'UNKNOWN';
+  status: 'FINISHED' | 'SCHEDULED' | 'POSTPONED' | 'IN_PLAY' | 'LIVE' | 'CANCELED' | 'UNKNOWN';
   
   homeTeamId: string;
   awayTeamId: string;

@@ -134,7 +134,8 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
       'POSTPONED': '연기',
       'CANCELED': '취소',
       'IN_PLAY': '진행중',
-      'UNKNOWN': '미정'
+      'LIVE': '진행중',
+      'UNKNOWN': '미정',
     };
     return statusMap[status] || status;
   };

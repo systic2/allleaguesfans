@@ -245,7 +245,8 @@ export interface TheSportsDBScheduleResponse {
  */
 export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<MatchWithTeams[]> {
   try {
-    const today = new Date().toISOString();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
     const { data, error } = await supabase
       .from('events_v2')
@@ -254,7 +255,7 @@ export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<Matc
         homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
-      .in('status', ['SCHEDULED', 'POSTPONED'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(limit);
@@ -281,7 +282,8 @@ export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<Matc
  */
 export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<MatchWithTeams[]> {
   try {
-    const today = new Date().toISOString();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
     const { data: upcomingData, error: upcomingError } = await supabase
       .from('events_v2')
@@ -291,7 +293,7 @@ export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Mat
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
       .eq('leagueId', leagueId)
-      .in('status', ['SCHEDULED', 'POSTPONED'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE'])
       .gte('date', today)
       .order('date', { ascending: true });
 
@@ -359,7 +361,8 @@ export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<Mat
  */
 export async function fetchTeamUpcomingFixtures(teamId: string): Promise<MatchWithTeams[]> {
   try {
-    const today = new Date().toISOString();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
     const { data, error } = await supabase
       .from('events_v2')
@@ -369,7 +372,7 @@ export async function fetchTeamUpcomingFixtures(teamId: string): Promise<MatchWi
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
       .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
-      .in('status', ['SCHEDULED', 'POSTPONED'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(15);
