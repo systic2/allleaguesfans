@@ -54,7 +54,11 @@ export default function Sidebar() {
               to={`/leagues/${league.slug}`}
               className={({ isActive }) => `${item} ${isActive ? active : ""}`}
             >
-              <Trophy className="w-4 h-4 text-white/40" />
+              {league.logo_url ? (
+                <img src={league.logo_url} alt={league.name} className="w-4 h-4 object-contain" />
+              ) : (
+                <Trophy className="w-4 h-4 text-white/40" />
+              )}
               <span className="truncate">{league.name}</span>
             </NavLink>
           ))
