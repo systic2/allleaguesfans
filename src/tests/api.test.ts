@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabaseClient';
 import {
+  fetchLeagues, // Added
   fetchTeamDetails,
   fetchPlayersByTeam,
   fetchTeamUpcomingFixtures,
@@ -54,6 +55,35 @@ const mockSeason = 2025;
 describe('API Functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('fetchLeagues', () => {
+    it('should fetch leagues and map IDs to slugs correctly', async () => {
+      const mockLeaguesData = [
+        { idLeague: '4689', strLeague: 'K League 1', strCountry: 'South Korea', strBadge: 'k1.png' },
+        { idLeague: '4822', strLeague: 'K League 2', strCountry: 'South Korea', strBadge: 'k2.png' },
+        { idLeague: '4328', strLeague: 'English Premier League', strCountry: 'England', strBadge: 'epl.png' },
+        { idLeague: '4335', strLeague: 'Spanish La Liga', strCountry: 'Spain', strBadge: 'laliga.png' },
+      ];
+
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockLeaguesData));
+
+      const result = await fetchLeagues();
+
+      expect(result).toHaveLength(4);
+      
+      const laLiga = result.find(l => l.name === 'Spanish La Liga');
+      expect(laLiga).toBeDefined();
+      expect(laLiga?.slug).toBe('la-liga'); // Critical check
+      
+      const epl = result.find(l => l.name === 'English Premier League');
+      expect(epl?.slug).toBe('premier-league');
+      
+      const k1 = result.find(l => l.name === 'K League 1');
+      expect(k1?.slug).toBe('k-league-1');
+
+      expect(supabase.from).toHaveBeenCalledWith('leagues');
+    });
   });
 
   describe('fetchTeamDetails', () => {

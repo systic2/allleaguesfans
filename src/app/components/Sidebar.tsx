@@ -14,7 +14,7 @@ export default function Sidebar() {
   const { data: leagues, isLoading } = useQuery({
     queryKey: ['leagues-sidebar'],
     queryFn: fetchLeagues,
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   return (
