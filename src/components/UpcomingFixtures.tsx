@@ -100,11 +100,6 @@ export default function UpcomingFixtures({
     <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">{title}</h2>
-        {safeUseTheSportsDB && (
-          <div className="text-slate-400 text-xs bg-green-600/20 px-2 py-1 rounded border border-green-600/30">
-            K리그 1+2 통합
-          </div>
-        )}
       </div>
       <div className="space-y-4">
         {fixtures.map((fixture) => (
