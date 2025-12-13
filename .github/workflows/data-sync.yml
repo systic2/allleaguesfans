@@ -1,28 +1,12 @@
-# .github/workflows/data-sync.yml
-name: "K League Official Data Sync"
-
-# 🇰🇷 K League Official API 데이터 동기화 스케줄:
-#   - Free official K League API with rate limiting (30 requests/minute)
-#   - Complete K League coverage: teams, fixtures, standings, player records
-#   - 매일 02:00 UTC (11:00 KST) - 일일 데이터 업데이트
-#   - 매주 월요일 03:00 UTC - 전체 데이터 재동기화
-#
-# ✅ K League Official API Features:
-#   - K리그1 & K리그2 complete coverage
-#   - Real-time match results and standings
-#   - Player statistics (goals, assists, clean sheets)
-#   - Official data directly from K League
-#   - No API key required (free public access)
+name: "All Leagues Data Sync"
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Daily at 02:00 UTC (11:00 KST)
-    - cron: '0 3 * * 1'  # Weekly on Monday 03:00 UTC
-    
-  workflow_dispatch: # Manual trigger available
+    - cron: '0 * * * *'  # Run every hour at minute 0
+  workflow_dispatch:      # Allow manual trigger
 
 jobs:
-  sync-data:
+  sync:
     runs-on: ubuntu-latest
     
     steps:
@@ -43,123 +27,21 @@ jobs:
     - name: Install dependencies
       run: pnpm install
       
-    - name: Environment Check
+    - name: Run Full Sync
       env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        # DB Credentials (mapping standard secrets to what scripts expect)
         VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-        SEASON_YEAR: 2025
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} 
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        
+        # API Keys
+        THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }}
+        
+        # Config
         NODE_ENV: production
       run: |
-        echo "🔍 Checking K League Official API migration environment..."
-        echo "🇰🇷 Using K League Official API (100% free)"
-      
-    - name: Daily K League Official Data Sync
-      if: github.event.schedule == '0 2 * * *'
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-        SEASON_YEAR: 2025
-        NODE_ENV: production
-      run: |
-        echo "🚀 Starting daily K League Official API data sync..."
-        echo "Environment check:"
-        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "K League Official API: ✅ Free public API (no key required)"
-        
-        # Combined Sync (Standings + Teams + Events) via Orchestrator
-        echo "📊 Step 1: Running Orchestrated Sync..."
-        if npx tsx scripts/sync/orchestrator.ts; then
-          echo "✅ K League data sync completed successfully"
-        else
-          echo "❌ K League data sync failed"
-          exit 1
-        fi
-
-        echo "🎉 Complete K League data sync finished"
-        
-    - name: Weekly K League Official Full Sync
-      if: github.event.schedule == '0 3 * * 1'
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-        SEASON_YEAR: 2025
-        NODE_ENV: production
-      run: |
-        echo "🚀 Starting weekly K League Official API full sync (comprehensive update)..."
-        echo "Environment check:"
-        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
-        
-        # Combined Sync (Standings + Teams + Events) via Orchestrator
-        echo "📊 Step 1: Running Full Orchestrated Sync..."
-        if npx tsx scripts/sync/orchestrator.ts; then
-          echo "✅ K League full sync completed"
-        else
-          echo "❌ K League full sync failed"
-          exit 1
-        fi
-
-        echo "🎉 Weekly comprehensive sync finished"
-        
-    - name: Manual K League Migration
-      if: github.event_name == 'workflow_dispatch'
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-        SEASON_YEAR: 2025
-        NODE_ENV: production
-      run: |
-        echo "🇰🇷 Starting manual K League Official API sync..."
-        echo "Environment check:"
-        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
-        
-        # Manual execution - Complete K League data sync
-        echo "📊 Step 1: Manual Orchestrated Sync..."
-        if npx tsx scripts/sync/orchestrator.ts; then
-          echo "✅ K League sync completed"
-        else
-          echo "❌ K League sync failed"
-          exit 1
-        fi
-
-        echo "🎉 Manual sync completed"
-        echo "✅ K League data pipeline: standings, fixtures, and results"
-        
-    - name: Data Quality Check
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-        NODE_ENV: production
-      run: |
-        echo "🔍 Starting data quality check..."
-        echo "Environment check:"
-        echo "SUPABASE_URL: $([[ -n "$SUPABASE_URL" ]] && echo "✅ Set" || echo "❌ Missing")"
-        echo "SUPABASE_SERVICE_ROLE: $([[ -n "$SUPABASE_SERVICE_ROLE" ]] && echo "✅ Set" || echo "❌ Missing")"
-        
-        # 데이터 품질 검증 (새 스키마 기반)
-        # Note: Previous workflows didn't seem to call a specific script here, just echo.
-        # If there's a quality check script, it should be added here.
-        echo "✅ Data quality check completed (K-League sync validates data integrity)"
-        
-    - name: Workflow Summary
-      if: always()
-      run: |
-        echo "🎉 K League Official Data Sync Workflow Completed"
-        echo "✅ Status: K League Official API sync complete"
-        echo "🇰🇷 Solution: K League Official API provides 100% authentic data"
-        echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-        echo "Trigger: ${{ github.event_name }}"
-        echo "Repository: ${{ github.repository }}"
-        echo "Branch: ${{ github.ref_name }}"
+        echo "🚀 Starting hourly sync for all leagues (K-League + Big 5)..."
+        npm run sync:full
+        echo "✅ Sync completed successfully."
