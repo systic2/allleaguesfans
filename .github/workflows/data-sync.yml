@@ -54,7 +54,6 @@ jobs:
       run: |
         echo "🔍 Checking K League Official API migration environment..."
         echo "🇰🇷 Using K League Official API (100% free)"
-        npx tsx scripts/one-off/env-check.ts
       
     - name: Daily K League Official Data Sync
       if: github.event.schedule == '0 2 * * *'
