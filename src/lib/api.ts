@@ -13,18 +13,48 @@ export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 // ---------- 도메인 라이트 타입 ----------
-export type LeagueLite = { id: number; slug: string; name: string; name_korean?: string | null; tier: number | null; logo_url?: string | null; banner_url?: string | null; country_code?: string; primary_source?: string; };
+export type LeagueLite = { 
+  id: number; 
+  slug: string; 
+  name: string; 
+  name_korean?: string | null; 
+  tier: number | null; 
+  logo_url?: string | null; 
+  banner_url?: string | null; 
+  country_code?: string; 
+  primary_source?: string;
+  current_season?: string; // Added field for dynamic season display
+};
 export type TeamLite = { id: number; name: string; name_korean?: string | null; short_name: string | null; crest_url: string | null; logo_url?: string | null; badge_url?: string | null; banner_url?: string | null; primary_source?: string; };
 export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null; jersey_number?: number; nationality?: string | null; height?: string | null; primary_source?: string; };
 
 // ---------- API ----------
 export async function fetchLeagues(): Promise<LeagueLite[]> {
-  const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge").order("strLeague", { ascending: true });
+  const { data, error } = await supabase
+    .from("leagues")
+    .select("idLeague, strLeague, strCountry, strBadge, strCurrentSeason") // Added strCurrentSeason
+    .order("strLeague", { ascending: true });
+    
   if (error) throw error;
+  
   return (data ?? []).map((x) => ({
     id: x.idLeague === '4689' ? 249276 : x.idLeague === '4822' ? 250127 : parseInt(x.idLeague) || 0,
-    slug: x.idLeague === '4689' ? 'k-league-1' : x.idLeague === '4822' ? 'k-league-2' : x.idLeague === '4328' ? 'premier-league' : x.idLeague === '4335' ? 'la-liga' : `league-${x.idLeague}`,
-    name: String(x.strLeague), name_korean: null, tier: null, logo_url: x.strBadge, banner_url: null, country_code: x.strCountry, primary_source: "thesportsdb",
+    slug: x.idLeague === '4689' ? 'k-league-1' : 
+          x.idLeague === '4822' ? 'k-league-2' : 
+          x.idLeague === '4328' ? 'premier-league' : 
+          x.idLeague === '4335' ? 'la-liga' : 
+          x.idLeague === '4332' ? 'serie-a' : 
+          x.idLeague === '4331' ? 'bundesliga' : 
+          x.idLeague === '4334' ? 'ligue-1' : 
+          `league-${x.idLeague}`,
+    name: String(x.strLeague), 
+    name_korean: null, 
+    tier: null, 
+    logo_url: x.strBadge, 
+    banner_url: null, 
+    country_code: x.strCountry, 
+    primary_source: "thesportsdb",
+    current_season: x.strCurrentSeason // Map from DB
   }));
 }
 
@@ -37,6 +67,9 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   else if (slug === 'k-league-2') theSportsDBLeagueId = '4822';
   else if (slug === 'premier-league') theSportsDBLeagueId = '4328';
   else if (slug === 'la-liga') theSportsDBLeagueId = '4335';
+  else if (slug === 'serie-a') theSportsDBLeagueId = '4332';
+  else if (slug === 'bundesliga') theSportsDBLeagueId = '4331';
+  else if (slug === 'ligue-1') theSportsDBLeagueId = '4334';
   else theSportsDBLeagueId = slug.replace('league-', '');
   
   const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge").eq("idLeague", theSportsDBLeagueId).maybeSingle();
@@ -55,6 +88,9 @@ export async function fetchLeagueStandings(leagueSlug: string, season: number = 
   else if (leagueSlug === 'k-league-2') theSportsDBLeagueId = '4822';
   else if (leagueSlug === 'premier-league') theSportsDBLeagueId = '4328';
   else if (leagueSlug === 'la-liga') theSportsDBLeagueId = '4335';
+  else if (leagueSlug === 'serie-a') theSportsDBLeagueId = '4332';
+  else if (leagueSlug === 'bundesliga') theSportsDBLeagueId = '4331';
+  else if (leagueSlug === 'ligue-1') theSportsDBLeagueId = '4334';
   else theSportsDBLeagueId = leagueSlug.replace('league-', '');
 
   const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season)).order("rank", { ascending: true });
