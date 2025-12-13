@@ -32,9 +32,10 @@ jobs:
         # DB Credentials (mapping standard secrets to what scripts expect)
         VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        VITE_SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} 
-        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        
+        # Try both common secret names. One of these MUST be set in Repo Settings > Secrets.
+        VITE_SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE }} 
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE }}
         
         # API Keys
         THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }}
