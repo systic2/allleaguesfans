@@ -257,7 +257,7 @@ export async function fetchTeamDetails(teamId: string, season: number = Number(i
   const { data: teamData, error: teamError } = await supabase.from('teams_v2').select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear').eq('id', teamId).maybeSingle();
   if (teamError) { console.error('Error fetching team from teams_v2:', teamError); return null; }
   if (!teamData) return null;
-  const { data: standingData, error: standingError } = await supabase.from('standings_v2').select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId').eq('teamId', teamId).eq('season', String(season)).in('leagueId', ['4689', '4822', '4328', '4335']).order('leagueId', { ascending: true }).limit(1).maybeSingle();
+  const { data: standingData, error: standingError } = await supabase.from('standings_v2').select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId').eq('teamId', teamId).eq('season', String(season)).in('leagueId', ['4689', '4822', '4328', '4335', '4332', '4331', '4334']).order('leagueId', { ascending: true }).limit(1).maybeSingle();
   if (standingError) { console.warn(`Error fetching standing for team ${teamId}:`, standingError); }
   return {
     id: teamData.id, name: teamData.name, nameKorean: teamData.nameKorean, badgeUrl: teamData.badgeUrl, strStadium: teamData.strStadium, intFormedYear: teamData.intFormedYear,

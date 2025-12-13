@@ -62,7 +62,10 @@ class DataOrchestrator {
     { id: '4689', name: 'K League 1', seasonFormat: 'single' },
     { id: '4822', name: 'K League 2', seasonFormat: 'single' },
     { id: '4328', name: 'English Premier League', seasonFormat: 'split' },
-    { id: '4335', name: 'Spanish La Liga', seasonFormat: 'split' }
+    { id: '4335', name: 'Spanish La Liga', seasonFormat: 'split' },
+    { id: '4332', name: 'Italian Serie A', seasonFormat: 'split' },
+    { id: '4331', name: 'German Bundesliga', seasonFormat: 'split' },
+    { id: '4334', name: 'French Ligue 1', seasonFormat: 'split' }
   ];
   
   constructor() {
