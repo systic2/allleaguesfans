@@ -103,7 +103,7 @@ async function main() {
   const { data: teams, error } = await supa
     .from('standings_v2')
     .select('teamId, teamName, leagueId')
-    .in('leagueId', ['4689', '4822', '4328', '4335']) // K1, K2, EPL, La Liga
+    .in('leagueId', ['4689', '4822', '4328', '4335', '4332', '4331', '4334']) // K1, K2, EPL, La Liga, Serie A, Bundesliga, Ligue 1
     .order('teamName', { ascending: true });
   
   if (error) {
