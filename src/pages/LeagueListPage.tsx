@@ -176,25 +176,6 @@ export default function LeagueListPage() {
           </div>
         )}
 
-        {/* 통계 정보 */}
-        {leagues.length > 0 && (
-          <div className="mt-8 bg-slate-800 rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-white font-semibold">리그 통계</h3>
-                <p className="text-slate-400 text-sm mt-1">
-                  총 {leagues.length}개 리그가 등록되어 있습니다
-                </p>
-              </div>
-              <div className="text-slate-400">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* 예정된 경기 */}
         <div className="mt-8">
           <UpcomingFixtures
