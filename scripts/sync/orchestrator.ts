@@ -255,9 +255,8 @@ async function main() {
   console.log('\n\n✅ All synchronization tasks completed successfully.');
 }
 
-if (import.meta.main) {
-  main().catch(error => {
-    console.error('The script execution failed catastrophically.', error);
-    process.exit(1);
-  });
-}
+// Execute the main function directly
+main().catch(error => {
+  console.error('The script execution failed catastrophically.', error);
+  process.exit(1);
+});
