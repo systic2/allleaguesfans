@@ -1,7 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import path from 'path';
 
 // Load environment variables
 // Try to load from .env first (local dev), fall back to system env

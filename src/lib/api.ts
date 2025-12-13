@@ -3,7 +3,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
-import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers';
 
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -263,7 +262,9 @@ export async function fetchTeamDetails(teamId: string, season: number = Number(i
 export type TeamFixture = { id: number; date_utc: string; status_short: string; home_team: string; away_team: string; home_goals: number | null; away_goals: number | null; is_home: boolean; opponent_name: string; opponent_logo: string | null; result: 'W' | 'D' | 'L' | null; };
 export type TeamStatistics = { position: number; points: number; played: number; wins: number; draws: number; losses: number; goals_for: number; goals_against: number; goal_difference: number; clean_sheets: number; failed_to_score: number; avg_goals_scored: number; avg_goals_conceded: number; form_last_5: string; home_record: { wins: number; draws: number; losses: number }; away_record: { wins: number; draws: number; losses: number }; };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function fetchTeamFixtures(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), _limit: number = 10): Promise<TeamFixture[]> { console.warn("fetchTeamFixtures needs implementation with correct schema"); return []; }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function fetchTeamStatistics(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStatistics | null> { console.warn("fetchTeamStatistics needs implementation with correct schema"); return null; }
 
 export async function fetchTeamEventsData(teamId: string, season: string, limit?: number): Promise<Match[]> { 

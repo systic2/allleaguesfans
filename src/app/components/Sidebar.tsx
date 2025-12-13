@@ -1,5 +1,7 @@
 import { NavLink, useMatch } from "react-router-dom";
 import { LayoutDashboard, Users, Calendar, BarChart3, Trophy } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchLeagues } from "@/lib/api";
 
 export default function Sidebar() {
   const item = "flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors";
@@ -8,6 +10,12 @@ export default function Sidebar() {
   // Check if we are on a team page
   const teamMatch = useMatch("/teams/:id");
   const teamId = teamMatch?.params.id;
+
+  const { data: leagues, isLoading } = useQuery({
+    queryKey: ['leagues-sidebar'],
+    queryFn: fetchLeagues,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
   return (
     <aside className="h-screen sticky top-0 border-r border-white/10 p-4 space-y-6 overflow-y-auto">
@@ -27,19 +35,30 @@ export default function Sidebar() {
           홈
         </NavLink>
         <NavLink
-          to="/leagues/k-league-1"
+          to="/leagues"
           className={({ isActive }) => `${item} ${isActive ? active : ""}`}
         >
           <Trophy className="w-4 h-4" />
-          K League 1
+          모든 리그
         </NavLink>
-        <NavLink
-          to="/leagues/k-league-2"
-          className={({ isActive }) => `${item} ${isActive ? active : ""}`}
-        >
-          <Trophy className="w-4 h-4" />
-          K League 2
-        </NavLink>
+
+        <div className="my-2 border-t border-white/5"></div>
+        <div className="px-4 text-xs font-bold text-white/40 uppercase mb-2">Competitions</div>
+        
+        {isLoading ? (
+          <div className="px-4 py-2 text-xs text-white/30 animate-pulse">Loading leagues...</div>
+        ) : (
+          leagues?.map((league) => (
+            <NavLink
+              key={league.id}
+              to={`/leagues/${league.slug}`}
+              className={({ isActive }) => `${item} ${isActive ? active : ""}`}
+            >
+              <Trophy className="w-4 h-4 text-white/40" />
+              <span className="truncate">{league.name}</span>
+            </NavLink>
+          ))
+        )}
       </nav>
 
       {teamId && (
@@ -48,7 +67,7 @@ export default function Sidebar() {
           <NavLink
             to={`/teams/${teamId}?tab=overview`}
             end
-            className={({ isActive, isPending }) => {
+            className={({ isActive }) => {
               // Custom active logic for query params since NavLink defaults to path matching
               const search = new URLSearchParams(window.location.search);
               const tab = search.get("tab");

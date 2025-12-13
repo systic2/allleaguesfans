@@ -65,13 +65,13 @@ export default function TeamPageDB() {
     enabled: !!teamData?.currentLeagueId && !!teamData?.name,
   });
 
-  const { data: players, isLoading: playersLoading } = useQuery<TeamPlayer[]>({
+  const { data: players } = useQuery<TeamPlayer[]>({
     queryKey: ["team-players-db", teamIdParam],
     queryFn: () => fetchPlayersByTeam(teamIdParam),
     enabled: !!teamIdParam,
   });
 
-  const { data: teamFixtures, isLoading: fixturesLoading } = useQuery<{ upcoming: MatchWithTeams[]; recent: MatchWithTeams[] }>({
+  const { data: teamFixtures } = useQuery<{ upcoming: MatchWithTeams[]; recent: MatchWithTeams[] }>({
     queryKey: ["team-fixtures-tsdb", teamIdParam, CURRENT_SEASON],
     queryFn: () => fetchTeamFixturesTSDB(teamIdParam),
     enabled: !!teamIdParam,
@@ -286,7 +286,7 @@ export default function TeamPageDB() {
                 <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
                   <LayoutDashboard className="w-3 h-3" /> Formation
                 </h3>
-                <TeamLineup teamId={Number(teamIdParam)} players={players || []} compact={true} />
+                <TeamLineup players={players || []} compact={true} />
               </div>
             )}
 
@@ -366,11 +366,11 @@ export default function TeamPageDB() {
                   {players?.length || 0} Players
                 </span>
               </div>
-              <TeamLineup teamId={Number(teamIdParam)} players={players || []} />
+              <TeamLineup players={players || []} />
             </div>
             
             {/* Full Roster List */}
-            <TeamRoster idTeam={teamIdParam} teamName={teamData.name} />
+            <TeamRoster idTeam={teamIdParam} />
           </div>
         )}
 

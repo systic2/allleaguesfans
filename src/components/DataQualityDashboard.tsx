@@ -143,7 +143,7 @@ const DataQualityDashboard: React.FC = () => {
     }
   };
 
-  const handleTransferReview = async (alertId: number, action: 'approve' | 'dismiss') => {
+  const handleTransferReview = async (alertId: number, _action: 'approve' | 'dismiss') => {
     try {
       setTransferAlerts(prev => prev.filter(alert => alert.id !== alertId));
     } catch (error) {
@@ -194,15 +194,17 @@ const DataQualityDashboard: React.FC = () => {
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-8">
-          {[
-            { id: 'overview', label: '개요', icon: TrendingUp },
-            { id: 'jerseys', label: '등번호 검증', icon: CheckCircle },
-            { id: 'transfers', label: '이적 알림', icon: AlertTriangle },
-            { id: 'settings', label: '설정', icon: Settings }
-          ].map(tab => (
+          {(
+            [
+              { id: 'overview', label: '개요', icon: TrendingUp },
+              { id: 'jerseys', label: '등번호 검증', icon: CheckCircle },
+              { id: 'transfers', label: '이적 알림', icon: AlertTriangle },
+              { id: 'settings', label: '설정', icon: Settings }
+            ] as const
+          ).map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'

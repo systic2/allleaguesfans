@@ -38,11 +38,11 @@ function LeagueCard({ league }: { league: LeagueLite }) {
   return (
     <Link
       to={`/leagues/${league.slug}`}
-      className="group block bg-slate-800 hover:bg-slate-700 rounded-lg overflow-hidden transition-all duration-200 border border-slate-700 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10"
+      className="group block bg-slate-800 hover:bg-slate-700 rounded-lg overflow-hidden transition-all duration-200 border border-slate-700 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 flex flex-col"
     >
       {/* 배너 이미지 */}
       {league.banner_url && (
-        <div className="h-24 bg-gradient-to-r from-slate-700 to-slate-600 relative overflow-hidden">
+        <div className="h-24 bg-gradient-to-r from-slate-700 to-slate-600 relative overflow-hidden flex-shrink-0">
           <img 
             src={league.banner_url} 
             alt={`${league.name} banner`}
@@ -56,8 +56,8 @@ function LeagueCard({ league }: { league: LeagueLite }) {
         </div>
       )}
       
-      <div className="p-6">
-        <div className="flex items-start justify-between">
+      <div className="p-6 flex-1 flex flex-col">
+        <div className="flex items-start justify-between flex-1">
           <div className="flex items-center space-x-4 flex-1">
             {/* 리그 로고 */}
             {league.logo_url && (
@@ -74,21 +74,21 @@ function LeagueCard({ league }: { league: LeagueLite }) {
             )}
             
             <div className="flex-1 min-w-0">
-              <h3 className="text-white text-xl font-bold group-hover:text-blue-400 transition-colors truncate">
+              <h3 className="text-white text-xl font-bold group-hover:text-blue-400 transition-colors leading-tight mb-1">
                 {league.name}
               </h3>
               {league.name_korean && league.name_korean !== league.name && (
-                <p className="text-slate-300 text-sm mt-1 truncate">
+                <p className="text-slate-300 text-sm truncate">
                   {league.name_korean}
                 </p>
               )}
-              <div className="flex items-center space-x-3 mt-3 text-slate-400 text-sm">
-                <span className="flex items-center">
+              <div className="flex items-center space-x-3 mt-3 text-slate-400 text-sm flex-wrap gap-y-1">
+                <span className="flex items-center mr-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  {league.country_code || 'KR'}
+                  {league.country_code || 'Global'}
                 </span>
                 {league.primary_source && (
-                  <span className="bg-blue-600/20 px-2 py-1 rounded text-blue-300 text-xs font-medium">
+                  <span className="bg-blue-600/20 px-2 py-1 rounded text-blue-300 text-xs font-medium mr-2">
                     {league.primary_source.toUpperCase()}
                   </span>
                 )}
@@ -101,7 +101,7 @@ function LeagueCard({ league }: { league: LeagueLite }) {
             </div>
           </div>
           
-          <div className="text-slate-400 flex-shrink-0 ml-4">
+          <div className="text-slate-400 flex-shrink-0 ml-4 pt-1">
             <svg 
               className="w-6 h-6 transform group-hover:translate-x-1 group-hover:text-blue-400 transition-all" 
               fill="none" 
@@ -114,7 +114,7 @@ function LeagueCard({ league }: { league: LeagueLite }) {
         </div>
         
         {/* 추가 정보 표시 영역 */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50">
+        <div className="mt-4 pt-4 border-t border-slate-700/50 mt-auto">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span>시즌 2025</span>
             <span className="flex items-center">
@@ -151,9 +151,9 @@ export default function LeagueListPage() {
       <div className="max-w-6xl mx-auto">
         {/* 헤더 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">리그</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">All Competitions</h1>
           <p className="text-slate-400">
-            K리그 정보를 확인하고 팀별 순위표를 살펴보세요
+            전 세계 다양한 축구 리그의 순위와 일정을 확인하세요.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function LeagueListPage() {
         {/* 예정된 경기 */}
         <div className="mt-8">
           <UpcomingFixtures
-            title="🗓️ K리그 예정 경기"
+            title="🗓️ Upcoming Matches"
             limit={20}
             className="bg-slate-800"
             useTheSportsDB={true}

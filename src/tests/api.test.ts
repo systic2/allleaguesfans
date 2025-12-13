@@ -11,7 +11,6 @@ import {
   TeamPlayer,
   UpcomingFixture,
   RoundFixture,
-  PlayerDetail,
 } from '@/lib/api';
 
 // Helper to create a mock chain for Supabase methods

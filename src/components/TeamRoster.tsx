@@ -1,4 +1,3 @@
-// TeamRoster.tsx - Team Squad/Roster Display Component
 import { useQuery } from '@tanstack/react-query';
 import { fetchTeamPlayers, type TeamPlayer } from '@/lib/api';
 import { Users } from "lucide-react";
@@ -6,7 +5,6 @@ import { Link } from "react-router-dom";
 
 interface TeamRosterProps {
   idTeam: string;
-  teamName: string;
 }
 
 // 포지션별 색상 매핑 (FM 스타일)
@@ -69,7 +67,7 @@ function PlayerCard({ player }: { player: TeamPlayer }) {
   );
 }
 
-export default function TeamRoster({ idTeam, teamName }: TeamRosterProps) {
+export default function TeamRoster({ idTeam }: TeamRosterProps) {
   const { data: players, isLoading, error } = useQuery({
     queryKey: ['team-players', idTeam],
     queryFn: () => fetchTeamPlayers(idTeam),
@@ -108,7 +106,7 @@ export default function TeamRoster({ idTeam, teamName }: TeamRosterProps) {
   }
 
   // Group players by position
-  const groupedPlayers: Record<string, TeamPlayer[]> = players.reduce((acc, player) => {
+  const groupedPlayers: Record<string, TeamPlayer[]> = players.reduce((acc: Record<string, TeamPlayer[]>, player: TeamPlayer) => {
     const position = player.strPosition || '기타';
     if (!acc[position]) {
       acc[position] = [];

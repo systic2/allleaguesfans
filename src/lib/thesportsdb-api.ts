@@ -237,32 +237,6 @@ export interface TheSportsDBScheduleResponse {
   schedule: TheSportsDBEvent[];
 }
 
-// Utility function to make API calls with proper headers (DEVELOPMENT ONLY)
-async function fetchTheSportsDB<T>(endpoint: string): Promise<T> {
-  // This function is for direct external API calls.
-  // It is currently not used by the Supabase-based event fetching functions below.
-  // Keeping it here for future potential direct API usage or reference.
-  const API_BASE_URL = 'https://www.thesportsdb.com/api/v2/json';
-  const API_KEY = import.meta.env.VITE_THESPORTSDB_API_KEY || '460915';
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(API_KEY ? {
-        'X-API-KEY': API_KEY,
-      } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`TheSportsDB API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
 // API Functions - All functions now return Match[] from events_v2
 
 /**

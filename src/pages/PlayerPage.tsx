@@ -1,7 +1,7 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlayerDetail, type PlayerDetail } from "@/lib/api";
-import { Users, Shield, Zap, Activity, Clock, AlertCircle } from "lucide-react";
+import { Users, Zap, Clock, AlertCircle } from "lucide-react";
 import CrestImg from "@/app/components/CrestImg";
 import FMSubNav from "@/components/FMSubNav";
 
@@ -13,7 +13,7 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-function StatItem({ label, value, highlight = false, colorClass = "text-white" }: { label: string, value: number | string, highlight?: boolean, colorClass?: string }) {
+function StatItem({ label, value, colorClass = "text-white" }: { label: string, value: number | string, colorClass?: string }) {
   return (
     <div className="flex justify-between items-center py-1.5 px-3 rounded hover:bg-white/5 border-b border-white/5 last:border-0">
       <span className="text-gray-400 text-sm">{label}</span>
@@ -24,7 +24,6 @@ function StatItem({ label, value, highlight = false, colorClass = "text-white" }
 
 export default function PlayerPage() {
   const { id = "0" } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const playerId = Number(id);
 
   const { data: player, isLoading } = useQuery<PlayerDetail | null>({

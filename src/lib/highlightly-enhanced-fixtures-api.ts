@@ -110,9 +110,10 @@ export async function fetchEnhancedUpcomingFixtures(
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function fetchEnhancedTeamUpcomingFixtures(
   teamId: number,
-  limit: number = 10
+  _limit: number = 10
 ): Promise<HighlightlyEnhancedFixture[]> {
   console.log(`[v2] 🔮 Highlightly 향상된 팀 예정 경기 조회: ${teamId}`);
   // This function can be implemented similarly to fetchHighlightlyEnhancedUpcomingMatches
