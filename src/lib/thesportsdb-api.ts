@@ -1,7 +1,7 @@
 // src/lib/thesportsdb-api.ts
 // REFACTORED VERSION: Uses events_v2 and Match domain model
 import { supabase } from "@/lib/supabaseClient";
-import type { Match, Team } from "@/types/domain"; // Import the Match and Team domain models
+import type { Match, Team } from "@/types/domain";
 
 // Define a new type for a Match with joined team data
 export type MatchWithTeams = Match & {
@@ -10,189 +10,8 @@ export type MatchWithTeams = Match & {
 };
 
 // ========================================
-// TheSportsDB Native Types (No Transformation)
+// TheSportsDB Native Types
 // ========================================
-
-// Interfaces for TheSportsDB entities (Leagues, Teams, Players, Events)
-// These are kept for reference and potential use with external API calls,
-// but the functions below will primarily return the Match domain model.
-
-export interface TheSportsDBLeague {
-  idLeague: string;
-  strLeague: string;
-  strLeagueAlternate?: string;
-  strSport?: string;
-  strCountry?: string;
-  strCurrentSeason?: string;
-  intFormedYear?: string;
-  dateFirstEvent?: string;
-  strGender?: string;
-  strWebsite?: string;
-  intDivision?: string;
-  idCup?: string;
-  idSoccerXML?: string;
-  idAPIfootball?: string;
-  highlightly_id?: number;
-  strFacebook?: string;
-  strInstagram?: string;
-  strTwitter?: string;
-  strYoutube?: string;
-  strRSS?: string;
-  strDescriptionEN?: string;
-  strDescriptionDE?: string;
-  strDescriptionFR?: string;
-  strDescriptionIT?: string;
-  strDescriptionCN?: string;
-  strDescriptionJP?: string;
-  strDescriptionRU?: string;
-  strDescriptionES?: string;
-  strDescriptionPT?: string;
-  strDescriptionSE?: string;
-  strDescriptionNL?: string;
-  strDescriptionHU?: string;
-  strDescriptionNO?: string;
-  strDescriptionPL?: string;
-  strDescriptionIL?: string;
-  strBadge?: string;
-  strLogo?: string;
-  strBanner?: string;
-  strPoster?: string;
-  strTrophy?: string;
-  strFanart1?: string;
-  strFanart2?: string;
-  strFanart3?: string;
-  strFanart4?: string;
-  strTvRights?: string;
-  strNaming?: string;
-  strComplete?: string;
-  strLocked?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface TheSportsDBTeam {
-  idTeam: string;
-  strTeam: string;
-  strTeamAlternate?: string;
-  strTeamShort?: string;
-  intFormedYear?: string;
-  strSport?: string;
-  strCountry?: string;
-  strLeague?: string;
-  idLeague?: string;
-  strLeague2?: string;
-  idLeague2?: string;
-  strLeague3?: string;
-  idLeague3?: string;
-  strLeague4?: string;
-  idLeague4?: string;
-  idESPN?: string;
-  idAPIfootball?: string;
-  intLoved?: string;
-  highlightly_id?: number;
-  strColour1?: string;
-  strColour2?: string;
-  strColour3?: string;
-  strColour4?: string;
-  strColour5?: string;
-  strColour6?: string;
-  strBadge?: string;
-  strLogo?: string;
-  strBanner?: string;
-  strEquipment?: string;
-  strFanart1?: string;
-  strFanart2?: string;
-  strFanart3?: string;
-  strFanart4?: string;
-  strStadium?: string;
-  strStadiumThumb?: string;
-  strStadiumDescription?: string;
-  strStadiumLocation?: string;
-  intStadiumCapacity?: string;
-  strDescriptionEN?: string;
-  strDescriptionDE?: string;
-  strDescriptionFR?: string;
-  strDescriptionIT?: string;
-  strDescriptionCN?: string;
-  strDescriptionJP?: string;
-  strDescriptionRU?: string;
-  strDescriptionES?: string;
-  strDescriptionPT?: string;
-  strDescriptionSE?: string;
-  strDescriptionNL?: string;
-  strDescriptionHU?: string;
-  strDescriptionNO?: string;
-  strDescriptionPL?: string;
-  strDescriptionIL?: string;
-  strWebsite?: string;
-  strFacebook?: string;
-  strTwitter?: string;
-  strInstagram?: string;
-  strYoutube?: string;
-  strRSS?: string;
-  strGender?: string;
-  strKeywords?: string;
-  strLocked?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface TheSportsDBPlayer {
-  idPlayer: string;
-  strPlayer: string;
-  strPlayerAlternate?: string;
-  strTeam?: string;
-  idTeam?: string;
-  strSport?: string;
-  strPosition?: string;
-  strNumber?: string;
-  dateBorn?: string;
-  strBirthLocation?: string;
-  strNationality?: string;
-  strGender?: string;
-  strHeight?: string;
-  strWeight?: string;
-  strStatus?: string;
-  dateSigned?: string;
-  strSigning?: string;
-  strWage?: string;
-  strOutfitter?: string;
-  strKit?: string;
-  strAgent?: string;
-  idAPIfootball?: string;
-  idPlayerManager?: string;
-  strLocked?: string;
-  strThumb?: string;
-  strCutout?: string;
-  strRender?: string;
-  strBanner?: string;
-  strFanart1?: string;
-  strFanart2?: string;
-  strFanart3?: string;
-  strFanart4?: string;
-  strDescriptionEN?: string;
-  strDescriptionDE?: string;
-  strDescriptionFR?: string;
-  strDescriptionIT?: string;
-  strDescriptionCN?: string;
-  strDescriptionJP?: string;
-  strDescriptionRU?: string;
-  strDescriptionES?: string;
-  strDescriptionPT?: string;
-  strDescriptionSE?: string;
-  strDescriptionNL?: string;
-  strDescriptionHU?: string;
-  strDescriptionNO?: string;
-  strDescriptionPL?: string;
-  strDescriptionIL?: string;
-  strWebsite?: string;
-  strFacebook?: string;
-  strTwitter?: string;
-  strInstagram?: string;
-  strYoutube?: string;
-  created_at?: string;
-  updated_at?: string;
-}
 
 export interface TheSportsDBEvent {
   idEvent: string;
@@ -255,7 +74,7 @@ export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<Matc
         homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
-      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(limit);
@@ -293,7 +112,7 @@ export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<Mat
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
       .eq('leagueId', leagueId)
-      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
       .gte('date', today)
       .order('date', { ascending: true });
 
@@ -372,7 +191,7 @@ export async function fetchTeamUpcomingFixtures(teamId: string): Promise<MatchWi
         awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
       `)
       .or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`)
-      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE'])
+      .in('status', ['SCHEDULED', 'POSTPONED', 'FINISHED', 'IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'])
       .gte('date', today)
       .order('date', { ascending: true })
       .limit(15);

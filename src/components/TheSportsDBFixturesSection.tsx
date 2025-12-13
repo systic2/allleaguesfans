@@ -135,6 +135,17 @@ function TheSportsDBFixtureRow({ fixture, showScores }: TheSportsDBFixtureRowPro
       'CANCELED': '취소',
       'IN_PLAY': '진행중',
       'LIVE': '진행중',
+      '1H': '전반전',
+      '2H': '후반전',
+      'HT': '하프타임',
+      'ET': '연장전',
+      'BT': '승부차기',
+      'P': '승부차기',
+      'SUSP': '중단',
+      'INT': '중단',
+      'FT': '종료',
+      'AET': '종료(연장)',
+      'PEN': '종료(승부차기)',
       'UNKNOWN': '미정',
     };
     return statusMap[status] || status;

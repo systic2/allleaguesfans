@@ -154,6 +154,14 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
     'FINISHED': '종료',
     'IN_PLAY': '진행중',
     'LIVE': '진행중',
+    '1H': '전반전',
+    '2H': '후반전',
+    'HT': '하프타임',
+    'ET': '연장전',
+    'BT': '승부차기',
+    'P': '승부차기',
+    'SUSP': '중단',
+    'INT': '중단',
   };
 
   const statusColor: Record<string, string> = {
@@ -162,7 +170,18 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
     'FINISHED': 'bg-slate-700 text-slate-400 border border-slate-600',
     'IN_PLAY': 'bg-red-600 text-white border border-red-500 animate-pulse',
     'LIVE': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    '1H': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    '2H': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    'HT': 'bg-yellow-600 text-white border border-yellow-500',
+    'ET': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    'BT': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    'P': 'bg-red-600 text-white border border-red-500 animate-pulse',
+    'SUSP': 'bg-yellow-700 text-white border border-yellow-600',
+    'INT': 'bg-yellow-700 text-white border border-yellow-600',
   };
+
+  const isLive = ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT'].includes(status);
+  const isFinished = status === 'FINISHED' || status === 'FT' || status === 'AET' || status === 'PEN';
 
   return (
     <div className="border border-slate-600 rounded-lg p-4 hover:border-blue-400 transition-colors bg-slate-700/50">
@@ -199,10 +218,10 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
           </div>
           
           <div className="px-4 text-slate-400 font-bold text-center min-w-[60px]">
-            {(status === 'FINISHED' || status === 'IN_PLAY' || status === 'LIVE') && 
+            {(isFinished || isLive) && 
              fixture.homeScore !== undefined && fixture.homeScore !== null &&
              fixture.awayScore !== undefined && fixture.awayScore !== null ? (
-              <span className={`text-xl font-mono ${status === 'IN_PLAY' || status === 'LIVE' ? 'text-red-500' : 'text-white'}`}>
+              <span className={`text-xl font-mono ${isLive ? 'text-red-500' : 'text-white'}`}>
                 {fixture.homeScore} - {fixture.awayScore}
               </span>
             ) : (
