@@ -1,5 +1,6 @@
 // scripts/sync/orchestrator.ts
 // REFACTORED to ensure teams are synced from standings before events.
+// Enhanced error handling and User-Agent for GitHub Actions environment.
 import 'dotenv/config';
 import { supa } from './lib/supabase.js';
 import { 
@@ -25,16 +26,27 @@ class TheSportsDBClient {
   
   private async fetch(url: string): Promise<any> {
     console.log(`[TheSportsDB] 🔍 Fetching: ${url}`);
+    // Use a browser-like User-Agent to avoid potential blocking on CI environments
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'AllLeaguesFans/2.0 (Orchestrated Sync)' }
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
     });
     
     if (!response.ok) {
       console.error(`[TheSportsDB] ❌ API error: ${response.status} ${response.statusText}`);
+      // Throwing error here to be caught by caller
       throw new Error(`TheSportsDB API error: ${response.status}`);
     }
     
     const data = await response.json();
+    // Check if data is empty or null (API sometimes returns "" or null for empty results)
+    if (!data) {
+      console.warn(`[TheSportsDB] ⚠️  API returned empty/null response.`);
+      return {}; 
+    }
+    
     console.log(`[TheSportsDB] ✅ Success: Received data.`);
     return data;
   }
@@ -71,31 +83,19 @@ class DataOrchestrator {
     this.client = new TheSportsDBClient(THESPORTSDB_API_KEY);
   }
 
-  /**
-   * Calculates the current active season based on today's date and league format.
-   * @param format 'single' (Spring-Autumn) or 'split' (Autumn-Spring)
-   * @returns object with { queryParam: string, dbValue: string }
-   */
   private getCurrentSeason(format: string): { queryParam: string, dbValue: string } {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1; // 1-12
 
     if (format === 'split') {
-      // European Leagues (Start ~Aug, End ~May)
-      // If we are in Jan-June (1-6), we belong to the season that started previous year.
-      // If we are in July-Dec (7-12), we belong to the season starting this year.
       const startYear = currentMonth >= 7 ? currentYear : currentYear - 1;
       const endYear = startYear + 1;
       return {
-        queryParam: `${startYear}-${endYear}`, // e.g., "2025-2026"
-        dbValue: String(startYear) // We store the base year "2025" in DB for consistency
+        queryParam: `${startYear}-${endYear}`,
+        dbValue: String(startYear)
       };
     } else {
-      // K-League / Asian Leagues (Start ~Mar, End ~Nov)
-      // Usually matches the calendar year.
-      // Note: In Jan/Feb, this will return the new year (e.g., 2026), which might not have data yet.
-      // But user requested "based on today's date".
       return {
         queryParam: String(currentYear),
         dbValue: String(currentYear)
@@ -105,12 +105,14 @@ class DataOrchestrator {
   
   /**
    * Fetches, transforms, and saves standings data.
+   * Returns true if successful, false if critical errors occurred.
    */
-  async syncStandingsAndTeams() {
+  async syncStandingsAndTeams(): Promise<boolean> {
     console.log(`\n🚀 Starting Orchestrated Standings & Teams Sync (Dynamic Season)...`);
     
     let totalStandingsImported = 0;
     let totalTeamsUpserted = 0;
+    let hasCriticalError = false;
 
     for (const league of this.leagueMapping) {
       try {
@@ -136,6 +138,7 @@ class DataOrchestrator {
 
         if (teamsUpsertError) {
           console.error(`[DB] ❌ CRITICAL: Team upsert failed for ${league.name}:`, teamsUpsertError);
+          hasCriticalError = true;
           continue; 
         }
         totalTeamsUpserted += teamsData.length;
@@ -145,7 +148,6 @@ class DataOrchestrator {
         console.log(`[ACL] 🛡️  Mapping ${rawStandings.length} standings...`);
         const domainStandings: Standing[] = rawStandings.map(s => {
             const mapped = mapTheSportsDBStandingToDomain(s);
-            // Store the normalized base year in DB
             return { ...mapped, season: dbValue };
         });
 
@@ -157,27 +159,36 @@ class DataOrchestrator {
 
         if (standingsInsertError) {
           console.error(`[DB] ❌ Standings insert failed for ${league.name}:`, standingsInsertError);
+          hasCriticalError = true;
           continue;
         }
         totalStandingsImported += standingsData.length;
         console.log(`[DB] ✅ Successfully imported ${standingsData.length} standings.`);
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Short delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
         console.error(`❌ A critical error occurred while processing standings & teams for ${league.name}:`, error);
+        hasCriticalError = true;
       }
     }
     
     console.log(`\n🎉 Orchestrated Standings & Teams Sync Finished!`);
     console.log(`   - Total Teams Upserted: ${totalTeamsUpserted}`);
     console.log(`   - Total Standings Imported: ${totalStandingsImported}`);
+    
+    return !hasCriticalError;
   }
 
-  async syncEvents() {
+  /**
+   * Returns true if successful, false if critical errors occurred.
+   */
+  async syncEvents(): Promise<boolean> {
     console.log(`\n🚀 Starting Orchestrated Events Sync (Dynamic Season)...`);
     
     let totalEventsImported = 0;
+    let hasCriticalError = false;
 
     for (const league of this.leagueMapping) {
       try {
@@ -193,7 +204,6 @@ class DataOrchestrator {
         console.log(`[ACL] 🛡️  Mapping ${rawEvents.length} events...`);
         const domainEvents: Match[] = rawEvents.map(e => {
             const mapped = mapTheSportsDBEventToDomain(e);
-            // Normalize DB season
             return { ...mapped, season: dbValue };
         });
 
@@ -205,20 +215,24 @@ class DataOrchestrator {
 
         if (eventsInsertError) {
           console.error(`[DB] ❌ Event insert failed for ${league.name}:`, eventsInsertError);
+          hasCriticalError = true;
           continue;
         }
         totalEventsImported += eventsData.length;
         console.log(`[DB] ✅ Successfully imported ${eventsData.length} events.`);
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
         console.error(`❌ A critical error occurred while processing events for ${league.name}:`, error);
+        hasCriticalError = true;
       }
     }
     
     console.log(`\n🎉 Orchestrated Events Sync Finished!`);
     console.log(`   - Total Events Imported: ${totalEventsImported}`);
+    
+    return !hasCriticalError;
   }
 }
 
@@ -229,10 +243,16 @@ async function main() {
   console.log('=======================================');
   
   const orchestrator = new DataOrchestrator();
-  await orchestrator.syncStandingsAndTeams();
-  await orchestrator.syncEvents();
   
-  console.log('\n\n✅ All synchronization tasks completed.');
+  const standingsSuccess = await orchestrator.syncStandingsAndTeams();
+  const eventsSuccess = await orchestrator.syncEvents();
+  
+  if (!standingsSuccess || !eventsSuccess) {
+    console.error('\n❌ Some sync tasks failed. Check logs for details.');
+    process.exit(1); // Exit with error code to notify GitHub Actions
+  }
+  
+  console.log('\n\n✅ All synchronization tasks completed successfully.');
 }
 
 if (import.meta.main) {
