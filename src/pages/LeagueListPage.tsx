@@ -95,11 +95,6 @@ function LeagueCard({ league }: { league: LeagueLite }) {
                   <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                   {league.country_code || 'Global'}
                 </span>
-                {league.primary_source && (
-                  <span className="bg-blue-600/20 px-2 py-1 rounded text-blue-300 text-xs font-medium mr-2">
-                    {league.primary_source.toUpperCase()}
-                  </span>
-                )}
                 {league.tier && (
                   <span className="bg-slate-600/50 px-2 py-1 rounded text-xs">
                     Tier {league.tier}
