@@ -61,7 +61,8 @@ class DataOrchestrator {
   private leagueMapping = [
     { id: '4689', name: 'K League 1', seasonFormat: 'single' },
     { id: '4822', name: 'K League 2', seasonFormat: 'single' },
-    { id: '4328', name: 'English Premier League', seasonFormat: 'split' }
+    { id: '4328', name: 'English Premier League', seasonFormat: 'split' },
+    { id: '4335', name: 'Spanish La Liga', seasonFormat: 'split' }
   ];
   
   constructor() {

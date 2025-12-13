@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
+import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers';
 
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -22,7 +23,7 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
   if (error) throw error;
   return (data ?? []).map((x) => ({
     id: x.idLeague === '4689' ? 249276 : x.idLeague === '4822' ? 250127 : parseInt(x.idLeague) || 0,
-    slug: x.idLeague === '4689' ? 'k-league-1' : x.idLeague === '4822' ? 'k-league-2' : x.idLeague === '4328' ? 'premier-league' : `league-${x.idLeague}`,
+    slug: x.idLeague === '4689' ? 'k-league-1' : x.idLeague === '4822' ? 'k-league-2' : x.idLeague === '4328' ? 'premier-league' : x.idLeague === '4335' ? 'la-liga' : `league-${x.idLeague}`,
     name: String(x.strLeague), name_korean: null, tier: null, logo_url: x.strBadge, banner_url: null, country_code: x.strCountry, primary_source: "thesportsdb",
   }));
 }
@@ -35,13 +36,17 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   if (slug === 'k-league-1') theSportsDBLeagueId = '4689';
   else if (slug === 'k-league-2') theSportsDBLeagueId = '4822';
   else if (slug === 'premier-league') theSportsDBLeagueId = '4328';
+  else if (slug === 'la-liga') theSportsDBLeagueId = '4335';
   else theSportsDBLeagueId = slug.replace('league-', '');
   
   const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge").eq("idLeague", theSportsDBLeagueId).maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
-  return { id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0, name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: 2025, };
+  return {
+    id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
+    name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: 2025, 
+  };
 }
 
 export async function fetchLeagueStandings(leagueSlug: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStanding[]> {
@@ -49,6 +54,7 @@ export async function fetchLeagueStandings(leagueSlug: string, season: number = 
   if (leagueSlug === 'k-league-1') theSportsDBLeagueId = '4689';
   else if (leagueSlug === 'k-league-2') theSportsDBLeagueId = '4822';
   else if (leagueSlug === 'premier-league') theSportsDBLeagueId = '4328';
+  else if (leagueSlug === 'la-liga') theSportsDBLeagueId = '4335';
   else theSportsDBLeagueId = leagueSlug.replace('league-', '');
 
   const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season)).order("rank", { ascending: true });
@@ -251,7 +257,7 @@ export async function fetchTeamDetails(teamId: string, season: number = Number(i
   const { data: teamData, error: teamError } = await supabase.from('teams_v2').select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear').eq('id', teamId).maybeSingle();
   if (teamError) { console.error('Error fetching team from teams_v2:', teamError); return null; }
   if (!teamData) return null;
-  const { data: standingData, error: standingError } = await supabase.from('standings_v2').select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId').eq('teamId', teamId).eq('season', String(season)).in('leagueId', ['4689', '4822', '4328']).order('leagueId', { ascending: true }).limit(1).maybeSingle();
+  const { data: standingData, error: standingError } = await supabase.from('standings_v2').select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId').eq('teamId', teamId).eq('season', String(season)).in('leagueId', ['4689', '4822', '4328', '4335']).order('leagueId', { ascending: true }).limit(1).maybeSingle();
   if (standingError) { console.warn(`Error fetching standing for team ${teamId}:`, standingError); }
   return {
     id: teamData.id, name: teamData.name, nameKorean: teamData.nameKorean, badgeUrl: teamData.badgeUrl, strStadium: teamData.strStadium, intFormedYear: teamData.intFormedYear,
@@ -330,6 +336,7 @@ export async function fetchTeamRecentFixtures(teamId: string, limit: number = 5)
   return matches.map(match => ({
     id: String(match.id),
     date_utc: String(match.date),
+    status: String(match.status),
     status_short: String(match.status),
     round: String(match.round || 'N/A'),
     home_team: {
