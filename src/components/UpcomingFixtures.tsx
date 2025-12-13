@@ -1,5 +1,6 @@
 // src/components/UpcomingFixtures.tsx
 // FINAL REFACTORED VERSION: Uses the new MatchWithTeams[] model directly
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { 
   fetchEnhancedUpcomingFixtures, 
@@ -66,7 +67,6 @@ export default function UpcomingFixtures({
   const { data: fixtures, isLoading, error } = activeQuery;
 
   if (isLoading) {
-    // ... (loading state remains the same)
     return (
       <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
         <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
@@ -76,7 +76,6 @@ export default function UpcomingFixtures({
   }
 
   if (error) {
-    // ... (error state remains the same)
     return (
       <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
         <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
@@ -86,7 +85,6 @@ export default function UpcomingFixtures({
   }
 
   if (!fixtures || fixtures.length === 0) {
-    // ... (empty state remains the same)
     return (
       <div className={`bg-slate-800 rounded-lg border border-slate-600 p-6 ${className}`}>
         <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
@@ -185,7 +183,7 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
       {showTeams && (
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 flex-1">
-            <div className="flex items-center space-x-2">
+            <Link to={`/teams/${homeTeam?.id || fixture.homeTeamId}`} className="flex items-center space-x-2 group">
               {homeTeam?.badgeUrl && (
                 <img 
                   src={homeTeam.badgeUrl} 
@@ -193,15 +191,19 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
                   className="w-6 h-6 object-contain"
                 />
               )}
-              <span className="font-medium text-white">{homeTeam?.name || `Team ${fixture.homeTeamId}`}</span>
-            </div>
+              <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                {homeTeam?.name || `Team ${fixture.homeTeamId}`}
+              </span>
+            </Link>
           </div>
           
           <div className="px-4 text-slate-400 font-bold">VS</div>
           
           <div className="flex items-center space-x-3 flex-1 justify-end">
-            <div className="flex items-center space-x-2">
-              <span className="font-medium text-white">{awayTeam?.name || `Team ${fixture.awayTeamId}`}</span>
+            <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group">
+              <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                {awayTeam?.name || `Team ${fixture.awayTeamId}`}
+              </span>
               {awayTeam?.badgeUrl && (
                 <img 
                   src={awayTeam.badgeUrl} 
@@ -209,7 +211,7 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
                   className="w-6 h-6 object-contain"
                 />
               )}
-            </div>
+            </Link>
           </div>
         </div>
       )}
