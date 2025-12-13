@@ -59,12 +59,21 @@ class TheSportsDBClient {
 class DataOrchestrator {
   private client: TheSportsDBClient;
   private leagueMapping = [
-    { id: '4689', name: 'K League 1' },
-    { id: '4822', name: 'K League 2' }
+    { id: '4689', name: 'K League 1', seasonFormat: 'single' },
+    { id: '4822', name: 'K League 2', seasonFormat: 'single' },
+    { id: '4328', name: 'English Premier League', seasonFormat: 'split' }
   ];
   
   constructor() {
     this.client = new TheSportsDBClient(THESPORTSDB_API_KEY);
+  }
+
+  private getSeasonString(format: string): string {
+    if (format === 'split') {
+      const nextYear = parseInt(SEASON_YEAR) + 1;
+      return `${SEASON_YEAR}-${nextYear}`;
+    }
+    return SEASON_YEAR;
   }
   
   /**
@@ -73,16 +82,17 @@ class DataOrchestrator {
    * into teams_v2 to ensure data integrity before syncing events.
    */
   async syncStandingsAndTeams() {
-    console.log(`\n🚀 Starting Orchestrated Standings & Teams Sync for season ${SEASON_YEAR}...`);
+    console.log(`\n🚀 Starting Orchestrated Standings & Teams Sync for base year ${SEASON_YEAR}...`);
     
     let totalStandingsImported = 0;
     let totalTeamsUpserted = 0;
 
     for (const league of this.leagueMapping) {
       try {
-        console.log(`\n🏆 [Standings & Teams] Processing ${league.name}...`);
+        const seasonParam = this.getSeasonString(league.seasonFormat || 'single');
+        console.log(`\n🏆 [Standings & Teams] Processing ${league.name} (${seasonParam})...`);
         
-        const rawStandings = await this.client.getStandings(league.id, SEASON_YEAR);
+        const rawStandings = await this.client.getStandings(league.id, seasonParam);
         if (rawStandings.length === 0) {
           console.log(`🟡 No standings data found for ${league.name}. Skipping.`);
           continue;
@@ -109,7 +119,14 @@ class DataOrchestrator {
         
         // 2. Map and Insert Standings data
         console.log(`[ACL] 🛡️  Mapping ${rawStandings.length} standings...`);
-        const domainStandings: Standing[] = rawStandings.map(mapTheSportsDBStandingToDomain);
+        const domainStandings: Standing[] = rawStandings.map(s => {
+            const mapped = mapTheSportsDBStandingToDomain(s);
+            // Ensure we store the simplified "2025" season in DB for consistency, 
+            // OR store "2025-2026". Currently the DB schema and app seem to expect "2025".
+            // Let's stick to SEASON_YEAR ("2025") for the DB 'season' column to keep querying simple across leagues,
+            // unless we want to distinguish. Given the input env is 2025, let's normalize to 2025 in DB.
+            return { ...mapped, season: SEASON_YEAR };
+        });
 
         console.log(`[DB] 🧹 Clearing existing standings for ${league.name} in '${STANDINGS_V2_TABLE}'...`);
         await supa.from(STANDINGS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);
@@ -137,22 +154,27 @@ class DataOrchestrator {
   }
 
   async syncEvents() {
-    console.log(`\n🚀 Starting Orchestrated Events Sync for season ${SEASON_YEAR}...`);
+    console.log(`\n🚀 Starting Orchestrated Events Sync for base year ${SEASON_YEAR}...`);
     
     let totalEventsImported = 0;
 
     for (const league of this.leagueMapping) {
       try {
-        console.log(`\n⚽ [Events] Processing ${league.name}...`);
+        const seasonParam = this.getSeasonString(league.seasonFormat || 'single');
+        console.log(`\n⚽ [Events] Processing ${league.name} (${seasonParam})...`);
         
-        const rawEvents = await this.client.getLeagueEvents(league.id, SEASON_YEAR);
+        const rawEvents = await this.client.getLeagueEvents(league.id, seasonParam);
         if (rawEvents.length === 0) {
           console.log(`🟡 No events found for ${league.name}. Skipping.`);
           continue;
         }
 
         console.log(`[ACL] 🛡️  Mapping ${rawEvents.length} events...`);
-        const domainEvents: Match[] = rawEvents.map(mapTheSportsDBEventToDomain);
+        const domainEvents: Match[] = rawEvents.map(e => {
+            const mapped = mapTheSportsDBEventToDomain(e);
+            // Normalize DB season to "2025"
+            return { ...mapped, season: SEASON_YEAR };
+        });
 
         console.log(`[DB] 🧹 Clearing existing events for ${league.name} in '${EVENTS_V2_TABLE}'...`);
         await supa.from(EVENTS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);

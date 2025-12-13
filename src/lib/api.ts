@@ -5,7 +5,6 @@ import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/
 import type { Match, Standing } from "@/types/domain"; 
 import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers';
 
-
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -13,627 +12,201 @@ export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await r.json()) as T;
 }
 
-// ---------- 도메인 라이트 타입 (3-API 통합 업데이트) ----------
-export type LeagueLite = { 
-  id: number; 
-  slug: string; 
-  name: string; 
-  name_korean?: string | null;
-  tier: number | null; 
-  logo_url?: string | null;
-  banner_url?: string | null;
-  country_code?: string;
-  primary_source?: string;
-};
-export type TeamLite = { 
-  id: number; 
-  name: string; 
-  name_korean?: string | null;
-  short_name: string | null; 
-  crest_url: string | null;
-  logo_url?: string | null;
-  badge_url?: string | null;
-  banner_url?: string | null;
-  primary_source?: string;
-};
-export type PlayerLite = { 
-  id: number; 
-  name: string; 
-  position: string | null; 
-  photo_url: string | null; 
-  team_id: number | null; 
-  jersey_number?: number;
-  nationality?: string | null;
-  height?: string | null;
-  primary_source?: string;
-};
+// ---------- 도메인 라이트 타입 ----------
+export type LeagueLite = { id: number; slug: string; name: string; name_korean?: string | null; tier: number | null; logo_url?: string | null; banner_url?: string | null; country_code?: string; primary_source?: string; };
+export type TeamLite = { id: number; name: string; name_korean?: string | null; short_name: string | null; crest_url: string | null; logo_url?: string | null; badge_url?: string | null; banner_url?: string | null; primary_source?: string; };
+export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null; jersey_number?: number; nationality?: string | null; height?: string | null; primary_source?: string; };
 
 // ---------- API ----------
 export async function fetchLeagues(): Promise<LeagueLite[]> {
-  const { data, error } = await supabase
-    .from("leagues")
-    .select("idLeague, strLeague, strCountry, strBadge")
-    .order("strLeague", { ascending: true });
-
+  const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge").order("strLeague", { ascending: true });
   if (error) throw error;
-
   return (data ?? []).map((x) => ({
     id: x.idLeague === '4689' ? 249276 : x.idLeague === '4822' ? 250127 : parseInt(x.idLeague) || 0,
     slug: x.idLeague === '4689' ? 'k-league-1' : x.idLeague === '4822' ? 'k-league-2' : x.idLeague === '4328' ? 'premier-league' : `league-${x.idLeague}`,
-    name: String(x.strLeague),
-    name_korean: null,
-    tier: null,
-    logo_url: x.strBadge,
-    banner_url: null,
-    country_code: x.strCountry,
-    primary_source: "thesportsdb",
+    name: String(x.strLeague), name_korean: null, tier: null, logo_url: x.strBadge, banner_url: null, country_code: x.strCountry, primary_source: "thesportsdb",
   }));
 }
 
-// ---------- 리그 상세 정보 ----------
-export type LeagueDetail = {
-  id: number;
-  name: string;
-  name_korean?: string | null;
-  logo_url?: string | null;
-  banner_url?: string | null;
-  slug: string;
-  country: string | null;
-  primary_source?: string;
-  tier?: number | null;
-  season: number;
-};
-
-export type TeamStanding = {
-  team_id: number;
-  team_name: string;
-  short_name: string | null;
-  crest_url: string | null;
-  rank: number;
-  points: number;
-  played: number;
-  win: number;
-  draw: number;
-  lose: number;
-  goals_for: number;
-  goals_against: number;
-  goals_diff: number;
-  form: string | null;
-};
+export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: number; };
+export type TeamStanding = { team_id: number; team_name: string; short_name: string | null; crest_url: string | null; rank: number; points: number; played: number; win: number; draw: number; lose: number; goals_for: number; goals_against: number; goals_diff: number; form: string | null; };
 
 export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | null> {
   let theSportsDBLeagueId: string;
-  if (slug === 'k-league-1') {
-    theSportsDBLeagueId = '4689';
-  } else if (slug === 'k-league-2') {
-    theSportsDBLeagueId = '4822';
-  } else if (slug === 'premier-league') {
-    theSportsDBLeagueId = '4328';
-  } else {
-    theSportsDBLeagueId = slug.replace('league-', '');
-  }
+  if (slug === 'k-league-1') theSportsDBLeagueId = '4689';
+  else if (slug === 'k-league-2') theSportsDBLeagueId = '4822';
+  else if (slug === 'premier-league') theSportsDBLeagueId = '4328';
+  else theSportsDBLeagueId = slug.replace('league-', '');
   
-  const { data, error } = await supabase
-    .from("leagues")
-    .select("idLeague, strLeague, strCountry, strBadge")
-    .eq("idLeague", theSportsDBLeagueId)
-    .maybeSingle();
-
+  const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge").eq("idLeague", theSportsDBLeagueId).maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
-  return {
-    id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
-    name: String(data.strLeague),
-    name_korean: null, 
-    logo_url: data.strBadge,
-    banner_url: null,
-    slug: slug,
-    country: data.strCountry as string | null,
-    primary_source: "thesportsdb",
-    tier: null,
-    season: 2025, 
-  };
+  return { id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0, name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: 2025, };
 }
 
 export async function fetchLeagueStandings(leagueSlug: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStanding[]> {
   let theSportsDBLeagueId: string;
-  if (leagueSlug === 'k-league-1') {
-    theSportsDBLeagueId = '4689';
-  } else if (leagueSlug === 'k-league-2') {
-    theSportsDBLeagueId = '4822';
-  } else if (leagueSlug === 'premier-league') {
-    theSportsDBLeagueId = '4328';
-  } else {
-    theSportsDBLeagueId = leagueSlug.replace('league-', '');
-  }
+  if (leagueSlug === 'k-league-1') theSportsDBLeagueId = '4689';
+  else if (leagueSlug === 'k-league-2') theSportsDBLeagueId = '4822';
+  else if (leagueSlug === 'premier-league') theSportsDBLeagueId = '4328';
+  else theSportsDBLeagueId = leagueSlug.replace('league-', '');
 
-  const { data, error } = await supabase
-    .from("standings_v2")
-    .select(`*`)
-    .eq("leagueId", theSportsDBLeagueId)
-    .eq("season", String(season))
-    .order("rank", { ascending: true });
-
+  const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season)).order("rank", { ascending: true });
   if (error) throw error;
 
   return (data ?? []).map((standing: any) => ({
-    team_id: Number(standing.teamId || 0),
-    team_name: String(standing.teamName || "Unknown"),
-    short_name: null,
-    crest_url: standing.teamBadgeUrl,
-    rank: Number(standing.rank || 0),
-    points: Number(standing.points || 0),
-    played: Number(standing.gamesPlayed || 0),
-    win: Number(standing.wins || 0),
-    draw: Number(standing.draws || 0),
-    lose: Number(standing.losses || 0),
-    goals_for: Number(standing.goalsFor || 0),
-    goals_against: Number(standing.goalsAgainst || 0),
-    goals_diff: Number(standing.goalDifference || 0),
-    form: standing.form,
+    team_id: Number(standing.teamId || 0), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form,
   }));
 }
 
 export async function fetchLeagueTeams(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamLite[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  
-  const { data, error } = await supabase
-    .from("standings_v2")
-    .select(`
-      teamId,
-      teamName,
-      teamBadgeUrl
-    `)
-    .eq("leagueId", theSportsDBLeagueId)
-    .eq("season", String(season));
-
+  const { data, error } = await supabase.from("standings_v2").select(`teamId, teamName, teamBadgeUrl`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season));
   if (error) throw error;
-
-  return (data ?? []).map((item: any) => ({
-    id: Number(item.teamId || 0),
-    name: String(item.teamName || "Unknown"),
-    short_name: null,
-    crest_url: item.teamBadgeUrl,
-    logo_url: item.teamBadgeUrl,
-    badge_url: item.teamBadgeUrl,
-    banner_url: null,
-    primary_source: "thesportsdb",
-  }));
+  return (data ?? []).map((item: any) => ({ id: Number(item.teamId || 0), name: String(item.teamName || "Unknown"), short_name: null, crest_url: item.teamBadgeUrl, logo_url: item.teamBadgeUrl, badge_url: item.teamBadgeUrl, banner_url: null, primary_source: "thesportsdb", }));
 }
 
-export type LeagueStats = {
-  total_goals: number;
-  total_matches: number;
-  avg_goals_per_match: number;
-  total_teams: number;
-};
+export type LeagueStats = { total_goals: number; total_matches: number; avg_goals_per_match: number; total_teams: number; };
 
 export async function fetchLeagueStats(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<LeagueStats> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  
   const [standingsResult, fixturesResult] = await Promise.all([
-    supabase
-      .from("standings_v2")
-      .select("leagueId, goalsFor, goalsAgainst, gamesPlayed")
-      .eq("leagueId", theSportsDBLeagueId)
-      .eq("season", String(season)),
-    supabase
-      .from("events_v2")
-      .select("homeScore, awayScore")
-      .eq("leagueId", String(leagueId))
-      .eq("season", String(season))
-      .eq("status", "FINISHED")
+    supabase.from("standings_v2").select("leagueId, goalsFor, goalsAgainst, gamesPlayed").eq("leagueId", theSportsDBLeagueId).eq("season", String(season)),
+    supabase.from("events_v2").select("homeScore, awayScore").eq("leagueId", String(leagueId)).eq("season", String(season)).eq("status", "FINISHED")
   ]);
-
   const totalTeams = standingsResult.data?.length || 0;
   const completedMatches = fixturesResult.data || [];
   const totalMatches = completedMatches.length;
-  
-  const totalGoalsFromStandings = standingsResult.data?.reduce((sum, team) => 
-    sum + (team.goalsFor || 0), 0) || 0;
-  
-  const totalGoals = totalMatches > 0 
-    ? completedMatches.reduce((sum, match) => sum + (match.homeScore || 0) + (match.awayScore || 0), 0)
-    : totalGoalsFromStandings;
-
-  const avgMatchesPerTeam = standingsResult.data && standingsResult.data.length > 0 
-    ? standingsResult.data.reduce((sum, team) => sum + (team.gamesPlayed || 0), 0) / standingsResult.data.length
-    : 0;
-
-  return {
-    total_goals: totalGoals,
-    total_matches: totalMatches > 0 ? totalMatches : Math.round(avgMatchesPerTeam * totalTeams / 2),
-    avg_goals_per_match: totalMatches > 0 ? Number((totalGoals / totalMatches).toFixed(2)) : 
-                        avgMatchesPerTeam > 0 ? Number((totalGoals / (avgMatchesPerTeam * totalTeams / 2)).toFixed(2)) : 0,
-    total_teams: totalTeams,
-  };
+  const totalGoalsFromStandings = standingsResult.data?.reduce((sum, team) => sum + (team.goalsFor || 0), 0) || 0;
+  const totalGoals = totalMatches > 0 ? completedMatches.reduce((sum, match) => sum + (match.homeScore || 0) + (match.awayScore || 0), 0) : totalGoalsFromStandings;
+  const avgMatchesPerTeam = standingsResult.data && standingsResult.data.length > 0 ? standingsResult.data.reduce((sum, team) => sum + (team.gamesPlayed || 0), 0) / standingsResult.data.length : 0;
+  return { total_goals: totalGoals, total_matches: totalMatches > 0 ? totalMatches : Math.round(avgMatchesPerTeam * totalTeams / 2), avg_goals_per_match: totalMatches > 0 ? Number((totalGoals / totalMatches).toFixed(2)) : avgMatchesPerTeam > 0 ? Number((totalGoals / (avgMatchesPerTeam * totalTeams / 2)).toFixed(2)) : 0, total_teams: totalTeams };
 }
 
-export type TopScorer = {
-  player_name: string;
-  team_name: string;
-  goals: number;
-  assists: number;
-  matches: number;
-};
-
-export type TopAssist = {
-  player_name: string;
-  team_name: string;
-  assists: number;
-  goals: number;
-  matches: number;
-};
-
-export type HistoricalChampion = {
-  season_year: number;
-  champion_name: string;
-  champion_logo: string | null;
-};
+export type TopScorer = { player_name: string; team_name: string; goals: number; assists: number; matches: number; };
+export type TopAssist = { player_name: string; team_name: string; assists: number; goals: number; matches: number; };
+export type HistoricalChampion = { season_year: number; champion_name: string; champion_logo: string | null; };
 
 export async function fetchTopScorers(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopScorer[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const stats = await fetchTopScorersStats(theSportsDBLeagueId, String(season), limit);
-
-  return stats.map(stat => ({
-    player_name: stat.strPlayer,
-    team_name: stat.strTeam || '',
-    goals: stat.goals || 0,
-    assists: stat.assists || 0,
-    matches: stat.appearances || 0
-  }));
+  return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
 }
 
 export async function fetchTopAssists(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopAssist[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const stats = await fetchTopAssistersStats(theSportsDBLeagueId, String(season), limit);
-
-  return stats.map(stat => ({
-    player_name: stat.strPlayer,
-    team_name: stat.strTeam || '',
-    assists: stat.assists || 0,
-    goals: stat.goals || 0,
-    matches: stat.appearances || 0
-  }));
+  return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const currentYear = new Date().getFullYear();
-
-  const { data: standingsData, error: standingsError } = await supabase
-    .from("standings_v2")
-    .select("season, teamName")
-    .eq("leagueId", theSportsDBLeagueId)
-    .eq("rank", 1)
-    .lt("season", String(currentYear))
-    .order("season", { ascending: false })
-    .limit(15);
-
-  if (standingsError) {
-    console.warn("Failed to fetch historical champions standings:", standingsError);
-    return [];
-  }
-
-  if (!standingsData || standingsData.length === 0) {
-    return [];
-  }
-
-  return standingsData.map((standing: any) => ({
-    season_year: Number(standing.season || 0),
-    champion_name: String(standing.teamName || "Unknown"),
-    champion_logo: null,
-  }));
+  const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", String(currentYear)).order("season", { ascending: false }).limit(15);
+  if (standingsError) { console.warn("Failed to fetch historical champions standings:", standingsError); return []; }
+  if (!standingsData || standingsData.length === 0) return [];
+  return standingsData.map((standing: any) => ({ season_year: Number(standing.season || 0), champion_name: String(standing.teamName || "Unknown"), champion_logo: null }));
 }
 
-export interface UpcomingFixture {
-  id: string;
-  date_utc: string;
-  status: string;
-  round: string;
-  home_team: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-  };
-  away_team: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-  };
-  venue?: string;
-  league_id: string;
-}
+export interface UpcomingFixture { id: string; date_utc: string; status: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; venue?: string; league_id: string; }
 
 export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 10): Promise<UpcomingFixture[]> {
   const today = new Date().toISOString(); 
-  
-  let query = supabase
-    .from("events_v2")
-    .select(`*`)
-    .gte("date", today)
-    .in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"])
-    .order("date", { ascending: true })
-    .limit(limit);
-
-  if (leagueId) {
-    query = query.eq("leagueId", String(leagueId));
-  }
-
+  let query = supabase.from("events_v2").select(`*`).gte("date", today).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order("date", { ascending: true }).limit(limit);
+  if (leagueId) query = query.eq("leagueId", String(leagueId));
   const { data, error } = await query;
-
-  if (error) {
-    console.error("Error fetching upcoming fixtures from events_v2:", error);
-    return [];
-  }
-
+  if (error) { console.error("Error fetching upcoming fixtures from events_v2:", error); return []; }
   if (!data) return [];
-
   return data.map(match => ({
-    id: String(match.id),
-    date_utc: String(match.date),
-    status: String(match.status),
-    round: String(match.round || 'N/A'),
-    home_team: {
-      id: String(match.homeTeamId),
-      name: `Team ${match.homeTeamId}`,
-      logo_url: null,
-    },
-    away_team: {
-      id: String(match.awayTeamId),
-      name: `Team ${match.awayTeamId}`,
-      logo_url: null,
-    },
-    venue: match.venueName || undefined,
-    league_id: String(match.leagueId),
+    id: String(match.id), date_utc: String(match.date), status: String(match.status), round: String(match.round || 'N/A'),
+    home_team: { id: String(match.homeTeamId), name: `Team ${match.homeTeamId}`, logo_url: null },
+    away_team: { id: String(match.awayTeamId), name: `Team ${match.awayTeamId}`, logo_url: null },
+    venue: match.venueName || undefined, league_id: String(match.leagueId),
   }));
 }
 
-export interface RoundFixture {
-  id: string;
-  date_utc: string;
-  status_short: string;
-  round: string;
-  home_team: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-  };
-  away_team: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-  };
-  home_goals: number | null;
-  away_goals: number | null;
-  venue?: string;
-  league_id: string;
-}
+export interface RoundFixture { id: string; date_utc: string; status_short: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; home_goals: number | null; away_goals: number | null; venue?: string; league_id: string; }
 
 export async function getLatestCompletedRound(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("events_v2")
-    .select("round, date")
-    .eq("leagueId", String(leagueId))
-    .eq("season", String(season))
-    .eq("status", "FINISHED")
-    .order("date", { ascending: false })
-    .limit(1);
-
-  if (error || !data || data.length === 0) {
-    return null;
-  }
-
+  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", String(leagueId)).eq("season", String(season)).eq("status", "FINISHED").order("date", { ascending: false }).limit(1);
+  if (error || !data || data.length === 0) return null;
   return data[0].round || null;
 }
 
 export async function getNextUpcomingRound(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("events_v2")
-    .select("round, date")
-    .eq("leagueId", String(leagueId))
-    .eq("season", String(season))
-    .in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"])
-    .order("date", { ascending: true })
-    .limit(1);
+  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", String(leagueId)).eq("season", String(season)).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order("date", { ascending: true }).limit(1);
+  if (error || !data || data.length === 0) return null;
+  return data[0].round || null;
+}
 
-  if (error || !data || data.length === 0) {
-    return null;
-  }
-
-    return data[0].round || null;
-  }
-
-  export async function fetchFixturesByRound(
-    leagueId: number, 
-    round: string, 
-    season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)
-  ): Promise<RoundFixture[]> {
-    const { data, error } = await supabase
-      .from("events_v2")
-      .select(`*`)
-      .eq("leagueId", String(leagueId))
-      .eq("round", round)
-      .eq("season", String(season))
-      .order("date", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching fixtures by round from events_v2:", error);
-      return [];
-    }
-
-    if (!data) return [];
-
-    return data.map(match => ({
-      id: String(match.id),
-      date_utc: String(match.date),
-      status_short: String(match.status),
-      round: String(match.round || 'N/A'),
-      home_team: {
-        id: String(match.homeTeamId),
-        name: `Team ${match.homeTeamId}`,
-        logo_url: null,
-      },
-      away_team: {
-        id: String(match.awayTeamId),
-        name: `Team ${match.awayTeamId}`,
-        logo_url: null,
-      },
-      home_goals: match.homeScore,
-      away_goals: match.awayScore,
-      venue: match.venueName || undefined,
-      league_id: String(match.leagueId),
-    }));
-  }
+export async function fetchFixturesByRound(leagueId: number, round: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
+  const { data, error } = await supabase.from("events_v2").select(`*`).eq("leagueId", String(leagueId)).eq("round", round).eq("season", String(season)).order("date", { ascending: true });
+  if (error) { console.error("Error fetching fixtures by round from events_v2:", error); return []; }
+  if (!data) return [];
+  return data.map(match => ({
+    id: String(match.id), date_utc: String(match.date), status_short: String(match.status), round: String(match.round || 'N/A'),
+    home_team: { id: String(match.homeTeamId), name: `Team ${match.homeTeamId}`, logo_url: null },
+    away_team: { id: String(match.awayTeamId), name: `Team ${match.awayTeamId}`, logo_url: null },
+    home_goals: match.homeScore, away_goals: match.awayScore, venue: match.venueName || undefined, league_id: String(match.leagueId),
+  }));
+}
 
 export async function fetchRecentRoundFixtures(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
   const latestRound = await getLatestCompletedRound(leagueId, season);
   if (!latestRound) return [];
-  
   return fetchFixturesByRound(leagueId, latestRound, season);
 }
 
 export async function fetchUpcomingRoundFixtures(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
   const nextRound = await getNextUpcomingRound(leagueId, season);
   if (!nextRound) return [];
-  
   return fetchFixturesByRound(leagueId, nextRound, season);
 }
 
 export async function searchByName(q: string): Promise<SearchRow[]> {
   const qq = q.trim();
   if (!qq) return [];
-
   const [leagues, teams] = await Promise.all([
-    supabase
-      .from("leagues")
-      .select("idLeague, strLeague, strCountry, highlightly_id")
-      .ilike("strLeague", `%${qq}%`)
-      .limit(10),
-    supabase
-      .from("teams")
-      .select("idTeam, strTeam, strBadge")
-      .ilike("strTeam", `%${qq}%`)
-      .limit(10)
+    supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").ilike("strLeague", `%${qq}%`).limit(10),
+    supabase.from("teams").select("idTeam, strTeam, strBadge").ilike("strTeam", `%${qq}%`).limit(10)
   ]);
-
   const rows: SearchRow[] = [];
-
   for (const x of leagues.data ?? []) {
-    rows.push({
-      type: "league",
-      entity_id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0,
-      name: String(x.strLeague),
-      slug: x.highlightly_id === 249276 ? 'k-league-1' : x.highlightly_id === 250127 ? 'k-league-2' : `league-${x.idLeague}`
-    } as SearchRow);
+    rows.push({ type: "league", entity_id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0, name: String(x.strLeague), slug: x.highlightly_id === 249276 ? 'k-league-1' : x.highlightly_id === 250127 ? 'k-league-2' : `league-${x.idLeague}` } as SearchRow);
   }
   for (const t of teams.data ?? []) {
     const teamId = parseInt(t.idTeam.replace(/[^0-9]/g, '')) || 0;
-    rows.push({
-      type: "team",
-      entity_id: teamId,
-      team_id: teamId,
-      name: String(t.strTeam),
-      short_name: null,
-      crest_url: (t.strBadge ?? null) as string | null
-    } as SearchRow);
+    rows.push({ type: "team", entity_id: teamId, team_id: teamId, name: String(t.strTeam), short_name: null, crest_url: (t.strBadge ?? null) as string | null } as SearchRow);
   }
-
   return rows;
 }
 
-// *** UPDATED: Fetch from players_v2 ***
-export interface TeamPlayer {
-  idPlayer: string;
-  strPlayer: string; // Player name
-  strTeam: string; // Team name
-  idTeam: string; // Team ID
-  strPosition: string | null; // Position
-  strNumber: string | null; // Jersey number
-  // Stats from player_statistics
-  goals?: number;
-  assists?: number;
-  appearances?: number;
-  yellow_cards?: number;
-  red_cards?: number;
-}
+export interface TeamPlayer { idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null; goals?: number; assists?: number; appearances?: number; yellow_cards?: number; red_cards?: number; }
 
-// ADAPTER: fetchPlayersByTeam (Previously legacy, now updated for v2)
 export async function fetchPlayersByTeam(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamPlayer[]> {
-  const { data: playersData, error: playersError } = await supabase
-    .from('players_v2')
-    .select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber')
-    .eq('idTeam', teamId)
-    .order('strNumber', { ascending: true, nullsFirst: false });
-
-  if (playersError) {
-    console.error('Error fetching players:', playersError);
-    return [];
-  }
-
-  if (!playersData || playersData.length === 0) {
-    return [];
-  }
-
-  // Fetch stats
-  const { data: statsData, error: statsError } = await supabase
-    .from('player_statistics')
-    .select('idPlayer, goals, assists, appearances, yellow_cards, red_cards')
-    .eq('idTeam', teamId)
-    .eq('strSeason', String(season));
-
-  if (statsError) {
-    console.warn('Error fetching player statistics:', statsError);
-  }
-
+  const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
+  if (playersError) { console.error('Error fetching players:', playersError); return []; }
+  if (!playersData || playersData.length === 0) return [];
+  const { data: statsData, error: statsError } = await supabase.from('player_statistics').select('idPlayer, goals, assists, appearances, yellow_cards, red_cards').eq('idTeam', teamId).eq('strSeason', String(season));
+  if (statsError) { console.warn('Error fetching player statistics:', statsError); }
   const playerStatsMap = new Map<string, Partial<PlayerStatistics>>();
-  if (statsData) {
-    statsData.forEach(stat => {
-      playerStatsMap.set(stat.idPlayer, stat);
-    });
-  }
-
+  if (statsData) { statsData.forEach(stat => { playerStatsMap.set(stat.idPlayer, stat); }); }
   return playersData.map(player => {
     const stats = playerStatsMap.get(player.idPlayer) || {};
-    return {
-      ...player,
-      goals: stats.goals ?? 0,
-      assists: stats.assists ?? 0,
-      appearances: stats.appearances ?? 0,
-      yellow_cards: stats.yellow_cards ?? 0,
-      red_cards: stats.red_cards ?? 0,
-    };
+    return { ...player, goals: stats.goals ?? 0, assists: stats.assists ?? 0, appearances: stats.appearances ?? 0, yellow_cards: stats.yellow_cards ?? 0, red_cards: stats.red_cards ?? 0, };
   });
 }
 
-// Player Details
+// Wrapper for TeamRoster component
+export async function fetchTeamPlayers(idTeam: string): Promise<TeamPlayer[]> {
+  return fetchPlayersByTeam(idTeam);
+}
+
 export type PlayerDetail = {
-  id: string;
-  name: string;
-  teamName: string;
-  teamId: string;
-  position: string;
-  jerseyNumber: string;
-  photoUrl: string | null;
-  nationality: string;
-  height: string;
-  weight: string;
-  age: number;
-  birthDate: string;
-  preferredFoot: 'Left' | 'Right' | 'Both';
-  stats: {
-    appearances: number;
-    minutesPlayed: number;
-    goals: number;
-    assists: number;
-    yellowCards: number;
-    redCards: number;
-    penaltiesScored: number;
-    penaltiesMissed: number;
-    ownGoals: number;
-    rating: number; 
-  };
+  id: string; name: string; teamName: string; teamId: string; position: string; jerseyNumber: string; photoUrl: string | null;
+  nationality: string; height: string; weight: string; age: number; birthDate: string; preferredFoot: 'Left' | 'Right' | 'Both';
+  stats: { appearances: number; minutesPlayed: number; goals: number; assists: number; yellowCards: number; redCards: number; penaltiesScored: number; penaltiesMissed: number; ownGoals: number; rating: number; };
 };
 
 function calculateAge(birthDate?: string): number {
@@ -642,89 +215,31 @@ function calculateAge(birthDate?: string): number {
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) { age--; }
   return age;
 }
 
-// *** UPDATED: Fetch from players_v2 ***
 export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
-  const { data: player, error } = await supabase
-    .from('players_v2')
-    .select('*')
-    .eq('idPlayer', String(playerId))
-    .maybeSingle();
-
-  if (error || !player) {
-    console.error("Player not found:", error);
-    return null;
-  }
-
-  const { data: stats } = await supabase
-    .from('player_statistics')
-    .select('*')
-    .eq('idPlayer', String(playerId))
-    .eq('strSeason', '2025') 
-    .maybeSingle();
-
+  const { data: player, error } = await supabase.from('players_v2').select('*').eq('idPlayer', String(playerId)).maybeSingle();
+  if (error || !player) { console.error("Player not found:", error); return null; }
+  const { data: stats } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).eq('strSeason', '2025').maybeSingle();
   const pos = player.strPosition || 'M';
-
   return {
-    id: player.idPlayer,
-    name: player.strPlayer,
-    teamName: player.strTeam,
-    teamId: player.idTeam,
-    position: pos,
-    jerseyNumber: player.strNumber || '-',
-    photoUrl: player.strThumb || null,
-    nationality: player.strNationality || 'Unknown',
-    height: player.strHeight || '-',
-    weight: player.strWeight || '-',
-    age: calculateAge(player.dateBorn),
-    birthDate: player.dateBorn || '-',
-    preferredFoot: 'Right',
-    stats: {
-      appearances: stats?.appearances || 0,
-      minutesPlayed: stats?.minutes_played || 0,
-      goals: stats?.goals || 0,
-      assists: stats?.assists || 0,
-      yellowCards: stats?.yellow_cards || 0,
-      redCards: stats?.red_cards || 0,
-      penaltiesScored: stats?.penalties_scored || 0,
-      penaltiesMissed: stats?.penalties_missed || 0,
-      ownGoals: stats?.own_goals || 0,
-      rating: (Math.random() * (8.5 - 6.0) + 6.0), 
-    },
+    id: player.idPlayer, name: player.strPlayer, teamName: player.strTeam, teamId: player.idTeam, position: pos, jerseyNumber: player.strNumber || '-', photoUrl: player.strThumb || null,
+    nationality: player.strNationality || 'Unknown', height: player.strHeight || '-', weight: player.strWeight || '-', age: calculateAge(player.dateBorn), birthDate: player.dateBorn || '-', preferredFoot: 'Right',
+    stats: { appearances: stats?.appearances || 0, minutesPlayed: stats?.minutes_played || 0, goals: stats?.goals || 0, assists: stats?.assists || 0, yellowCards: stats?.yellow_cards || 0, redCards: stats?.red_cards || 0, penaltiesScored: stats?.penalties_scored || 0, penaltiesMissed: stats?.penalties_missed || 0, ownGoals: stats?.own_goals || 0, rating: (Math.random() * (8.5 - 6.0) + 6.0), },
   };
 }
 
 export async function fetchPlayer(id: number): Promise<PlayerLite | null> {
   const detail = await fetchPlayerDetail(id);
   if (!detail) return null;
-  return {
-    id: Number(detail.id),
-    name: detail.name,
-    position: detail.position,
-    photo_url: detail.photoUrl,
-    team_id: Number(detail.teamId),
-    jersey_number: Number(detail.jerseyNumber),
-    primary_source: 'db'
-  };
+  return { id: Number(detail.id), name: detail.name, position: detail.position, photo_url: detail.photoUrl, team_id: Number(detail.teamId), jersey_number: Number(detail.jerseyNumber), primary_source: 'db' };
 }
 
 export async function fetchTeamFromDB(idTeam: string): Promise<TeamFromDB | null> {
-  const { data, error } = await supabase
-    .from('teams')
-    .select('*')
-    .eq('idTeam', idTeam)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error fetching team from DB:', error);
-    throw error;
-  }
-
+  const { data, error } = await supabase.from('teams').select('*').eq('idTeam', idTeam).maybeSingle();
+  if (error) { console.error('Error fetching team from DB:', error); throw error; }
   return data;
 }
 
@@ -831,6 +346,15 @@ export async function fetchTeamRecentFixtures(teamId: string, limit: number = 5)
     venue: match.venueName || undefined,
     league_id: String(match.leagueId)
   }));
+}
+
+export async function fetchTeamStandingsData(idLeague: string, season: string, teamName: string): Promise<Standing | null> {
+  const { data, error } = await supabase.from('standings_v2').select('*').eq('leagueId', idLeague).eq('season', season).eq('teamName', teamName).maybeSingle();
+  if (error) { console.error('Error fetching team standings from standings_v2:', error); return null; }
+  if (!data) return null;
+  return {
+    leagueId: data.leagueId, teamId: data.teamId, season: data.season, rank: Number(data.rank || 0), teamName: data.teamName || "Unknown", teamBadgeUrl: data.teamBadgeUrl, gamesPlayed: Number(data.gamesPlayed || 0), wins: Number(data.wins || 0), draws: Number(data.draws || 0), losses: Number(data.losses || 0), points: Number(data.points || 0), goalsFor: Number(data.goalsFor || 0), goalsAgainst: Number(data.goalsAgainst || 0), goalDifference: Number(data.goalDifference || 0), form: data.form, description: data.description, lastUpdated: data.lastUpdated || new Date().toISOString(),
+  };
 }
 
 export interface PlayerStatistics { idPlayer: string; strPlayer: string; idTeam: string; strTeam: string; idLeague: string; strSeason: string; goals: number; assists: number; yellow_cards: number; red_cards: number; appearances: number; own_goals: number; penalties_scored: number; goals_per_game?: number; assists_per_game?: number; }
