@@ -11,7 +11,6 @@ import type { Standing, Match, Team } from '../../src/types/domain';
 
 // --- Configuration ---
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || '460915';
-const SEASON_YEAR = process.env.SEASON_YEAR || '2025';
 const STANDINGS_V2_TABLE = 'standings_v2';
 const EVENTS_V2_TABLE = 'events_v2';
 const TEAMS_V2_TABLE = 'teams_v2';
@@ -72,31 +71,53 @@ class DataOrchestrator {
     this.client = new TheSportsDBClient(THESPORTSDB_API_KEY);
   }
 
-  private getSeasonString(format: string): string {
+  /**
+   * Calculates the current active season based on today's date and league format.
+   * @param format 'single' (Spring-Autumn) or 'split' (Autumn-Spring)
+   * @returns object with { queryParam: string, dbValue: string }
+   */
+  private getCurrentSeason(format: string): { queryParam: string, dbValue: string } {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
     if (format === 'split') {
-      const nextYear = parseInt(SEASON_YEAR) + 1;
-      return `${SEASON_YEAR}-${nextYear}`;
+      // European Leagues (Start ~Aug, End ~May)
+      // If we are in Jan-June (1-6), we belong to the season that started previous year.
+      // If we are in July-Dec (7-12), we belong to the season starting this year.
+      const startYear = currentMonth >= 7 ? currentYear : currentYear - 1;
+      const endYear = startYear + 1;
+      return {
+        queryParam: `${startYear}-${endYear}`, // e.g., "2025-2026"
+        dbValue: String(startYear) // We store the base year "2025" in DB for consistency
+      };
+    } else {
+      // K-League / Asian Leagues (Start ~Mar, End ~Nov)
+      // Usually matches the calendar year.
+      // Note: In Jan/Feb, this will return the new year (e.g., 2026), which might not have data yet.
+      // But user requested "based on today's date".
+      return {
+        queryParam: String(currentYear),
+        dbValue: String(currentYear)
+      };
     }
-    return SEASON_YEAR;
   }
   
   /**
    * Fetches, transforms, and saves standings data.
-   * As part of this process, it also extracts and upserts team information
-   * into teams_v2 to ensure data integrity before syncing events.
    */
   async syncStandingsAndTeams() {
-    console.log(`\n🚀 Starting Orchestrated Standings & Teams Sync for base year ${SEASON_YEAR}...`);
+    console.log(`\n🚀 Starting Orchestrated Standings & Teams Sync (Dynamic Season)...`);
     
     let totalStandingsImported = 0;
     let totalTeamsUpserted = 0;
 
     for (const league of this.leagueMapping) {
       try {
-        const seasonParam = this.getSeasonString(league.seasonFormat || 'single');
-        console.log(`\n🏆 [Standings & Teams] Processing ${league.name} (${seasonParam})...`);
+        const { queryParam, dbValue } = this.getCurrentSeason(league.seasonFormat || 'single');
+        console.log(`\n🏆 [Standings & Teams] Processing ${league.name} (Season: ${queryParam}, DB: ${dbValue})...`);
         
-        const rawStandings = await this.client.getStandings(league.id, seasonParam);
+        const rawStandings = await this.client.getStandings(league.id, queryParam);
         if (rawStandings.length === 0) {
           console.log(`🟡 No standings data found for ${league.name}. Skipping.`);
           continue;
@@ -114,9 +135,8 @@ class DataOrchestrator {
           .select();
 
         if (teamsUpsertError) {
-          // This is a critical error, as events might fail if teams are not present.
           console.error(`[DB] ❌ CRITICAL: Team upsert failed for ${league.name}:`, teamsUpsertError);
-          continue; // Skip to next league
+          continue; 
         }
         totalTeamsUpserted += teamsData.length;
         console.log(`[DB] ✅ Successfully upserted ${teamsData.length} teams.`);
@@ -125,17 +145,14 @@ class DataOrchestrator {
         console.log(`[ACL] 🛡️  Mapping ${rawStandings.length} standings...`);
         const domainStandings: Standing[] = rawStandings.map(s => {
             const mapped = mapTheSportsDBStandingToDomain(s);
-            // Ensure we store the simplified "2025" season in DB for consistency, 
-            // OR store "2025-2026". Currently the DB schema and app seem to expect "2025".
-            // Let's stick to SEASON_YEAR ("2025") for the DB 'season' column to keep querying simple across leagues,
-            // unless we want to distinguish. Given the input env is 2025, let's normalize to 2025 in DB.
-            return { ...mapped, season: SEASON_YEAR };
+            // Store the normalized base year in DB
+            return { ...mapped, season: dbValue };
         });
 
-        console.log(`[DB] 🧹 Clearing existing standings for ${league.name} in '${STANDINGS_V2_TABLE}'...`);
-        await supa.from(STANDINGS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);
+        console.log(`[DB] 🧹 Clearing existing standings for ${league.name} (Season ${dbValue})...`);
+        await supa.from(STANDINGS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', dbValue);
         
-        console.log(`[DB] 💾 Inserting ${domainStandings.length} standings into '${STANDINGS_V2_TABLE}'...`);
+        console.log(`[DB] 💾 Inserting ${domainStandings.length} standings...`);
         const { data: standingsData, error: standingsInsertError } = await supa.from(STANDINGS_V2_TABLE).insert(domainStandings).select();
 
         if (standingsInsertError) {
@@ -143,7 +160,7 @@ class DataOrchestrator {
           continue;
         }
         totalStandingsImported += standingsData.length;
-        console.log(`[DB] ✅ Successfully imported ${standingsData.length} standings for ${league.name}.`);
+        console.log(`[DB] ✅ Successfully imported ${standingsData.length} standings.`);
 
         await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -158,16 +175,16 @@ class DataOrchestrator {
   }
 
   async syncEvents() {
-    console.log(`\n🚀 Starting Orchestrated Events Sync for base year ${SEASON_YEAR}...`);
+    console.log(`\n🚀 Starting Orchestrated Events Sync (Dynamic Season)...`);
     
     let totalEventsImported = 0;
 
     for (const league of this.leagueMapping) {
       try {
-        const seasonParam = this.getSeasonString(league.seasonFormat || 'single');
-        console.log(`\n⚽ [Events] Processing ${league.name} (${seasonParam})...`);
+        const { queryParam, dbValue } = this.getCurrentSeason(league.seasonFormat || 'single');
+        console.log(`\n⚽ [Events] Processing ${league.name} (Season: ${queryParam}, DB: ${dbValue})...`);
         
-        const rawEvents = await this.client.getLeagueEvents(league.id, seasonParam);
+        const rawEvents = await this.client.getLeagueEvents(league.id, queryParam);
         if (rawEvents.length === 0) {
           console.log(`🟡 No events found for ${league.name}. Skipping.`);
           continue;
@@ -176,14 +193,14 @@ class DataOrchestrator {
         console.log(`[ACL] 🛡️  Mapping ${rawEvents.length} events...`);
         const domainEvents: Match[] = rawEvents.map(e => {
             const mapped = mapTheSportsDBEventToDomain(e);
-            // Normalize DB season to "2025"
-            return { ...mapped, season: SEASON_YEAR };
+            // Normalize DB season
+            return { ...mapped, season: dbValue };
         });
 
-        console.log(`[DB] 🧹 Clearing existing events for ${league.name} in '${EVENTS_V2_TABLE}'...`);
-        await supa.from(EVENTS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', SEASON_YEAR);
+        console.log(`[DB] 🧹 Clearing existing events for ${league.name} (Season ${dbValue})...`);
+        await supa.from(EVENTS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', dbValue);
         
-        console.log(`[DB] 💾 Inserting ${domainEvents.length} events into '${EVENTS_V2_TABLE}'...`);
+        console.log(`[DB] 💾 Inserting ${domainEvents.length} events...`);
         const { data: eventsData, error: eventsInsertError } = await supa.from(EVENTS_V2_TABLE).insert(domainEvents).select();
 
         if (eventsInsertError) {
@@ -191,7 +208,7 @@ class DataOrchestrator {
           continue;
         }
         totalEventsImported += eventsData.length;
-        console.log(`[DB] ✅ Successfully imported ${eventsData.length} events for ${league.name}.`);
+        console.log(`[DB] ✅ Successfully imported ${eventsData.length} events.`);
 
         await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -208,13 +225,11 @@ class DataOrchestrator {
 // --- Main execution ---
 async function main() {
   console.log('=======================================');
-  console.log('Orchestrated Data Sync (v2)');
+  console.log('Orchestrated Data Sync (v2) - Dynamic Season');
   console.log('=======================================');
   
   const orchestrator = new DataOrchestrator();
-  // Run Standings & Teams sync FIRST to ensure teams exist
   await orchestrator.syncStandingsAndTeams();
-  // Then run Events sync
   await orchestrator.syncEvents();
   
   console.log('\n\n✅ All synchronization tasks completed.');

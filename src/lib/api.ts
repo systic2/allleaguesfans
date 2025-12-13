@@ -5,6 +5,8 @@ import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/
 import type { Match, Standing } from "@/types/domain"; 
 import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers';
 
+const DEFAULT_SEASON = Number(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
+
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -82,7 +84,7 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   };
 }
 
-export async function fetchLeagueStandings(leagueSlug: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStanding[]> {
+export async function fetchLeagueStandings(leagueSlug: string, season: number = DEFAULT_SEASON): Promise<TeamStanding[]> {
   let theSportsDBLeagueId: string;
   if (leagueSlug === 'k-league-1') theSportsDBLeagueId = '4689';
   else if (leagueSlug === 'k-league-2') theSportsDBLeagueId = '4822';
@@ -101,7 +103,7 @@ export async function fetchLeagueStandings(leagueSlug: string, season: number = 
   }));
 }
 
-export async function fetchLeagueTeams(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamLite[]> {
+export async function fetchLeagueTeams(leagueId: number, season: number = DEFAULT_SEASON): Promise<TeamLite[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const { data, error } = await supabase.from("standings_v2").select(`teamId, teamName, teamBadgeUrl`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season));
   if (error) throw error;
@@ -110,7 +112,7 @@ export async function fetchLeagueTeams(leagueId: number, season: number = Number
 
 export type LeagueStats = { total_goals: number; total_matches: number; avg_goals_per_match: number; total_teams: number; };
 
-export async function fetchLeagueStats(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<LeagueStats> {
+export async function fetchLeagueStats(leagueId: number, season: number = DEFAULT_SEASON): Promise<LeagueStats> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const [standingsResult, fixturesResult] = await Promise.all([
     supabase.from("standings_v2").select("leagueId, goalsFor, goalsAgainst, gamesPlayed").eq("leagueId", theSportsDBLeagueId).eq("season", String(season)),
@@ -129,13 +131,13 @@ export type TopScorer = { player_name: string; team_name: string; goals: number;
 export type TopAssist = { player_name: string; team_name: string; assists: number; goals: number; matches: number; };
 export type HistoricalChampion = { season_year: number; champion_name: string; champion_logo: string | null; };
 
-export async function fetchTopScorers(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopScorer[]> {
+export async function fetchTopScorers(leagueId: number, season: number = DEFAULT_SEASON, limit: number = 10): Promise<TopScorer[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const stats = await fetchTopScorersStats(theSportsDBLeagueId, String(season), limit);
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
 }
 
-export async function fetchTopAssists(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), limit: number = 10): Promise<TopAssist[]> {
+export async function fetchTopAssists(leagueId: number, season: number = DEFAULT_SEASON, limit: number = 10): Promise<TopAssist[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
   const stats = await fetchTopAssistersStats(theSportsDBLeagueId, String(season), limit);
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
@@ -169,19 +171,19 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
 
 export interface RoundFixture { id: string; date_utc: string; status_short: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; home_goals: number | null; away_goals: number | null; venue?: string; league_id: string; }
 
-export async function getLatestCompletedRound(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<string | null> {
+export async function getLatestCompletedRound(leagueId: number, season: number = DEFAULT_SEASON): Promise<string | null> {
   const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", String(leagueId)).eq("season", String(season)).eq("status", "FINISHED").order("date", { ascending: false }).limit(1);
   if (error || !data || data.length === 0) return null;
   return data[0].round || null;
 }
 
-export async function getNextUpcomingRound(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<string | null> {
+export async function getNextUpcomingRound(leagueId: number, season: number = DEFAULT_SEASON): Promise<string | null> {
   const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", String(leagueId)).eq("season", String(season)).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order("date", { ascending: true }).limit(1);
   if (error || !data || data.length === 0) return null;
   return data[0].round || null;
 }
 
-export async function fetchFixturesByRound(leagueId: number, round: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
+export async function fetchFixturesByRound(leagueId: number, round: string, season: number = DEFAULT_SEASON): Promise<RoundFixture[]> {
   const { data, error } = await supabase.from("events_v2").select(`*`).eq("leagueId", String(leagueId)).eq("round", round).eq("season", String(season)).order("date", { ascending: true });
   if (error) { console.error("Error fetching fixtures by round from events_v2:", error); return []; }
   if (!data) return [];
@@ -193,13 +195,13 @@ export async function fetchFixturesByRound(leagueId: number, round: string, seas
   }));
 }
 
-export async function fetchRecentRoundFixtures(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
+export async function fetchRecentRoundFixtures(leagueId: number, season: number = DEFAULT_SEASON): Promise<RoundFixture[]> {
   const latestRound = await getLatestCompletedRound(leagueId, season);
   if (!latestRound) return [];
   return fetchFixturesByRound(leagueId, latestRound, season);
 }
 
-export async function fetchUpcomingRoundFixtures(leagueId: number, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<RoundFixture[]> {
+export async function fetchUpcomingRoundFixtures(leagueId: number, season: number = DEFAULT_SEASON): Promise<RoundFixture[]> {
   const nextRound = await getNextUpcomingRound(leagueId, season);
   if (!nextRound) return [];
   return fetchFixturesByRound(leagueId, nextRound, season);
@@ -225,7 +227,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
 
 export interface TeamPlayer { idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null; goals?: number; assists?: number; appearances?: number; yellow_cards?: number; red_cards?: number; }
 
-export async function fetchPlayersByTeam(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamPlayer[]> {
+export async function fetchPlayersByTeam(teamId: string, season: number = DEFAULT_SEASON): Promise<TeamPlayer[]> {
   const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
   if (playersError) { console.error('Error fetching players:', playersError); return []; }
   if (!playersData || playersData.length === 0) return [];
@@ -263,7 +265,7 @@ function calculateAge(birthDate?: string): number {
 export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
   const { data: player, error } = await supabase.from('players_v2').select('*').eq('idPlayer', String(playerId)).maybeSingle();
   if (error || !player) { console.error("Player not found:", error); return null; }
-  const { data: stats } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).eq('strSeason', '2025').maybeSingle();
+  const { data: stats } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).eq('strSeason', String(DEFAULT_SEASON)).maybeSingle();
   const pos = player.strPosition || 'M';
   return {
     id: player.idPlayer, name: player.strPlayer, teamName: player.strTeam, teamId: player.idTeam, position: pos, jerseyNumber: player.strNumber || '-', photoUrl: player.strThumb || null,
@@ -289,7 +291,7 @@ export type TeamDetails = {
   current_position?: number | null; points?: number | null; matches_played?: number | null; wins?: number | null; draws?: number | null; losses?: number | null; goals_for?: number | null; goals_against?: number | null; goal_difference?: number | null; currentLeagueId?: string;
 };
 
-export async function fetchTeamDetails(teamId: string, season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamDetails | null> {
+export async function fetchTeamDetails(teamId: string, season: number = DEFAULT_SEASON): Promise<TeamDetails | null> {
   const { data: teamData, error: teamError } = await supabase.from('teams_v2').select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear').eq('id', teamId).maybeSingle();
   if (teamError) { console.error('Error fetching team from teams_v2:', teamError); return null; }
   if (!teamData) return null;
@@ -305,9 +307,9 @@ export type TeamFixture = { id: number; date_utc: string; status_short: string; 
 export type TeamStatistics = { position: number; points: number; played: number; wins: number; draws: number; losses: number; goals_for: number; goals_against: number; goal_difference: number; clean_sheets: number; failed_to_score: number; avg_goals_scored: number; avg_goals_conceded: number; form_last_5: string; home_record: { wins: number; draws: number; losses: number }; away_record: { wins: number; draws: number; losses: number }; };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function fetchTeamFixtures(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025), _limit: number = 10): Promise<TeamFixture[]> { console.warn("fetchTeamFixtures needs implementation with correct schema"); return []; }
+export async function fetchTeamFixtures(_teamId: number, _season: number = DEFAULT_SEASON, _limit: number = 10): Promise<TeamFixture[]> { console.warn("fetchTeamFixtures needs implementation with correct schema"); return []; }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function fetchTeamStatistics(_teamId: number, _season: number = Number(import.meta.env.VITE_SEASON_YEAR || 2025)): Promise<TeamStatistics | null> { console.warn("fetchTeamStatistics needs implementation with correct schema"); return null; }
+export async function fetchTeamStatistics(_teamId: number, _season: number = DEFAULT_SEASON): Promise<TeamStatistics | null> { console.warn("fetchTeamStatistics needs implementation with correct schema"); return null; }
 
 export async function fetchTeamEventsData(teamId: string, season: string, limit?: number): Promise<Match[]> { 
   let query = supabase.from('events_v2').select('*').eq('season', season).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).order('date', { ascending: false }); 
