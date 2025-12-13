@@ -8,8 +8,61 @@ export interface ValidationIssue {
   details?: unknown;
 }
 
-// ...
+export interface ValidationResult {
+  success: boolean;
+  issues: ValidationIssue[];
+  stats: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+}
 
+// Placeholder types for components
+export interface TeamLineupValidation {
+  teamId: number;
+  teamName: string;
+  validation: ValidationResult;
+}
+
+export interface PlayerValidationResult {
+  playerId: number;
+  playerName: string;
+  validation: ValidationResult;
+}
+
+export interface PlayerStatusUpdate {
+  playerId: number;
+  status: string;
+  timestamp: string;
+}
+
+export interface ValidationAlert {
+  id: string;
+  message: string;
+  type: 'info' | 'warning' | 'error';
+  timestamp: string;
+}
+
+// Placeholder validation utilities
+export const ValidationUtils = {
+  formatValidationMessage: (issue: ValidationIssue): string => {
+    return issue.message;
+  },
+  
+  getSeverityColor: (type: ValidationIssue['type']): string => {
+    switch (type) {
+      case 'critical': return 'red';
+      case 'high': return 'orange';
+      case 'medium': return 'yellow';
+      case 'low': return 'blue';
+      default: return 'gray';
+    }
+  }
+};
+
+// Placeholder API object
 export const lineupValidationAPI = {
   validateLineup: async (_lineupData: unknown): Promise<ValidationResult> => {
     console.warn("Lineup validation not implemented yet");
@@ -42,4 +95,8 @@ export const lineupValidationAPI = {
 
 export async function validateLineup(lineupData: unknown): Promise<ValidationResult> {
   return lineupValidationAPI.validateLineup(lineupData);
+}
+
+export async function getValidationHistory(): Promise<ValidationResult[]> {
+  return lineupValidationAPI.getValidationHistory();
 }

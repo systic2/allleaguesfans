@@ -27,7 +27,8 @@ export interface ScheduleResponse {
   events: TheSportsDBEvent[] | null
 }
 
-async function fetchTheSportsDBWithAuth(url: string): Promise<unknown> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchTheSportsDBWithAuth(url: string): Promise<any> {
   try {
     const apiKey = import.meta.env.VITE_THESPORTSDB_API_KEY || import.meta.env.VITE_THESPORTSDB_KEY;
     

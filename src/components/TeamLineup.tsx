@@ -7,9 +7,63 @@ interface TeamLineupProps {
   compact?: boolean; 
 }
 
-// ...
+// 포지션별 색상 매핑
+const getPositionColor = (position: string) => {
+  switch (position?.toUpperCase()) {
+    case 'G':
+    case 'GK':
+      return 'bg-purple-800 border-purple-600 text-purple-300'; 
+    case 'D':
+    case 'RB':
+    case 'LB':
+    case 'CB':
+      return 'bg-teal-800 border-teal-600 text-teal-300'; 
+    case 'M':
+    case 'DM':
+    case 'CM':
+    case 'AM':
+    case 'RM':
+    case 'LM':
+      return 'bg-orange-800 border-orange-600 text-orange-300'; 
+    case 'F':
+    case 'ST':
+    case 'CF':
+    case 'LW':
+    case 'RW':
+      return 'bg-red-800 border-red-600 text-red-300'; 
+    default:
+      return 'bg-gray-800 border-gray-600 text-gray-300'; 
+  }
+};
 
-export default function TeamLineup({ players, className = "", compact = false }: TeamLineupProps) {  const startingXI = players.slice(0, 11);
+// 선수 목록을 4-2-3-1 포메이션에 맞게 정렬 및 할당하는 함수
+const getFormationSlots = (players: TeamPlayer[]) => {
+  const sorted = [...players].sort((a, b) => {
+    const posOrder = { 'G': 0, 'GK': 0, 'D': 1, 'RB': 1, 'LB': 1, 'CB': 1, 'M': 2, 'DM': 2, 'CM': 2, 'AM': 2, 'RM': 2, 'LM': 2, 'F': 3, 'ST': 3, 'CF': 3, 'LW': 3, 'RW': 3 };
+    const posA = a.strPosition?.toUpperCase() || 'M';
+    const posB = b.strPosition?.toUpperCase() || 'M';
+    const orderA = posOrder[posA as keyof typeof posOrder] ?? 2;
+    const orderB = posOrder[posB as keyof typeof posOrder] ?? 2;
+    return orderA - orderB;
+  });
+
+  // 4-2-3-1 Slots (GK -> Defenders -> Defensive Mids -> Attacking Mids -> Striker)
+  const slots = [
+    { id: 'gk', area: 'gk' },
+    { id: 'lb', area: 'lb' }, { id: 'cb1', area: 'cb1' }, { id: 'cb2', area: 'cb2' }, { id: 'rb', area: 'rb' },
+    { id: 'dm1', area: 'dm1' }, { id: 'dm2', area: 'dm2' },
+    { id: 'lw', area: 'lw' }, { id: 'am', area: 'am' }, { id: 'rw', area: 'rw' },
+    { id: 'st', area: 'st' }
+  ];
+
+  return sorted.map((player, index) => ({
+    player,
+    gridArea: slots[index]?.area || 'bench' 
+  }));
+};
+
+export default function TeamLineup({ players, className = "", compact = false }: TeamLineupProps) {
+  const startingXI = players.slice(0, 11);
   const substitutes = players.slice(11);
 
   const formationPlayers = getFormationSlots(startingXI);
