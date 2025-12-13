@@ -10,46 +10,16 @@ const DELAY_MS = 500; // Delay between API calls to avoid rate limiting
 interface TheSportsDBPlayer {
   idPlayer: string;
   strPlayer: string;
-  strPlayerAlternate?: string;
   strTeam?: string;
   idTeam?: string;
-  strSport?: string;
   strPosition?: string;
   strNumber?: string;
   dateBorn?: string;
-  strBirthLocation?: string;
   strNationality?: string;
-  strGender?: string;
   strHeight?: string;
   strWeight?: string;
-  strStatus?: string;
-  dateSigned?: string;
-  strSigning?: string;
-  strWage?: string;
-  strOutfitter?: string;
-  strKit?: string;
-  strAgent?: string;
-  idAPIfootball?: string;
-  idPlayerManager?: string;
-  strLocked?: string;
   strThumb?: string;
-  strCutout?: string;
-  strRender?: string;
-  strBanner?: string;
-  strFanart1?: string;
-  strFanart2?: string;
-  strFanart3?: string;
-  strFanart4?: string;
-  strDescriptionEN?: string;
-  strWebsite?: string;
-  strFacebook?: string;
-  strTwitter?: string;
-  strInstagram?: string;
-  strYoutube?: string;
-}
-
-interface TheSportsDBPlayerResponse {
-  player: TheSportsDBPlayer[] | null;
+  strBirthLocation?: string;
 }
 
 async function delay(ms: number): Promise<void> {
@@ -65,8 +35,11 @@ async function fetchTeamPlayers(teamId: string): Promise<TheSportsDBPlayer[]> {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const data: TheSportsDBPlayerResponse = await response.json();
-    return data.player || [];
+    const data: any = await response.json();
+    if (data && Array.isArray(data.player)) {
+      return data.player;
+    }
+    return [];
   } catch (error) {
     console.error(`Error fetching players for team ${teamId}:`, error);
     return [];
@@ -74,18 +47,23 @@ async function fetchTeamPlayers(teamId: string): Promise<TheSportsDBPlayer[]> {
 }
 
 async function importTeamPlayers(teamId: string, teamName: string): Promise<number> {
-  console.log(`\n📥 Importing players for ${teamName} (${teamId})...`);
+  if (!/^\d+$/.test(teamId)) {
+    console.log(`Skipping non-numeric ID: ${teamId} (${teamName})`);
+    return 0;
+  }
+
+  console.log(`Importing players for ${teamName} (${teamId})...`);
   
   const players = await fetchTeamPlayers(teamId);
   
   if (players.length === 0) {
-    console.log(`   ⚠️  No players found`);
+    console.log(`   No players found`);
     return 0;
   }
   
   console.log(`   Found ${players.length} players`);
 
-  // Map to database schema fields: idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber
+  // Map to players_v2 schema
   const essentialPlayers = players.map(p => ({
     idPlayer: p.idPlayer,
     strPlayer: p.strPlayer,
@@ -93,69 +71,76 @@ async function importTeamPlayers(teamId: string, teamName: string): Promise<numb
     idTeam: p.idTeam || teamId,
     strPosition: p.strPosition || null,
     strNumber: p.strNumber || null,
+    strNationality: p.strNationality || null,
+    strHeight: p.strHeight || null,
+    strWeight: p.strWeight || null,
+    dateBorn: p.dateBorn || null,
+    strThumb: p.strThumb || null,
+    strBirthLocation: p.strBirthLocation || null
   }));
 
-  // Upsert players to database
+  // Upsert into players_v2
   const { error } = await supa
-    .from('players')
+    .from('players_v2')
     .upsert(essentialPlayers, {
       onConflict: 'idPlayer',
       ignoreDuplicates: false
     });
   
   if (error) {
-    console.error(`   ❌ Error inserting players:`, error);
+    console.error(`   Error inserting players into players_v2:`, error);
     return 0;
   }
   
-  console.log(`   ✅ Successfully imported ${players.length} players`);
+  console.log(`   Successfully imported ${players.length} players to v2`);
   return players.length;
 }
 
 async function main() {
-  console.log('🏃 Starting K League player data import...\n');
+  console.log('Starting player data import to PLAYERS_V2 table...');
   
-  // Get all K League teams from database
+  // Get all target teams from standings_v2 (EPL, K1, K2)
   const { data: teams, error } = await supa
-    .from('teams')
-    .select('idTeam, strTeam, idLeague')
-    .in('idLeague', ['4689', '4822']) // K League 1 and K League 2
-    .order('strTeam', { ascending: true });
+    .from('standings_v2')
+    .select('teamId, teamName, leagueId')
+    .in('leagueId', ['4689', '4822', '4328'])
+    .order('teamName', { ascending: true });
   
   if (error) {
-    console.error('❌ Error fetching teams:', error);
+    console.error('Error fetching teams:', error);
     return;
   }
   
   if (!teams || teams.length === 0) {
-    console.log('⚠️  No K League teams found in database');
+    console.log('No teams found in database');
     return;
   }
   
-  console.log(`📊 Found ${teams.length} K League teams\n`);
+  const uniqueTeams = Array.from(new Map(teams.map(t => [t.teamId, t])).values());
+  
+  console.log(`Found ${uniqueTeams.length} unique teams from standings`);
   
   let totalPlayers = 0;
   let successfulImports = 0;
   
-  for (const team of teams) {
-    const count = await importTeamPlayers(team.idTeam, team.strTeam);
+  for (const team of uniqueTeams) {
+    const count = await importTeamPlayers(team.teamId, team.teamName);
     if (count > 0) {
       totalPlayers += count;
       successfulImports++;
     }
     
-    // Delay between requests to avoid rate limiting
-    if (team !== teams[teams.length - 1]) {
+    if (team !== uniqueTeams[uniqueTeams.length - 1]) {
       await delay(DELAY_MS);
     }
   }
   
-  console.log('\n' + '='.repeat(60));
-  console.log('📈 Import Summary:');
-  console.log(`   Teams processed: ${teams.length}`);
+  console.log('------------------------------------------------');
+  console.log('Import Summary (V2):');
+  console.log(`   Teams processed: ${uniqueTeams.length}`);
   console.log(`   Successful imports: ${successfulImports}`);
   console.log(`   Total players imported: ${totalPlayers}`);
-  console.log('='.repeat(60));
+  console.log('------------------------------------------------');
 }
 
 main().catch(console.error);
