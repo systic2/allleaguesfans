@@ -6,9 +6,9 @@ import {
   type HighlightlyEnhancedFixture 
 } from "@/lib/highlightly-enhanced-fixtures-api";
 import { 
-  fetchKLeague1UpcomingFixtures,
-  fetchKLeague2UpcomingFixtures,
-  type MatchWithTeams, // <-- Import the new rich type
+  fetchAllUpcomingFixtures,
+  fetchLeagueUpcomingFixtures,
+  type MatchWithTeams, 
 } from "@/lib/thesportsdb-api";
 
 // This component now expects the rich MatchWithTeams object or a compatible one
@@ -36,21 +36,13 @@ export default function UpcomingFixtures({
   
   // This query now uses the refactored API functions that return joined team data
   const theSportsDBQuery = useQuery({
-    queryKey: ["v2-k-league-upcoming-with-teams"], // New query key to avoid conflicts
+    queryKey: ["v2-upcoming-fixtures", leagueId ?? 'all'], 
     queryFn: async () => {
-      const [kLeague1Fixtures, kLeague2Fixtures] = await Promise.all([
-        fetchKLeague1UpcomingFixtures(),
-        fetchKLeague2UpcomingFixtures()
-      ]);
-      
-      const allFixtures: MatchWithTeams[] = [...kLeague1Fixtures, ...kLeague2Fixtures];
-      
-      // Sort by date and limit results
-      return allFixtures
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, limit);
-      
-      // The old `convertMatchToFixtureData` is no longer needed
+      if (leagueId) {
+        return fetchLeagueUpcomingFixtures(String(leagueId));
+      }
+      // Fetch for ALL leagues
+      return fetchAllUpcomingFixtures(limit);
     },
     enabled: safeUseTheSportsDB && !teamId,
     staleTime: 5 * 60 * 1000,

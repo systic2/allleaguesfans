@@ -240,6 +240,42 @@ export interface TheSportsDBScheduleResponse {
 // API Functions - All functions now return Match[] from events_v2
 
 /**
+ * Fetch upcoming fixtures for ALL leagues from events_v2
+ * Useful for the main dashboard or combined calendar
+ */
+export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<MatchWithTeams[]> {
+  try {
+    const today = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('events_v2')
+      .select(`
+        *,
+        homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+        awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+      `)
+      .in('status', ['SCHEDULED', 'POSTPONED'])
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('Database error fetching all upcoming fixtures:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    return data as MatchWithTeams[];
+  } catch (error) {
+    console.error('Error fetching all upcoming fixtures:', error);
+    return [];
+  }
+}
+
+/**
  * Fetch upcoming fixtures for a specific league from events_v2
  * Returns only fixtures from the next upcoming round (lowest round number with "SCHEDULED" status)
  */
