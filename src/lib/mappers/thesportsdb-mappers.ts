@@ -98,21 +98,22 @@ export function mapTheSportsDBEventToDomain(rawEvent: TheSportsDBEvent): Match {
   };
 
   const toDomainStatus = (status: string | undefined): Match['status'] => {
-    switch (status) {
-      case 'Match Finished':
-        return 'FINISHED';
-      case 'Not Started':
-      case 'Time To Be Defined':
-        return 'SCHEDULED';
-      case 'Postponed':
-        return 'POSTPONED';
-      case 'Cancelled':
-        return 'CANCELED';
-      case 'In Play': // Hypothetical, but good to handle
-        return 'IN_PLAY';
-      default:
-        return 'UNKNOWN';
+    if (!status) return 'UNKNOWN';
+    
+    // Normalize status mapping
+    if (['Match Finished', 'FT', 'AET', 'PEN'].includes(status)) return 'FINISHED';
+    if (['Not Started', 'Time To Be Defined', 'TBD', 'NS'].includes(status)) return 'SCHEDULED';
+    if (['Postponed', 'PST'].includes(status)) return 'POSTPONED';
+    if (['Cancelled', 'CANC', 'ABD'].includes(status)) return 'CANCELED';
+    
+    // Pass-through for detailed live statuses supported by our domain model
+    // Ensure these match the Match['status'] union type in domain.ts
+    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE', 'IN_PLAY'];
+    if (liveStatuses.includes(status)) {
+        return status as Match['status'];
     }
+
+    return 'UNKNOWN';
   };
   
   // TheSportsDB often provides just a date and a separate time.
