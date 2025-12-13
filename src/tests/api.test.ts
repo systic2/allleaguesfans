@@ -172,7 +172,7 @@ describe('API Functions', () => {
         idPlayer: 'p2', strPlayer: 'Player Two', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'MF', strNumber: '8',
         goals: 2, assists: 7, appearances: 12, yellow_cards: 2, red_cards: 0,
       });
-      expect(supabase.from).toHaveBeenCalledWith('players');
+      expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
     });
 
@@ -331,7 +331,7 @@ describe('API Functions', () => {
       expect(result?.stats.goals).toBe(10);
       expect(result?.stats.minutesPlayed).toBe(1800);
       
-      expect(supabase.from).toHaveBeenCalledWith('players');
+      expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
     });
 
