@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react"; // Add useState and useEffect
+import { useState, useEffect } from "react";
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
@@ -9,9 +9,11 @@ import {
   fetchTopAssists,
   getLatestCompletedRound, 
   getNextUpcomingRound,
-  fetchFixturesByRound // Import fetchFixturesByRound from @/lib/api
+  getCurrentLiveRound, // Import getCurrentLiveRound
+  fetchFixturesByRound,
+  getAllRounds 
 } from "@/lib/api";
-import { fetchLeagueFixtures } from "@/lib/thesportsdb-api"; // fetchLeagueFixtures remains from theSportsDB-api
+import { fetchLeagueFixtures } from "@/lib/thesportsdb-api"; 
 import FMBox from "@/components/fm/FMBox";
 import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
@@ -29,35 +31,63 @@ export default function LeaguePage() {
   });
 
   const leagueId = league?.id;
-  const currentSeason = league?.current_season; // Get current season from league data
+  const currentSeason = league?.current_season;
 
   // Round management state
   const [currentRound, setCurrentRound] = useState<string | undefined>(undefined);
 
-  // Fetch latest/next round on league load
+  // Reset round when league changes to prevent stale data from previous league
+  useEffect(() => {
+    setCurrentRound(undefined);
+  }, [slug]);
+
+  // Fetch all available rounds
+  const { data: allRounds = [], isLoading: isLoadingAllRounds } = useQuery({
+    queryKey: ['allRounds', leagueId, currentSeason],
+    queryFn: () => getAllRounds(leagueId!, currentSeason!),
+    enabled: !!leagueId && !!currentSeason,
+  });
+
+  // Fetch live/latest/next rounds on league load
+  const { data: initialCurrentLiveRound, isLoading: isLoadingLive } = useQuery({
+    queryKey: ['initialCurrentLiveRound', leagueId, currentSeason],
+    queryFn: () => getCurrentLiveRound(leagueId!, currentSeason!),
+    enabled: !!leagueId && !!currentSeason && currentRound === undefined,
+  });
+
   const { data: initialLatestCompletedRound, isLoading: isLoadingLatest } = useQuery({
     queryKey: ['initialLatestCompletedRound', leagueId, currentSeason],
-    queryFn: () => getLatestCompletedRound(leagueId!, Number(currentSeason)),
-    enabled: !!leagueId && !!currentSeason && currentRound === undefined, // Only fetch once initially
+    queryFn: () => getLatestCompletedRound(leagueId!, currentSeason!),
+    enabled: !!leagueId && !!currentSeason && currentRound === undefined,
   });
 
   const { data: initialNextUpcomingRound, isLoading: isLoadingNext } = useQuery({
     queryKey: ['initialNextUpcomingRound', leagueId, currentSeason],
-    queryFn: () => getNextUpcomingRound(leagueId!, Number(currentSeason)),
-    enabled: !!leagueId && !!currentSeason && currentRound === undefined, // Only fetch once initially
+    queryFn: () => getNextUpcomingRound(leagueId!, currentSeason!),
+    enabled: !!leagueId && !!currentSeason && currentRound === undefined,
   });
 
-  // Set initial round based on latest completed or next upcoming
+  // Set initial round based on priority: Live > Upcoming > Completed > Fallback
   useEffect(() => {
-    if (currentRound === undefined) {
-      if (initialLatestCompletedRound || initialNextUpcomingRound) {
-        setCurrentRound(initialLatestCompletedRound || initialNextUpcomingRound || undefined);
-      } else if (!isLoadingLatest && !isLoadingNext && league) {
-        // Fallback to round 1 if no data found after loading
-        setCurrentRound('1');
+    if (currentRound === undefined && !isLoadingAllRounds && allRounds.length > 0) {
+      if (initialCurrentLiveRound) { // Priority 1: Live Round
+        setCurrentRound(initialCurrentLiveRound);
+      } else if (initialNextUpcomingRound) { // Priority 2: Upcoming Round (in-season)
+        setCurrentRound(initialNextUpcomingRound);
+      } else if (initialLatestCompletedRound) { // Priority 3: Completed Round (off-season/past)
+        const latestIdx = allRounds.indexOf(initialLatestCompletedRound);
+        if (latestIdx !== -1) {
+          setCurrentRound(allRounds[latestIdx]); 
+        } else {
+          setCurrentRound(allRounds[allRounds.length - 1]); 
+        }
+      } else { // Priority 4: Fallback to last available round
+        setCurrentRound(allRounds[allRounds.length - 1]); 
       }
+    } else if (currentRound === undefined && !isLoadingAllRounds && allRounds.length === 0 && !isLoadingLive && !isLoadingLatest && !isLoadingNext && league) {
+      setCurrentRound('1'); 
     }
-  }, [currentRound, initialLatestCompletedRound, initialNextUpcomingRound, isLoadingLatest, isLoadingNext, league]);
+  }, [currentRound, initialCurrentLiveRound, initialLatestCompletedRound, initialNextUpcomingRound, isLoadingLive, isLoadingLatest, isLoadingNext, isLoadingAllRounds, allRounds, league]);
 
 
   // 2. Parallel Fetching for Dashboard Data
@@ -70,7 +100,7 @@ export default function LeaguePage() {
   // Fetch fixtures for the currentRound
   const { data: fixturesForRound } = useQuery({
     queryKey: ['fixturesForRound', leagueId, currentRound, currentSeason],
-    queryFn: () => fetchFixturesByRound(leagueId!, currentRound!, Number(currentSeason)),
+    queryFn: () => fetchFixturesByRound(leagueId!, currentRound!, currentSeason!),
     enabled: !!leagueId && !!currentRound && !!currentSeason,
   });
 
@@ -94,22 +124,24 @@ export default function LeaguePage() {
 
   // Round navigation handlers
   const handlePreviousRound = () => {
-    // Implement logic to calculate previous round
-    // For now, simple decrement if round is numeric
-    if (currentRound && !isNaN(Number(currentRound))) {
-      setCurrentRound(String(Number(currentRound) - 1));
+    if (currentRound && allRounds.length > 0) {
+      const currentIndex = allRounds.indexOf(currentRound);
+      if (currentIndex > 0) {
+        setCurrentRound(allRounds[currentIndex - 1]);
+      }
     }
   };
 
   const handleNextRound = () => {
-    // Implement logic to calculate next round
-    // For now, simple increment if round is numeric
-    if (currentRound && !isNaN(Number(currentRound))) {
-      setCurrentRound(String(Number(currentRound) + 1));
+    if (currentRound && allRounds.length > 0) {
+      const currentIndex = allRounds.indexOf(currentRound);
+      if (currentIndex < allRounds.length - 1) {
+        setCurrentRound(allRounds[currentIndex + 1]);
+      }
     }
   };
 
-  if (leagueLoading) return <div className="p-8 text-white">Loading League...</div>;
+  if (leagueLoading || isLoadingAllRounds) return <div className="p-8 text-white">Loading League...</div>;
   if (!league) return <div className="p-8 text-white">League not found.</div>;
   if (currentRound === undefined) return <div className="p-8 text-white">Loading Round Data...</div>;
 
@@ -155,11 +187,13 @@ export default function LeaguePage() {
                   <button 
                     className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333] rounded"
                     onClick={handlePreviousRound}
+                    disabled={currentRound === allRounds[0]}
                   >{'<'}</button>
                   <span className="text-gray-300 text-xs font-medium whitespace-nowrap">Round {currentRound}</span>
                   <button 
                     className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333] rounded"
                     onClick={handleNextRound}
+                    disabled={currentRound === allRounds[allRounds.length - 1]}
                   >{'>'}</button>
                 </div>
               }

@@ -96,14 +96,14 @@ describe("League Data Integrity Verification", () => {
         name: "K League 1",
         slug: "league-4689",
         country: "South Korea",
-        season: 2025
+        season: "2025"
       };
 
       expect(sampleLeagueDetail.id).toBe(4689);
       expect(sampleLeagueDetail.name).toBe("K League 1");
       expect(sampleLeagueDetail.slug).toBe("league-4689");
       expect(sampleLeagueDetail.country).toBe("South Korea");
-      expect(sampleLeagueDetail.season).toBe(2025);
+      expect(sampleLeagueDetail.season).toBe("2025");
     });
 
     it("TeamStanding 타입이 올바른 구조를 가진다", () => {
@@ -144,8 +144,8 @@ describe("League Data Integrity Verification", () => {
 
   describe("시즌 데이터 검증 (Season Data Verification)", () => {
     it("현재 시즌이 2025로 설정되어 있다", () => {
-      const currentSeason = 2025;
-      expect(currentSeason).toBe(2025);
+      const currentSeason = "2025";
+      expect(currentSeason).toBe("2025");
     });
 
     it("시즌 필터링이 올바르게 작동한다", () => {

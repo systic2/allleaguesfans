@@ -25,11 +25,11 @@ class TeamLogoCache {
   private cache = new Map<string, { logos: Map<string, string>, timestamp: number }>();
   private readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
-  getCacheKey(leagueId: string, season: number): string {
+  getCacheKey(leagueId: string, season: string): string {
     return `${leagueId}-${season}`;
   }
 
-  get(leagueId: string, season: number): Map<string, string> | null {
+  get(leagueId: string, season: string): Map<string, string> | null {
     const key = this.getCacheKey(leagueId, season);
     const cached = this.cache.get(key);
     
@@ -44,7 +44,7 @@ class TeamLogoCache {
     return cached.logos;
   }
 
-  set(leagueId: string, season: number, logos: Map<string, string>): void {
+  set(leagueId: string, season: string, logos: Map<string, string>): void {
     const key = this.getCacheKey(leagueId, season);
     this.cache.set(key, {
       logos,
@@ -62,7 +62,7 @@ const logoCache = new TeamLogoCache();
 /**
  * Fetch team logos from enhanced standings API
  */
-async function fetchTeamLogosFromStandings(leagueId: string, season: number = 2025): Promise<Map<string, string>> {
+async function fetchTeamLogosFromStandings(leagueId: string, season: string = '2025'): Promise<Map<string, string>> {
   // Check cache first
   const cached = logoCache.get(leagueId, season);
   if (cached) {
@@ -100,25 +100,26 @@ async function fetchTeamLogosFromStandings(leagueId: string, season: number = 20
  */
 export async function fetchEnhancedUpcomingFixtures(
   leagueId?: string, 
-  limit: number = 10
+  limit: number = 10,
+  season: string = '2025' // Add season parameter
 ): Promise<EnhancedUpcomingFixture[]> {
   try {
     // Fetch basic fixtures from database
-    const basicFixtures = await fetchDatabaseFixtures(leagueId ? Number(leagueId) : undefined, limit); // Convert back to number for legacy fetchDatabaseFixtures
+    const basicFixtures = await fetchDatabaseFixtures(leagueId ? Number(leagueId) : undefined, limit); 
     
     if (basicFixtures.length === 0) {
       return [];
     }
 
     // Get unique league IDs from fixtures
-    const leagueIds = Array.from(new Set(basicFixtures.map(f => String(f.league_id)))); // Ensure league_id is string
+    const leagueIds = Array.from(new Set(basicFixtures.map(f => String(f.league_id)))); 
     
     // Fetch logos for all relevant leagues
-    const allLogos = new Map<string, string>(); // Updated Map key type
+    const allLogos = new Map<string, string>(); 
     
     for (const currentLeagueId of leagueIds) {
       try {
-        const leagueLogos = await fetchTeamLogosFromStandings(currentLeagueId, 2025);
+        const leagueLogos = await fetchTeamLogosFromStandings(currentLeagueId, season); // Pass season as string
         leagueLogos.forEach((logo, teamId) => {
           allLogos.set(teamId, logo);
         });
@@ -129,26 +130,24 @@ export async function fetchEnhancedUpcomingFixtures(
 
     // Enhance fixtures with Highlightly logos
     const enhancedFixtures: EnhancedUpcomingFixture[] = basicFixtures.map(fixture => {
-      const homeHighlightlyLogo = allLogos.get(String(fixture.home_team.id)); // Ensure ID is string
-      const awayHighlightlyLogo = allLogos.get(String(fixture.away_team.id)); // Ensure ID is string
+      const homeHighlightlyLogo = allLogos.get(String(fixture.home_team.id)); 
+      const awayHighlightlyLogo = allLogos.get(String(fixture.away_team.id)); 
       
       return {
         ...fixture,
         home_team: {
           ...fixture.home_team,
-          id: String(fixture.home_team.id), // Ensure ID is string
+          id: String(fixture.home_team.id), 
           highlightly_logo: homeHighlightlyLogo || null,
-          // Use Highlightly logo if available, otherwise fallback to database logo
           logo_url: homeHighlightlyLogo || fixture.home_team.logo_url
         },
         away_team: {
           ...fixture.away_team,
-          id: String(fixture.away_team.id), // Ensure ID is string
+          id: String(fixture.away_team.id), 
           highlightly_logo: awayHighlightlyLogo || null,
-          // Use Highlightly logo if available, otherwise fallback to database logo
           logo_url: awayHighlightlyLogo || fixture.away_team.logo_url
         },
-        league_id: String(fixture.league_id), // Ensure ID is string
+        league_id: String(fixture.league_id), 
       };
     });
 
@@ -171,7 +170,8 @@ export async function fetchEnhancedUpcomingFixtures(
  */
 export async function fetchEnhancedTeamUpcomingFixtures(
   teamId: string, 
-  limit: number = 5
+  limit: number = 5,
+  season: string = '2025' // Add season parameter
 ): Promise<EnhancedUpcomingFixture[]> {
   try {
     // For team-specific fixtures, we'll enhance them based on the team's league
@@ -179,7 +179,7 @@ export async function fetchEnhancedTeamUpcomingFixtures(
     
     // Filter for the specific team
     const teamFixtures = basicFixtures.filter(fixture => 
-      String(fixture.home_team.id) === teamId || String(fixture.away_team.id) === teamId // Ensure comparison is string to string
+      String(fixture.home_team.id) === teamId || String(fixture.away_team.id) === teamId 
     ).slice(0, limit);
 
     if (teamFixtures.length === 0) {
@@ -187,12 +187,12 @@ export async function fetchEnhancedTeamUpcomingFixtures(
     }
 
     // Get league IDs and enhance with logos
-    const leagueIds = Array.from(new Set(teamFixtures.map(f => String(f.league_id)))); // Ensure league_id is string
-    const allLogos = new Map<string, string>(); // Updated Map key type
+    const leagueIds = Array.from(new Set(teamFixtures.map(f => String(f.league_id)))); 
+    const allLogos = new Map<string, string>(); 
     
     for (const leagueId of leagueIds) {
       try {
-        const leagueLogos = await fetchTeamLogosFromStandings(leagueId, 2025);
+        const leagueLogos = await fetchTeamLogosFromStandings(leagueId, season); // Pass season as string
         leagueLogos.forEach((logo, id) => {
           allLogos.set(id, logo);
         });
@@ -203,24 +203,24 @@ export async function fetchEnhancedTeamUpcomingFixtures(
 
     // Enhance with logos
     const enhancedFixtures: EnhancedUpcomingFixture[] = teamFixtures.map(fixture => {
-      const homeHighlightlyLogo = allLogos.get(String(fixture.home_team.id)); // Ensure ID is string
-      const awayHighlightlyLogo = allLogos.get(String(fixture.away_team.id)); // Ensure ID is string
+      const homeHighlightlyLogo = allLogos.get(String(fixture.home_team.id)); 
+      const awayHighlightlyLogo = allLogos.get(String(fixture.away_team.id)); 
       
       return {
         ...fixture,
         home_team: {
           ...fixture.home_team,
-          id: String(fixture.home_team.id), // Ensure ID is string
+          id: String(fixture.home_team.id), 
           highlightly_logo: homeHighlightlyLogo || null,
           logo_url: homeHighlightlyLogo || fixture.home_team.logo_url
         },
         away_team: {
           ...fixture.away_team,
-          id: String(fixture.away_team.id), // Ensure ID is string
+          id: String(fixture.away_team.id), 
           highlightly_logo: awayHighlightlyLogo || null,
           logo_url: awayHighlightlyLogo || fixture.away_team.logo_url
         },
-        league_id: String(fixture.league_id), // Ensure ID is string
+        league_id: String(fixture.league_id), 
       };
     });
 

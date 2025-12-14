@@ -27,7 +27,7 @@ function generateRecentForm(formString: string | null): string {
  */
 export async function fetchEnhancedLeagueStandings(
   leagueSlug: string, 
-  season: number = 2025
+  season: string = '2025'
 ): Promise<EnhancedTeamStanding[]> {
   console.log(`🔍 Fetching TheSportsDB standings for league slug: ${leagueSlug}, season ${season}`);
   
@@ -61,7 +61,7 @@ export async function fetchEnhancedLeagueStandings(
  */
 export async function fetchEnhancedLeagueStandingsById(
   leagueId: number, 
-  season: number = 2025
+  season: string = '2025'
 ): Promise<EnhancedTeamStanding[]> {
   console.warn('fetchEnhancedLeagueStandingsById is deprecated. Use slug-based API.');
   

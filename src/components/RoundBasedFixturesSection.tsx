@@ -1,14 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchRecentRoundFixtures, fetchUpcomingRoundFixtures, type RoundFixture } from '@/lib/api';
+import { fetchRecentRoundFixtures, fetchUpcomingRoundFixtures } from '@/lib/api';
+import { MatchWithTeams } from '@/lib/thesportsdb-api'; // Import MatchWithTeams
 
 interface RoundBasedFixturesSectionProps {
   leagueId: number;
-  season?: number;
+  season?: string; // Change from number to string
 }
 
 interface FixturesCardProps {
   title: string;
-  fixtures: RoundFixture[];
+  fixtures: MatchWithTeams[]; // Changed from RoundFixture[]
   isLoading: boolean;
   error?: Error | null;
   showScores?: boolean;
@@ -70,7 +71,7 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
         <h2 className="text-white text-lg font-semibold">{title}</h2>
         {fixtures.length > 0 && fixtures[0].round && (
           <div className="text-slate-400 text-sm mt-1">
-            {fixtures[0].round}
+            Round {fixtures[0].round}
           </div>
         )}
       </div>
@@ -90,31 +91,31 @@ function FixturesCard({ title, fixtures, isLoading, error, showScores = false }:
 }
 
 interface FixtureRowProps {
-  fixture: RoundFixture;
+  fixture: MatchWithTeams; // Changed from RoundFixture
   showScores: boolean;
 }
 
 function FixtureRow({ fixture, showScores }: FixtureRowProps) {
-  const isCompleted = fixture.status_short === 'FT' || 
-                     fixture.status_short === 'AET' || 
-                     fixture.status_short === 'PEN';
-  
-  const hasScore = fixture.home_goals !== null && fixture.away_goals !== null;
+  const isCompleted = ['FT', 'AET', 'PEN', 'FINISHED'].includes(fixture.status); // Use fixture.status
+  const hasScore = fixture.homeScore !== null && fixture.awayScore !== null; // Use homeScore, awayScore
+  const isLive = ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P'].includes(fixture.status);
+  const isPostponed = ['POSTPONED', 'SUSP', 'INT'].includes(fixture.status);
+
 
   return (
     <div className="flex items-center justify-between p-3 bg-slate-700 rounded">
       <div className="flex items-center space-x-3 flex-1">
         {/* Home Team */}
         <div className="flex items-center space-x-2 flex-1">
-          {fixture.home_team.logo_url && (
+          {fixture.homeTeam?.badgeUrl && ( // Use homeTeam?.badgeUrl
             <img 
-              src={fixture.home_team.logo_url} 
+              src={fixture.homeTeam.badgeUrl} // Use homeTeam?.badgeUrl
               alt="" 
               className="w-5 h-5 object-contain" 
             />
           )}
           <span className="text-white text-sm font-medium">
-            {fixture.home_team.name}
+            {fixture.homeTeam?.name || `Team ${fixture.homeTeamId}`} {/* Use homeTeam?.name */}
           </span>
         </div>
 
@@ -125,15 +126,19 @@ function FixtureRow({ fixture, showScores }: FixtureRowProps) {
               <span className={`text-lg font-bold ${
                 isCompleted ? 'text-white' : 'text-slate-300'
               }`}>
-                {fixture.home_goals}
+                {fixture.homeScore} {/* Use homeScore */}
               </span>
               <span className="text-slate-400 text-sm">-</span>
               <span className={`text-lg font-bold ${
                 isCompleted ? 'text-white' : 'text-slate-300'
               }`}>
-                {fixture.away_goals}
+                {fixture.awayScore} {/* Use awayScore */}
               </span>
             </div>
+          ) : isLive ? (
+            <span className="text-red-500 animate-pulse text-[10px]">LIVE</span>
+          ) : isPostponed ? (
+            <span className="text-yellow-500 text-[10px]">연기됨</span>
           ) : (
             <span className="text-slate-400 text-xs">vs</span>
           )}
@@ -142,11 +147,11 @@ function FixtureRow({ fixture, showScores }: FixtureRowProps) {
         {/* Away Team */}
         <div className="flex items-center space-x-2 flex-1 justify-end">
           <span className="text-white text-sm font-medium">
-            {fixture.away_team.name}
+            {fixture.awayTeam?.name || `Team ${fixture.awayTeamId}`} {/* Use awayTeam?.name */}
           </span>
-          {fixture.away_team.logo_url && (
+          {fixture.awayTeam?.badgeUrl && ( // Use awayTeam?.badgeUrl
             <img 
-              src={fixture.away_team.logo_url} 
+              src={fixture.awayTeam.badgeUrl} // Use awayTeam?.badgeUrl
               alt="" 
               className="w-5 h-5 object-contain" 
             />
@@ -157,7 +162,7 @@ function FixtureRow({ fixture, showScores }: FixtureRowProps) {
       {/* Date and Status */}
       <div className="text-slate-400 text-xs ml-4 text-right min-w-[80px]">
         <div>
-          {new Date(fixture.date_utc).toLocaleDateString('ko-KR', {
+          {new Date(fixture.date).toLocaleDateString('ko-KR', { // Use fixture.date
             month: 'numeric',
             day: 'numeric',
             hour: '2-digit',
@@ -166,7 +171,7 @@ function FixtureRow({ fixture, showScores }: FixtureRowProps) {
         </div>
         {!isCompleted && (
           <div className="text-slate-500 text-xs mt-1">
-            {fixture.status_short}
+            {fixture.status} {/* Use fixture.status */}
           </div>
         )}
       </div>
@@ -176,7 +181,7 @@ function FixtureRow({ fixture, showScores }: FixtureRowProps) {
 
 export default function RoundBasedFixturesSection({ 
   leagueId, 
-  season = 2025 
+  season = '2025' // Change default season to string
 }: RoundBasedFixturesSectionProps) {
   const { 
     data: recentFixtures = [], 

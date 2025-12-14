@@ -4,8 +4,17 @@ import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers';
+import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 
-const DEFAULT_SEASON = Number(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
+const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
+
+function normalizeSeason(season: string): string {
+  // Normalize '2025-2026' to '2025' to match DB format
+  if (season && season.includes('-')) {
+    return season.split('-')[0];
+  }
+  return season;
+}
 
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -60,7 +69,7 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
   }));
 }
 
-export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: number; current_season?: string; };
+export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: string; current_season?: string; };
 export type TeamStanding = { team_id: number; team_name: string; short_name: string | null; crest_url: string | null; rank: number; points: number; played: number; win: number; draw: number; lose: number; goals_for: number; goals_against: number; goals_diff: number; form: string | null; };
 
 export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | null> {
@@ -84,7 +93,7 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   };
 }
 
-export async function fetchLeagueStandings(leagueSlug: string, season: number = DEFAULT_SEASON): Promise<TeamStanding[]> {
+export async function fetchLeagueStandings(leagueSlug: string, season: string = DEFAULT_SEASON): Promise<TeamStanding[]> {
   let theSportsDBLeagueId: string;
   if (leagueSlug === 'k-league-1') theSportsDBLeagueId = '4689';
   else if (leagueSlug === 'k-league-2') theSportsDBLeagueId = '4822';
@@ -95,7 +104,8 @@ export async function fetchLeagueStandings(leagueSlug: string, season: number = 
   else if (leagueSlug === 'ligue-1') theSportsDBLeagueId = '4334';
   else theSportsDBLeagueId = leagueSlug.replace('league-', '');
 
-  const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season)).order("rank", { ascending: true });
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", normalized).order("rank", { ascending: true });
   if (error) throw error;
 
   return (data ?? []).map((standing: any) => ({
@@ -103,20 +113,22 @@ export async function fetchLeagueStandings(leagueSlug: string, season: number = 
   }));
 }
 
-export async function fetchLeagueTeams(leagueId: number, season: number = DEFAULT_SEASON): Promise<TeamLite[]> {
+export async function fetchLeagueTeams(leagueId: number, season: string = DEFAULT_SEASON): Promise<TeamLite[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  const { data, error } = await supabase.from("standings_v2").select(`teamId, teamName, teamBadgeUrl`).eq("leagueId", theSportsDBLeagueId).eq("season", String(season));
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from("standings_v2").select(`teamId, teamName, teamBadgeUrl`).eq("leagueId", theSportsDBLeagueId).eq("season", normalized);
   if (error) throw error;
   return (data ?? []).map((item: any) => ({ id: Number(item.teamId || 0), name: String(item.teamName || "Unknown"), short_name: null, crest_url: item.teamBadgeUrl, logo_url: item.teamBadgeUrl, badge_url: item.teamBadgeUrl, banner_url: null, primary_source: "thesportsdb", }));
 }
 
 export type LeagueStats = { total_goals: number; total_matches: number; avg_goals_per_match: number; total_teams: number; };
 
-export async function fetchLeagueStats(leagueId: number, season: number = DEFAULT_SEASON): Promise<LeagueStats> {
+export async function fetchLeagueStats(leagueId: number, season: string = DEFAULT_SEASON): Promise<LeagueStats> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const normalized = normalizeSeason(season);
   const [standingsResult, fixturesResult] = await Promise.all([
-    supabase.from("standings_v2").select("leagueId, goalsFor, goalsAgainst, gamesPlayed").eq("leagueId", theSportsDBLeagueId).eq("season", String(season)),
-    supabase.from("events_v2").select("homeScore, awayScore").eq("leagueId", String(leagueId)).eq("season", String(season)).eq("status", "FINISHED")
+    supabase.from("standings_v2").select("leagueId, goalsFor, goalsAgainst, gamesPlayed").eq("leagueId", theSportsDBLeagueId).eq("season", normalized),
+    supabase.from("events_v2").select("homeScore, awayScore").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).eq("status", "FINISHED")
   ]);
   const totalTeams = standingsResult.data?.length || 0;
   const completedMatches = fixturesResult.data || [];
@@ -131,15 +143,17 @@ export type TopScorer = { player_name: string; team_name: string; goals: number;
 export type TopAssist = { player_name: string; team_name: string; assists: number; goals: number; matches: number; };
 export type HistoricalChampion = { season_year: number; champion_name: string; champion_logo: string | null; };
 
-export async function fetchTopScorers(leagueId: number, season: number = DEFAULT_SEASON, limit: number = 10): Promise<TopScorer[]> {
+export async function fetchTopScorers(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopScorer[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  const stats = await fetchTopScorersStats(theSportsDBLeagueId, String(season), limit);
+  const normalized = normalizeSeason(season);
+  const stats = await fetchTopScorersStats(theSportsDBLeagueId, normalized, limit);
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
 }
 
-export async function fetchTopAssists(leagueId: number, season: number = DEFAULT_SEASON, limit: number = 10): Promise<TopAssist[]> {
+export async function fetchTopAssists(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopAssist[]> {
   const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
-  const stats = await fetchTopAssistersStats(theSportsDBLeagueId, String(season), limit);
+  const normalized = normalizeSeason(season);
+  const stats = await fetchTopAssistersStats(theSportsDBLeagueId, normalized, limit);
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
 }
 
@@ -157,7 +171,10 @@ export interface UpcomingFixture { id: string; date_utc: string; status: string;
 export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 10): Promise<UpcomingFixture[]> {
   const today = new Date().toISOString(); 
   let query = supabase.from("events_v2").select(`*`).gte("date", today).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order("date", { ascending: true }).limit(limit);
-  if (leagueId) query = query.eq("leagueId", String(leagueId));
+  if (leagueId) {
+    const dbId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+    query = query.eq("leagueId", dbId);
+  }
   const { data, error } = await query;
   if (error) { console.error("Error fetching upcoming fixtures from events_v2:", error); return []; }
   if (!data) return [];
@@ -171,37 +188,80 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
 
 export interface RoundFixture { id: string; date_utc: string; status_short: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; home_goals: number | null; away_goals: number | null; venue?: string; league_id: string; }
 
-export async function getLatestCompletedRound(leagueId: number, season: number = DEFAULT_SEASON): Promise<string | null> {
-  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", String(leagueId)).eq("season", String(season)).eq("status", "FINISHED").order("date", { ascending: false }).limit(1);
+export async function getLatestCompletedRound(leagueId: number, season: string = DEFAULT_SEASON): Promise<string | null> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).in("status", ["FINISHED", "FT", "AET", "PEN"]).order("date", { ascending: false }).limit(1);
   if (error || !data || data.length === 0) return null;
   return data[0].round || null;
 }
 
-export async function getNextUpcomingRound(leagueId: number, season: number = DEFAULT_SEASON): Promise<string | null> {
-  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", String(leagueId)).eq("season", String(season)).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order("date", { ascending: true }).limit(1);
+export async function getNextUpcomingRound(leagueId: number, season: string = DEFAULT_SEASON): Promise<string | null> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED", "NS"]).order("date", { ascending: true }).limit(1);
   if (error || !data || data.length === 0) return null;
   return data[0].round || null;
 }
 
-export async function fetchFixturesByRound(leagueId: number, round: string, season: number = DEFAULT_SEASON): Promise<RoundFixture[]> {
-  const { data, error } = await supabase.from("events_v2").select(`*`).eq("leagueId", String(leagueId)).eq("round", round).eq("season", String(season)).order("date", { ascending: true });
+export async function getCurrentLiveRound(leagueId: number, season: string = DEFAULT_SEASON): Promise<string | null> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).in("status", ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT']).order("date", { ascending: true }).limit(1);
+  if (error || !data || data.length === 0) return null;
+  return data[0].round || null;
+}
+
+export async function fetchFixturesByRound(leagueId: number, round: string, season: string = DEFAULT_SEASON): Promise<MatchWithTeams[]> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from("events_v2").select(`
+    *,
+    homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+    awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+  `).eq("leagueId", theSportsDBLeagueId).eq("round", round).eq("season", normalized).order("date", { ascending: true });
   if (error) { console.error("Error fetching fixtures by round from events_v2:", error); return []; }
   if (!data) return [];
-  return data.map(match => ({
-    id: String(match.id), date_utc: String(match.date), status_short: String(match.status), round: String(match.round || 'N/A'),
-    home_team: { id: String(match.homeTeamId), name: `Team ${match.homeTeamId}`, logo_url: null },
-    away_team: { id: String(match.awayTeamId), name: `Team ${match.awayTeamId}`, logo_url: null },
-    home_goals: match.homeScore, away_goals: match.awayScore, venue: match.venueName || undefined, league_id: String(match.leagueId),
-  }));
+  return data as MatchWithTeams[];
 }
 
-export async function fetchRecentRoundFixtures(leagueId: number, season: number = DEFAULT_SEASON): Promise<RoundFixture[]> {
+export async function getAllRounds(leagueId: number, season: string = DEFAULT_SEASON): Promise<string[]> {
+  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase
+    .from("events_v2")
+    .select("round")
+    .eq("leagueId", theSportsDBLeagueId)
+    .eq("season", normalized)
+    .neq("round", "0") // Exclude round '0'
+    .order("round", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching all rounds:", error);
+    return [];
+  }
+
+  // Extract unique rounds and sort them numerically if possible, otherwise alphabetically
+  const uniqueRounds = Array.from(new Set(data?.map(item => item.round))).filter((r): r is string => r !== null);
+  
+  // Attempt to sort numerically, fallback to string sort
+  return uniqueRounds.sort((a, b) => {
+    const numA = Number(a);
+    const numB = Number(b);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    return a.localeCompare(b);
+  });
+}
+
+export async function fetchRecentRoundFixtures(leagueId: number, season: string = DEFAULT_SEASON): Promise<MatchWithTeams[]> {
   const latestRound = await getLatestCompletedRound(leagueId, season);
   if (!latestRound) return [];
   return fetchFixturesByRound(leagueId, latestRound, season);
 }
 
-export async function fetchUpcomingRoundFixtures(leagueId: number, season: number = DEFAULT_SEASON): Promise<RoundFixture[]> {
+export async function fetchUpcomingRoundFixtures(leagueId: number, season: string = DEFAULT_SEASON): Promise<MatchWithTeams[]> {
   const nextRound = await getNextUpcomingRound(leagueId, season);
   if (!nextRound) return [];
   return fetchFixturesByRound(leagueId, nextRound, season);
@@ -238,11 +298,12 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
 
 export interface TeamPlayer { idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null; goals?: number; assists?: number; appearances?: number; yellow_cards?: number; red_cards?: number; }
 
-export async function fetchPlayersByTeam(teamId: string, season: number = DEFAULT_SEASON): Promise<TeamPlayer[]> {
+export async function fetchPlayersByTeam(teamId: string, season: string = DEFAULT_SEASON): Promise<TeamPlayer[]> {
   const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
   if (playersError) { console.error('Error fetching players:', playersError); return []; }
   if (!playersData || playersData.length === 0) return [];
-  const { data: statsData, error: statsError } = await supabase.from('player_statistics').select('idPlayer, goals, assists, appearances, yellow_cards, red_cards').eq('idTeam', teamId).eq('strSeason', String(season));
+  const normalized = normalizeSeason(season);
+  const { data: statsData, error: statsError } = await supabase.from('player_statistics').select('idPlayer, goals, assists, appearances, yellow_cards, red_cards').eq('idTeam', teamId).eq('strSeason', normalized);
   if (statsError) { console.warn('Error fetching player statistics:', statsError); }
   const playerStatsMap = new Map<string, Partial<PlayerStatistics>>();
   if (statsData) { statsData.forEach(stat => { playerStatsMap.set(stat.idPlayer, stat); }); }
@@ -276,7 +337,8 @@ function calculateAge(birthDate?: string): number {
 export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
   const { data: player, error } = await supabase.from('players_v2').select('*').eq('idPlayer', String(playerId)).maybeSingle();
   if (error || !player) { console.error("Player not found:", error); return null; }
-  const { data: stats } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).eq('strSeason', String(DEFAULT_SEASON)).maybeSingle();
+  const normalized = normalizeSeason(DEFAULT_SEASON);
+  const { data: stats } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).eq('strSeason', normalized).maybeSingle();
   const pos = player.strPosition || 'M';
   return {
     id: player.idPlayer, name: player.strPlayer, teamName: player.strTeam, teamId: player.idTeam, position: pos, jerseyNumber: player.strNumber || '-', photoUrl: player.strThumb || null,
@@ -302,11 +364,12 @@ export type TeamDetails = {
   current_position?: number | null; points?: number | null; matches_played?: number | null; wins?: number | null; draws?: number | null; losses?: number | null; goals_for?: number | null; goals_against?: number | null; goal_difference?: number | null; currentLeagueId?: string;
 };
 
-export async function fetchTeamDetails(teamId: string, season: number = DEFAULT_SEASON): Promise<TeamDetails | null> {
+export async function fetchTeamDetails(teamId: string, season: string = DEFAULT_SEASON): Promise<TeamDetails | null> {
   const { data: teamData, error: teamError } = await supabase.from('teams_v2').select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear').eq('id', teamId).maybeSingle();
   if (teamError) { console.error('Error fetching team from teams_v2:', teamError); return null; }
   if (!teamData) return null;
-  const { data: standingData, error: standingError } = await supabase.from('standings_v2').select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId').eq('teamId', teamId).eq('season', String(season)).in('leagueId', ['4689', '4822', '4328', '4335', '4332', '4331', '4334']).order('leagueId', { ascending: true }).limit(1).maybeSingle();
+  const normalized = normalizeSeason(season);
+  const { data: standingData, error: standingError } = await supabase.from('standings_v2').select('rank, points, gamesPlayed, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, leagueId').eq('teamId', teamId).eq('season', normalized).in('leagueId', ['4689', '4822', '4328', '4335', '4332', '4331', '4334']).order('leagueId', { ascending: true }).limit(1).maybeSingle();
   if (standingError) { console.warn(`Error fetching standing for team ${teamId}:`, standingError); }
   return {
     id: teamData.id, name: teamData.name, nameKorean: teamData.nameKorean, badgeUrl: teamData.badgeUrl, strStadium: teamData.strStadium, intFormedYear: teamData.intFormedYear,
@@ -318,12 +381,13 @@ export type TeamFixture = { id: number; date_utc: string; status_short: string; 
 export type TeamStatistics = { position: number; points: number; played: number; wins: number; draws: number; losses: number; goals_for: number; goals_against: number; goal_difference: number; clean_sheets: number; failed_to_score: number; avg_goals_scored: number; avg_goals_conceded: number; form_last_5: string; home_record: { wins: number; draws: number; losses: number }; away_record: { wins: number; draws: number; losses: number }; };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function fetchTeamFixtures(_teamId: number, _season: number = DEFAULT_SEASON, _limit: number = 10): Promise<TeamFixture[]> { console.warn("fetchTeamFixtures needs implementation with correct schema"); return []; }
+export async function fetchTeamFixtures(_teamId: number, _season: string = DEFAULT_SEASON, _limit: number = 10): Promise<TeamFixture[]> { console.warn("fetchTeamFixtures needs implementation with correct schema"); return []; }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function fetchTeamStatistics(_teamId: number, _season: number = DEFAULT_SEASON): Promise<TeamStatistics | null> { console.warn("fetchTeamStatistics needs implementation with correct schema"); return null; }
+export async function fetchTeamStatistics(_teamId: number, _season: string = DEFAULT_SEASON): Promise<TeamStatistics | null> { console.warn("fetchTeamStatistics needs implementation with correct schema"); return null; }
 
 export async function fetchTeamEventsData(teamId: string, season: string, limit?: number): Promise<Match[]> { 
-  let query = supabase.from('events_v2').select('*').eq('season', season).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).order('date', { ascending: false }); 
+  const normalized = normalizeSeason(season);
+  let query = supabase.from('events_v2').select('*').eq('season', normalized).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).order('date', { ascending: false }); 
   if (limit) query = query.limit(limit);
   const { data, error } = await query;
   if (error) { console.error('Error fetching team events from events_v2:', error); throw error; }
@@ -346,13 +410,14 @@ export async function fetchTeamFormGuide(teamId: string, season: string, limit: 
 
 export async function fetchTeamUpcomingEventsData(teamId: string, season: string, limit: number = 5): Promise<Match[]> { 
   const today = new Date().toISOString(); 
-  const { data, error } = await supabase.from('events_v2').select('*').eq('season', season).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).gte('date', today).in('status', ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order('date', { ascending: true }).limit(limit);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('events_v2').select('*').eq('season', normalized).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).gte('date', today).in('status', ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order('date', { ascending: true }).limit(limit);
   if (error) { console.error('Error fetching team upcoming events from events_v2:', error); return []; }
   return data || []; 
 }
 
 export async function fetchTeamUpcomingFixtures(teamId: string, limit: number = 5): Promise<UpcomingFixture[]> {
-  const matches = await fetchTeamUpcomingEventsData(teamId, "2025", limit);
+  const matches = await fetchTeamUpcomingEventsData(teamId, DEFAULT_SEASON, limit);
   return matches.map(match => ({
     id: String(match.id),
     date_utc: String(match.date),
@@ -375,13 +440,14 @@ export async function fetchTeamUpcomingFixtures(teamId: string, limit: number = 
 
 export async function fetchTeamRecentEventsData(teamId: string, season: string, limit: number = 5): Promise<Match[]> { 
   const today = new Date().toISOString(); 
-  const { data, error } = await supabase.from('events_v2').select('*').eq('season', season).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).lt('date', today).eq('status', "FINISHED").order('date', { ascending: false }).limit(limit);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('events_v2').select('*').eq('season', normalized).or(`homeTeamId.eq.${teamId},awayTeamId.eq.${teamId}`).lt('date', today).eq('status', "FINISHED").order('date', { ascending: false }).limit(limit);
   if (error) { console.error('Error fetching team recent events from events_v2:', error); return []; }
   return data || []; 
 }
 
 export async function fetchTeamRecentFixtures(teamId: string, limit: number = 5): Promise<RoundFixture[]> {
-  const matches = await fetchTeamRecentEventsData(teamId, "2025", limit);
+  const matches = await fetchTeamRecentEventsData(teamId, DEFAULT_SEASON, limit);
   return matches.map(match => ({
     id: String(match.id),
     date_utc: String(match.date),
@@ -406,7 +472,8 @@ export async function fetchTeamRecentFixtures(teamId: string, limit: number = 5)
 }
 
 export async function fetchTeamStandingsData(idLeague: string, season: string, teamName: string): Promise<Standing | null> {
-  const { data, error } = await supabase.from('standings_v2').select('*').eq('leagueId', idLeague).eq('season', season).eq('teamName', teamName).maybeSingle();
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('standings_v2').select('*').eq('leagueId', idLeague).eq('season', normalized).eq('teamName', teamName).maybeSingle();
   if (error) { console.error('Error fetching team standings from standings_v2:', error); return null; }
   if (!data) return null;
   return {
@@ -417,19 +484,22 @@ export async function fetchTeamStandingsData(idLeague: string, season: string, t
 export interface PlayerStatistics { idPlayer: string; strPlayer: string; idTeam: string; strTeam: string; idLeague: string; strSeason: string; goals: number; assists: number; yellow_cards: number; red_cards: number; appearances: number; own_goals: number; penalties_scored: number; goals_per_game?: number; assists_per_game?: number; }
 
 export async function fetchTopScorersStats(idLeague: string, season: string, limit: number = 10): Promise<PlayerStatistics[]> {
-  const { data, error } = await supabase.from('top_scorers').select('*').eq('idLeague', idLeague).eq('strSeason', season).limit(limit);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('top_scorers').select('*').eq('idLeague', idLeague).eq('strSeason', normalized).limit(limit);
   if (error) { console.error('Error fetching top scorers:', error); return []; }
   return data || [];
 }
 
 export async function fetchTopAssistersStats(idLeague: string, season: string, limit: number = 10): Promise<PlayerStatistics[]> {
-  const { data, error } = await supabase.from('top_assisters').select('*').eq('idLeague', idLeague).eq('strSeason', season).limit(limit);
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('top_assisters').select('*').eq('idLeague', idLeague).eq('strSeason', normalized).limit(limit);
   if (error) { console.error('Error fetching top assisters:', error); return []; }
   return data || [];
 }
 
 export async function fetchPlayerStatistics(idLeague: string, season: string): Promise<PlayerStatistics[]> {
-  const { data, error } = await supabase.from('player_statistics').select('*').eq('idLeague', idLeague).eq('strSeason', season).order('goals', { ascending: false });
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('player_statistics').select('*').eq('idLeague', idLeague).eq('strSeason', normalized).order('goals', { ascending: false });
   if (error) { console.error('Error fetching player statistics:', error); return []; }
   return data || [];
 }

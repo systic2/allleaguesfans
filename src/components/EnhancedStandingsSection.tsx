@@ -25,7 +25,7 @@ interface StandingsSectionProps {
   /** Legacy league ID support - will be converted to slug */
   leagueId?: number;
   /** Season year */
-  season?: number;
+  season?: string;
   /** Additional CSS classes for styling */
   className?: string;
 }
@@ -202,16 +202,15 @@ function StandingsError({ message }: { message: string }) {
 /**
  * Main Enhanced Standings Section component
  */
-export default function StandingsSection({ 
+export default function StandingsSection({
   standings,
   isLoading,
   error,
   leagueSlug,
   leagueId,
-  season = 2025,
+  season = '2025',
   className = ''
-}: StandingsSectionProps) {
-  
+}: StandingsSectionProps) {  
   // Convert legacy leagueId to slug if needed (backward compatibility)
   const effectiveLeagueSlug = leagueSlug || (leagueId ? 
     (leagueId === 4001 || leagueId === 1 ? 'k-league-1' : 

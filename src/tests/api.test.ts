@@ -48,7 +48,7 @@ vi.mock('@/lib/supabaseClient', () => ({
 
 
 const mockTeamId = '138106'; // Busan IPark ID
-const mockSeason = 2025;
+const mockSeason = '2025';
 // Mock current year will be needed for fetchHistoricalChampions, but not these
 // const mockCurrentYear = new Date().getFullYear(); 
 
@@ -288,7 +288,7 @@ describe('API Functions', () => {
 
       (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockEventsData)); // events_v2
 
-      const result = await fetchTeamFormGuide(mockTeamId, String(mockSeason), 3);
+      const result = await fetchTeamFormGuide(mockTeamId, mockSeason, 3);
 
       expect(result).toEqual(['W', 'D', 'L']);
       expect(supabase.from).toHaveBeenCalledWith('events_v2');
@@ -304,7 +304,7 @@ describe('API Functions', () => {
 
       (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockEventsData)); // events_v2
 
-      const result = await fetchTeamFormGuide(mockTeamId, String(mockSeason), 2);
+      const result = await fetchTeamFormGuide(mockTeamId, mockSeason, 2);
       expect(result).toEqual(['D']); // Only the finished match should be included
     });
   });
