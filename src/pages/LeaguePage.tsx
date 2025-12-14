@@ -1,13 +1,17 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react"; // Add useState and useEffect
 import { 
   fetchLeagueBySlug, 
   fetchLeagueStandings, 
   fetchHistoricalChampions, 
   fetchTopScorers, 
-  fetchTopAssists 
+  fetchTopAssists,
+  getLatestCompletedRound, 
+  getNextUpcomingRound,
+  fetchFixturesByRound // Import fetchFixturesByRound from @/lib/api
 } from "@/lib/api";
-import { fetchLeagueFixtures } from "@/lib/thesportsdb-api";
+import { fetchLeagueFixtures } from "@/lib/thesportsdb-api"; // fetchLeagueFixtures remains from theSportsDB-api
 import FMBox from "@/components/fm/FMBox";
 import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
@@ -25,6 +29,36 @@ export default function LeaguePage() {
   });
 
   const leagueId = league?.id;
+  const currentSeason = league?.current_season; // Get current season from league data
+
+  // Round management state
+  const [currentRound, setCurrentRound] = useState<string | undefined>(undefined);
+
+  // Fetch latest/next round on league load
+  const { data: initialLatestCompletedRound, isLoading: isLoadingLatest } = useQuery({
+    queryKey: ['initialLatestCompletedRound', leagueId, currentSeason],
+    queryFn: () => getLatestCompletedRound(leagueId!, Number(currentSeason)),
+    enabled: !!leagueId && !!currentSeason && currentRound === undefined, // Only fetch once initially
+  });
+
+  const { data: initialNextUpcomingRound, isLoading: isLoadingNext } = useQuery({
+    queryKey: ['initialNextUpcomingRound', leagueId, currentSeason],
+    queryFn: () => getNextUpcomingRound(leagueId!, Number(currentSeason)),
+    enabled: !!leagueId && !!currentSeason && currentRound === undefined, // Only fetch once initially
+  });
+
+  // Set initial round based on latest completed or next upcoming
+  useEffect(() => {
+    if (currentRound === undefined) {
+      if (initialLatestCompletedRound || initialNextUpcomingRound) {
+        setCurrentRound(initialLatestCompletedRound || initialNextUpcomingRound || undefined);
+      } else if (!isLoadingLatest && !isLoadingNext && league) {
+        // Fallback to round 1 if no data found after loading
+        setCurrentRound('1');
+      }
+    }
+  }, [currentRound, initialLatestCompletedRound, initialNextUpcomingRound, isLoadingLatest, isLoadingNext, league]);
+
 
   // 2. Parallel Fetching for Dashboard Data
   const { data: standings } = useQuery({
@@ -33,10 +67,11 @@ export default function LeaguePage() {
     enabled: !!slug
   });
 
-  const { data: fixtures } = useQuery({
-    queryKey: ['fixtures', leagueId],
-    queryFn: () => fetchLeagueFixtures(String(leagueId!)),
-    enabled: !!leagueId
+  // Fetch fixtures for the currentRound
+  const { data: fixturesForRound } = useQuery({
+    queryKey: ['fixturesForRound', leagueId, currentRound, currentSeason],
+    queryFn: () => fetchFixturesByRound(leagueId!, currentRound!, Number(currentSeason)),
+    enabled: !!leagueId && !!currentRound && !!currentSeason,
   });
 
   const { data: history } = useQuery({
@@ -57,8 +92,26 @@ export default function LeaguePage() {
     enabled: !!leagueId
   });
 
+  // Round navigation handlers
+  const handlePreviousRound = () => {
+    // Implement logic to calculate previous round
+    // For now, simple decrement if round is numeric
+    if (currentRound && !isNaN(Number(currentRound))) {
+      setCurrentRound(String(Number(currentRound) - 1));
+    }
+  };
+
+  const handleNextRound = () => {
+    // Implement logic to calculate next round
+    // For now, simple increment if round is numeric
+    if (currentRound && !isNaN(Number(currentRound))) {
+      setCurrentRound(String(Number(currentRound) + 1));
+    }
+  };
+
   if (leagueLoading) return <div className="p-8 text-white">Loading League...</div>;
   if (!league) return <div className="p-8 text-white">League not found.</div>;
+  if (currentRound === undefined) return <div className="p-8 text-white">Loading Round Data...</div>;
 
   return (
     <div className="flex flex-col h-full bg-[#1b1b1b] text-gray-200 font-sans min-h-screen">
@@ -98,13 +151,20 @@ export default function LeaguePage() {
           <div className="col-span-4 h-full">
             <FMBox title="경기/결과 >" className="h-full" 
               action={
-                <div className="flex gap-1">
-                  <button className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333]">{'<'}</button>
-                  <button className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333]">{'>'}</button>
+                <div className="flex items-center gap-1">
+                  <button 
+                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333] rounded"
+                    onClick={handlePreviousRound}
+                  >{'<'}</button>
+                  <span className="text-gray-300 text-xs font-medium whitespace-nowrap">Round {currentRound}</span>
+                  <button 
+                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333] rounded"
+                    onClick={handleNextRound}
+                  >{'>'}</button>
                 </div>
               }
             >
-              <FMFixtures fixtures={fixtures?.upcoming || []} />
+              <FMFixtures fixtures={fixturesForRound || []} />
             </FMBox>
           </div>
 
