@@ -190,7 +190,7 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[status] || 'bg-slate-700 text-slate-300 border border-slate-600'}`}>
             {statusDisplay[status] || status}
           </span>
-          <span className="text-sm text-slate-400">{round}</span>
+          <span className="text-sm text-slate-400">Round {round}</span>
         </div>
         <div className="text-right">
           <div className="text-sm font-medium text-white">{dateDisplay}</div>
