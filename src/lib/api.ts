@@ -60,7 +60,7 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
   }));
 }
 
-export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: number; };
+export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: number; current_season?: string; };
 export type TeamStanding = { team_id: number; team_name: string; short_name: string | null; crest_url: string | null; rank: number; points: number; played: number; win: number; draw: number; lose: number; goals_for: number; goals_against: number; goals_diff: number; form: string | null; };
 
 export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | null> {
@@ -74,13 +74,13 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   else if (slug === 'ligue-1') theSportsDBLeagueId = '4334';
   else theSportsDBLeagueId = slug.replace('league-', '');
   
-  const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge").eq("idLeague", theSportsDBLeagueId).maybeSingle();
+  const { data, error } = await supabase.from("leagues").select("idLeague, strLeague, strCountry, strBadge, strCurrentSeason").eq("idLeague", theSportsDBLeagueId).maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
   return {
     id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
-    name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: 2025, 
+    name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason 
   };
 }
 
