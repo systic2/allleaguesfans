@@ -8,7 +8,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
 
   return (
     <div className="flex flex-col h-full bg-[#232323]">
-      <table className="w-full text-[11px] text-gray-300">
+      <table className="w-full text-xs text-gray-300">
         <tbody className="divide-y divide-[#333]">
           {fixtures.map((match) => {
             const date = new Date(match.date);
@@ -20,17 +20,22 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
 
             return (
               <tr key={match.id} className="hover:bg-[#383838] transition-colors">
-                <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap w-20 text-right pr-4 border-r border-[#333]">
+                <td className="px-2 py-2 text-gray-500 whitespace-nowrap w-20 text-right pr-4 border-r border-[#333]">
                   <div>{dateStr}</div>
                   <div className="text-[10px] opacity-70">{timeStr}</div>
                 </td>
-                <td className="px-3 py-1.5 w-full">
+                <td className="px-3 py-2 w-full">
                   <div className="flex items-center justify-between">
-                    <Link to={`/teams/${match.homeTeamId}`} className="flex-1 text-right hover:text-white truncate">
-                      {match.homeTeam?.name || match.homeTeamId}
+                    {/* Home Team */}
+                    <Link to={`/teams/${match.homeTeamId}`} className="flex-1 flex items-center justify-end gap-2 text-right hover:text-white group">
+                      <span className="truncate">{match.homeTeam?.name || match.homeTeamId}</span>
+                      {match.homeTeam?.badgeUrl && (
+                        <img src={match.homeTeam.badgeUrl} alt="" className="w-5 h-5 object-contain opacity-80 group-hover:opacity-100" />
+                      )}
                     </Link>
                     
-                    <div className="px-3 text-center min-w-[40px] font-bold text-white bg-[#1a1a1a] mx-2 py-0.5 rounded">
+                    {/* Score / VS */}
+                    <div className="px-2 text-center min-w-[50px] font-bold text-white bg-[#1a1a1a] mx-3 py-1 rounded border border-[#333]">
                       {(isFinished || isLive) && match.homeScore !== null && match.homeScore !== undefined ? (
                         <span className={isLive ? "text-red-500 animate-pulse" : ""}>
                           {match.homeScore} - {match.awayScore}
@@ -40,8 +45,12 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                       )}
                     </div>
 
-                    <Link to={`/teams/${match.awayTeamId}`} className="flex-1 text-left hover:text-white truncate">
-                      {match.awayTeam?.name || match.awayTeamId}
+                    {/* Away Team */}
+                    <Link to={`/teams/${match.awayTeamId}`} className="flex-1 flex items-center justify-start gap-2 text-left hover:text-white group">
+                      {match.awayTeam?.badgeUrl && (
+                        <img src={match.awayTeam.badgeUrl} alt="" className="w-5 h-5 object-contain opacity-80 group-hover:opacity-100" />
+                      )}
+                      <span className="truncate">{match.awayTeam?.name || match.awayTeamId}</span>
                     </Link>
                   </div>
                 </td>
