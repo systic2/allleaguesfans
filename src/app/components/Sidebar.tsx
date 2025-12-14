@@ -34,13 +34,6 @@ export default function Sidebar() {
           <LayoutDashboard className="w-4 h-4" />
           홈
         </NavLink>
-        <NavLink
-          to="/leagues"
-          className={({ isActive }) => `${item} ${isActive ? active : ""}`}
-        >
-          <Trophy className="w-4 h-4" />
-          모든 리그
-        </NavLink>
 
         <div className="my-2 border-t border-white/5"></div>
         <div className="px-4 text-xs font-bold text-white/40 uppercase mb-2">Competitions</div>
