@@ -15,6 +15,7 @@ type GSRow = {
   team_id?: number;
   crest_url?: string | null;
   short_name?: string | null;
+  team_name?: string | null;
 };
 
 export default function GlobalSearch() {
@@ -25,12 +26,14 @@ export default function GlobalSearch() {
 
   const dq = useDebounced(q, 200);
 
-  const { data } = useQuery<GSRow[]>({
-    queryKey: ["global-search", dq],
-    // 공용 API 결과를 상위 호환 타입으로 수용
-    queryFn: async () => (await searchByName(dq)) as unknown as GSRow[],
-    enabled: dq.trim().length > 0,
-  });
+  const { data } = useQuery<GSRow[]>(
+    {
+      queryKey: ["global-search", dq],
+      // 공용 API 결과를 상위 호환 타입으로 수용
+      queryFn: async () => (await searchByName(dq)) as unknown as GSRow[],
+      enabled: dq.trim().length > 0,
+    }
+  );
 
   // ❗ 빈 배열 기본값에 명시 타입 부여(never[] 방지)
   const results: GSRow[] = useMemo(() => data ?? ([] as GSRow[]), [data]);
@@ -81,8 +84,8 @@ export default function GlobalSearch() {
         value={q}
         onFocus={() => setOpen(true)}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="리그/팀 검색"
-        className="w-64 rounded-lg border border-white/20 bg-transparent px-3 py-2"
+        placeholder="리그/팀/선수 검색"
+        className="w-96 rounded-lg border border-white/20 bg-transparent px-3 py-2 text-white placeholder:text-white/30 focus:border-blue-500 focus:outline-none transition-colors"
       />
       {visible && (
         <div className="absolute mt-2 w-96 rounded-xl border border-white/10 bg-black/80 backdrop-blur p-2">
@@ -137,6 +140,21 @@ function Row({ row }: { row: GSRow }) {
           className="w-5 h-5 object-contain"
         />
         <span>{row.name}</span>
+      </span>
+    );
+  }
+  if (row.type === "player") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-700 text-xs">
+          {row.crest_url ? (
+            <img src={row.crest_url} alt={row.name} className="w-full h-full object-cover rounded-full" />
+          ) : (
+            "👤"
+          )}
+        </span>
+        <span>{row.name}</span>
+        {row.team_name && <span className="text-white/40 text-xs">({row.team_name})</span>}
       </span>
     );
   }

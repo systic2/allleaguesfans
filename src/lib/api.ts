@@ -210,9 +210,10 @@ export async function fetchUpcomingRoundFixtures(leagueId: number, season: numbe
 export async function searchByName(q: string): Promise<SearchRow[]> {
   const qq = q.trim();
   if (!qq) return [];
-  const [leagues, teams] = await Promise.all([
+  const [leagues, teams, players] = await Promise.all([
     supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").ilike("strLeague", `%${qq}%`).limit(10),
-    supabase.from("teams").select("idTeam, strTeam, strBadge").ilike("strTeam", `%${qq}%`).limit(10)
+    supabase.from("teams").select("idTeam, strTeam, strBadge").ilike("strTeam", `%${qq}%`).limit(10),
+    supabase.from("players_v2").select("idPlayer, strPlayer, strTeam, strThumb").ilike("strPlayer", `%${qq}%`).limit(10)
   ]);
   const rows: SearchRow[] = [];
   for (const x of leagues.data ?? []) {
@@ -221,6 +222,16 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   for (const t of teams.data ?? []) {
     const teamId = parseInt(t.idTeam.replace(/[^0-9]/g, '')) || 0;
     rows.push({ type: "team", entity_id: teamId, team_id: teamId, name: String(t.strTeam), short_name: null, crest_url: (t.strBadge ?? null) as string | null } as SearchRow);
+  }
+  for (const p of players.data ?? []) {
+    const playerId = parseInt(p.idPlayer.replace(/[^0-9]/g, '')) || 0;
+    rows.push({
+      type: "player",
+      entity_id: playerId,
+      name: String(p.strPlayer),
+      team_name: p.strTeam,
+      crest_url: p.strThumb
+    } as SearchRow);
   }
   return rows;
 }
