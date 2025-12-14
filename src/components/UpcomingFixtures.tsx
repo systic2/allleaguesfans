@@ -119,9 +119,20 @@ interface FixtureCardProps {
   showTeams?: boolean;
 }
 
+const LEAGUE_NAMES: Record<string, string> = {
+  '4689': 'K League 1',
+  '4822': 'K League 2',
+  '4328': 'EPL',
+  '4335': 'La Liga',
+  '4332': 'Serie A',
+  '4331': 'Bundesliga',
+  '4334': 'Ligue 1',
+};
+
 function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
   // The fixture object now contains nested homeTeam and awayTeam objects
-  const { date, status, round, homeTeam, awayTeam, venueName } = fixture;
+  const { date, status, round, homeTeam, awayTeam, venueName, leagueId } = fixture;
+  const leagueName = LEAGUE_NAMES[leagueId];
 
   const fixtureDate = new Date(date);
   const now = new Date();
@@ -190,7 +201,10 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[status] || 'bg-slate-700 text-slate-300 border border-slate-600'}`}>
             {statusDisplay[status] || status}
           </span>
-          <span className="text-sm text-slate-400">Round {round}</span>
+          <span className="text-sm text-slate-400">
+            {leagueName && <span className="text-blue-400 font-bold mr-1">{leagueName} •</span>}
+            Round {round}
+          </span>
         </div>
         <div className="text-right">
           <div className="text-sm font-medium text-white">{dateDisplay}</div>
