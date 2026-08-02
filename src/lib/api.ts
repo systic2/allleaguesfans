@@ -3,7 +3,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
-import type { TheSportsDBEvent } from './mappers/thesportsdb-mappers';
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 
 const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());

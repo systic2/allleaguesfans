@@ -13,7 +13,6 @@ import {
   fetchFixturesByRound,
   getAllRounds 
 } from "@/lib/api";
-import { fetchLeagueFixtures } from "@/lib/thesportsdb-api"; 
 import FMBox from "@/components/fm/FMBox";
 import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
