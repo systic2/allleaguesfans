@@ -60,13 +60,6 @@ export default function FMPlayerStats({ scorers, assists }: { scorers: TopScorer
     value: (7.8 - i * 0.1).toFixed(2)
   }));
 
-  // Mock Clean Sheets (using random top teams for visual)
-  const cleanSheetItems: StatItem[] = [
-    { rank: 1, name: "GK 1", team: goalItems[0]?.team || "Team A", value: 12 },
-    { rank: 2, name: "GK 2", team: goalItems[1]?.team || "Team B", value: 10 },
-    { rank: 3, name: "GK 3", team: goalItems[2]?.team || "Team C", value: 9 },
-  ];
-
   return (
     <div className="grid grid-cols-4 gap-1 h-full">
       <StatCard title="평균 평점 >" items={ratingItems} />
