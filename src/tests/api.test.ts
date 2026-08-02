@@ -8,6 +8,7 @@ import {
   fetchTeamRecentFixtures,
   fetchTeamFormGuide,
   fetchPlayerDetail,
+  normalizeSeason,
   TeamDetails,
   TeamPlayer,
   UpcomingFixture,
@@ -369,6 +370,24 @@ describe('API Functions', () => {
 
       const result = await fetchPlayerDetail(99999);
       expect(result).toBeNull();
+    });
+  });
+
+  describe('normalizeSeason', () => {
+    it('should strip the end year from a "YYYY-YYYY" season range', () => {
+      expect(normalizeSeason('2025-2026')).toBe('2025');
+    });
+
+    it('should leave a plain "YYYY" season untouched', () => {
+      expect(normalizeSeason('2025')).toBe('2025');
+    });
+
+    it('should handle an empty string without throwing', () => {
+      expect(normalizeSeason('')).toBe('');
+    });
+
+    it('should only split on the first hyphen when multiple are present', () => {
+      expect(normalizeSeason('2025-2026-extra')).toBe('2025');
     });
   });
 });

@@ -3,12 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import LeaguePage from "@/pages/LeaguePage";
 import * as api from "@/lib/api";
-import * as theSportsDBApi from "@/lib/thesportsdb-api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock API modules
 vi.mock("@/lib/api");
-vi.mock("@/lib/thesportsdb-api");
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,11 +43,6 @@ describe("League Information Page Display Verification", () => {
     },
   ];
 
-  const mockFixtures = {
-    upcoming: [],
-    recent: [],
-  };
-
   const mockHistory = [
     {
       season_year: 2024,
@@ -69,10 +62,17 @@ describe("League Information Page Display Verification", () => {
     vi.resetAllMocks();
     (api.fetchLeagueBySlug as any).mockResolvedValue(mockLeague);
     (api.fetchLeagueStandings as any).mockResolvedValue(mockStandings);
-    (theSportsDBApi.fetchLeagueFixtures as any).mockResolvedValue(mockFixtures);
     (api.fetchHistoricalChampions as any).mockResolvedValue(mockHistory);
     (api.fetchTopScorers as any).mockResolvedValue(mockScorers);
     (api.fetchTopAssists as any).mockResolvedValue(mockAssists);
+    // Round-priority queries (getCurrentLiveRound > getNextUpcomingRound > getLatestCompletedRound)
+    // must resolve to a defined value, otherwise React Query logs
+    // "Query data cannot be undefined" and the LeaguePage.tsx fallback logic never runs.
+    (api.getAllRounds as any).mockResolvedValue([]);
+    (api.getCurrentLiveRound as any).mockResolvedValue(null);
+    (api.getNextUpcomingRound as any).mockResolvedValue(null);
+    (api.getLatestCompletedRound as any).mockResolvedValue(null);
+    (api.fetchFixturesByRound as any).mockResolvedValue([]);
   });
 
   const renderLeaguePage = (slug = "k-league-1") => {

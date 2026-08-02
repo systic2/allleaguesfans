@@ -7,7 +7,7 @@ import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 
 const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
 
-function normalizeSeason(season: string): string {
+export function normalizeSeason(season: string): string {
   // Normalize '2025-2026' to '2025' to match DB format
   if (season && season.includes('-')) {
     return season.split('-')[0];
