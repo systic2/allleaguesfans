@@ -15,6 +15,14 @@ export function normalizeSeason(season: string): string {
   return season;
 }
 
+// Internal numeric league IDs (used across the app/router) map to TheSportsDB's
+// string league IDs, which is what every events_v2/standings_v2 query filters on.
+function toTheSportsDBLeagueId(leagueId: number): string {
+  if (leagueId === 249276) return '4689';
+  if (leagueId === 250127) return '4822';
+  return String(leagueId);
+}
+
 // ---------- 공통 fetch 유틸 ----------
 export async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -113,7 +121,7 @@ export async function fetchLeagueStandings(leagueSlug: string, season: string = 
 }
 
 export async function fetchLeagueTeams(leagueId: number, season: string = DEFAULT_SEASON): Promise<TeamLite[]> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase.from("standings_v2").select(`teamId, teamName, teamBadgeUrl`).eq("leagueId", theSportsDBLeagueId).eq("season", normalized);
   if (error) throw error;
@@ -123,7 +131,7 @@ export async function fetchLeagueTeams(leagueId: number, season: string = DEFAUL
 export type LeagueStats = { total_goals: number; total_matches: number; avg_goals_per_match: number; total_teams: number; };
 
 export async function fetchLeagueStats(leagueId: number, season: string = DEFAULT_SEASON): Promise<LeagueStats> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const [standingsResult, fixturesResult] = await Promise.all([
     supabase.from("standings_v2").select("leagueId, goalsFor, goalsAgainst, gamesPlayed").eq("leagueId", theSportsDBLeagueId).eq("season", normalized),
@@ -143,21 +151,21 @@ export type TopAssist = { player_name: string; team_name: string; assists: numbe
 export type HistoricalChampion = { season_year: number; champion_name: string; champion_logo: string | null; };
 
 export async function fetchTopScorers(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopScorer[]> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const stats = await fetchTopScorersStats(theSportsDBLeagueId, normalized, limit);
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
 }
 
 export async function fetchTopAssists(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopAssist[]> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const stats = await fetchTopAssistersStats(theSportsDBLeagueId, normalized, limit);
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
 }
 
 export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const currentYear = new Date().getFullYear();
   const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", String(currentYear)).order("season", { ascending: false }).limit(15);
   if (standingsError) { console.warn("Failed to fetch historical champions standings:", standingsError); return []; }
@@ -171,7 +179,7 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
   const today = new Date().toISOString(); 
   let query = supabase.from("events_v2").select(`*`).gte("date", today).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED"]).order("date", { ascending: true }).limit(limit);
   if (leagueId) {
-    const dbId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+    const dbId = toTheSportsDBLeagueId(leagueId);
     query = query.eq("leagueId", dbId);
   }
   const { data, error } = await query;
@@ -188,7 +196,7 @@ export async function fetchUpcomingFixtures(leagueId?: number, limit: number = 1
 export interface RoundFixture { id: string; date_utc: string; status_short: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; home_goals: number | null; away_goals: number | null; venue?: string; league_id: string; }
 
 export async function getLatestCompletedRound(leagueId: number, season: string = DEFAULT_SEASON): Promise<string | null> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).in("status", ["FINISHED", "FT", "AET", "PEN"]).order("date", { ascending: false }).limit(1);
   if (error || !data || data.length === 0) return null;
@@ -196,7 +204,7 @@ export async function getLatestCompletedRound(leagueId: number, season: string =
 }
 
 export async function getNextUpcomingRound(leagueId: number, season: string = DEFAULT_SEASON): Promise<string | null> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).in("status", ["SCHEDULED", "UNKNOWN", "POSTPONED", "NS"]).order("date", { ascending: true }).limit(1);
   if (error || !data || data.length === 0) return null;
@@ -204,7 +212,7 @@ export async function getNextUpcomingRound(leagueId: number, season: string = DE
 }
 
 export async function getCurrentLiveRound(leagueId: number, season: string = DEFAULT_SEASON): Promise<string | null> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase.from("events_v2").select("round, date").eq("leagueId", theSportsDBLeagueId).eq("season", normalized).in("status", ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT']).order("date", { ascending: true }).limit(1);
   if (error || !data || data.length === 0) return null;
@@ -212,7 +220,7 @@ export async function getCurrentLiveRound(leagueId: number, season: string = DEF
 }
 
 export async function fetchFixturesByRound(leagueId: number, round: string, season: string = DEFAULT_SEASON): Promise<MatchWithTeams[]> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase.from("events_v2").select(`
     *,
@@ -225,7 +233,7 @@ export async function fetchFixturesByRound(leagueId: number, round: string, seas
 }
 
 export async function getAllRounds(leagueId: number, season: string = DEFAULT_SEASON): Promise<string[]> {
-  const theSportsDBLeagueId = leagueId === 249276 ? '4689' : leagueId === 250127 ? '4822' : String(leagueId);
+  const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase
     .from("events_v2")
