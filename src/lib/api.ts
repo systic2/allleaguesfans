@@ -115,7 +115,7 @@ export async function fetchLeagueStandings(leagueSlug: string, season: string = 
   const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", normalized).order("rank", { ascending: true });
   if (error) throw error;
 
-  return (data ?? []).map((standing: any) => ({
+  return (data ?? []).map((standing) => ({
     team_id: Number(standing.teamId || 0), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form,
   }));
 }
@@ -125,7 +125,7 @@ export async function fetchLeagueTeams(leagueId: number, season: string = DEFAUL
   const normalized = normalizeSeason(season);
   const { data, error } = await supabase.from("standings_v2").select(`teamId, teamName, teamBadgeUrl`).eq("leagueId", theSportsDBLeagueId).eq("season", normalized);
   if (error) throw error;
-  return (data ?? []).map((item: any) => ({ id: Number(item.teamId || 0), name: String(item.teamName || "Unknown"), short_name: null, crest_url: item.teamBadgeUrl, logo_url: item.teamBadgeUrl, badge_url: item.teamBadgeUrl, banner_url: null, primary_source: "thesportsdb", }));
+  return (data ?? []).map((item) => ({ id: Number(item.teamId || 0), name: String(item.teamName || "Unknown"), short_name: null, crest_url: item.teamBadgeUrl, logo_url: item.teamBadgeUrl, badge_url: item.teamBadgeUrl, banner_url: null, primary_source: "thesportsdb", }));
 }
 
 export type LeagueStats = { total_goals: number; total_matches: number; avg_goals_per_match: number; total_teams: number; };
@@ -170,7 +170,7 @@ export async function fetchHistoricalChampions(leagueId: number): Promise<Histor
   const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", String(currentYear)).order("season", { ascending: false }).limit(15);
   if (standingsError) { console.warn("Failed to fetch historical champions standings:", standingsError); return []; }
   if (!standingsData || standingsData.length === 0) return [];
-  return standingsData.map((standing: any) => ({ season_year: Number(standing.season || 0), champion_name: String(standing.teamName || "Unknown"), champion_logo: null }));
+  return standingsData.map((standing) => ({ season_year: Number(standing.season || 0), champion_name: String(standing.teamName || "Unknown"), champion_logo: null }));
 }
 
 export interface UpcomingFixture { id: string; date_utc: string; status: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; venue?: string; league_id: string; }

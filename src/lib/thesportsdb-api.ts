@@ -9,8 +9,6 @@ export type MatchWithTeams = Match & {
   awayTeam: Team | null;
 };
 
-const DEFAULT_SEASON = Number(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
-
 // ========================================
 // TheSportsDB Native Types
 // ========================================

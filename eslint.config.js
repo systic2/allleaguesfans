@@ -48,6 +48,10 @@ export default tseslint.config(
         "warn",
         { args: "none", varsIgnorePattern: "^_", ignoreRestSiblings: true },
       ],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
 
       // React Hooks
       "react-hooks/rules-of-hooks": "error",

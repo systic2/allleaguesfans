@@ -62,7 +62,7 @@ async function fetchAllMatches(): Promise<HighlightlyMatch[]> {
   const allMatches: HighlightlyMatch[] = [];
   let offset = 1;
 
-  while (true) {
+  for (;;) {
     const url = `https://sports.highlightly.net/football/matches?countryCode=KR&season=${SEASON_YEAR}&leagueName=K%20League%201&offset=${offset}`;
 
     if (offset === 1) {

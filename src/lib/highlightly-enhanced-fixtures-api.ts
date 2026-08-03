@@ -110,7 +110,6 @@ export async function fetchEnhancedUpcomingFixtures(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function fetchEnhancedTeamUpcomingFixtures(
   teamId: number,
   _limit: number = 10

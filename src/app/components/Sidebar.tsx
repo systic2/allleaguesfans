@@ -64,7 +64,7 @@ export default function Sidebar() {
           <NavLink
             to={`/teams/${teamId}?tab=overview`}
             end
-            className={({ isActive }) => {
+            className={() => {
               // Custom active logic for query params since NavLink defaults to path matching
               const search = new URLSearchParams(window.location.search);
               const tab = search.get("tab");
@@ -77,7 +77,7 @@ export default function Sidebar() {
           </NavLink>
           <NavLink
             to={`/teams/${teamId}?tab=squad`}
-            className={({ isActive }) => {
+            className={() => {
                const search = new URLSearchParams(window.location.search);
                return `${item} ${search.get("tab") === "squad" ? active : ""}`;
             }}
@@ -87,7 +87,7 @@ export default function Sidebar() {
           </NavLink>
           <NavLink
             to={`/teams/${teamId}?tab=fixtures`}
-            className={({ isActive }) => {
+            className={() => {
                const search = new URLSearchParams(window.location.search);
                return `${item} ${search.get("tab") === "fixtures" ? active : ""}`;
             }}
@@ -97,7 +97,7 @@ export default function Sidebar() {
           </NavLink>
           <NavLink
             to={`/teams/${teamId}?tab=stats`}
-            className={({ isActive }) => {
+            className={() => {
                const search = new URLSearchParams(window.location.search);
                return `${item} ${search.get("tab") === "stats" ? active : ""}`;
             }}

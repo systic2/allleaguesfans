@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/highlightly/, ''),
           configure: (proxy, _options) => {
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
+            proxy.on('proxyReq', (proxyReq, _req, _res) => {
               // Add Highlightly API headers
               const apiKey = process.env.HIGHLIGHTLY_API_KEY || process.env.VITE_HIGHLIGHTLY_API_KEY;
               if (apiKey) {
