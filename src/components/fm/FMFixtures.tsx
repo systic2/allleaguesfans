@@ -24,7 +24,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                 <tr key={match.id} className="hover:bg-[#383838] transition-colors">
                   <td className="px-2 py-2 text-gray-500 whitespace-nowrap w-20 text-right pr-4 border-r border-[#333]">
                     <div>{dateStr}</div>
-                    <div className="text-[10px] opacity-70">{timeStr}</div>
+                    <div className="text-xs opacity-70">{timeStr}</div>
                   </td>
                   <td className="px-3 py-2 w-full">
                     <div className="flex items-center justify-between">
@@ -47,9 +47,9 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                             {match.homeScore} - {match.awayScore}
                           </span>
                         ) : isPostponed ? (
-                           <span className="text-yellow-500 text-[10px]">연기됨</span>
+                           <span className="text-yellow-500 text-xs">연기됨</span>
                         ) : (
-                          <span className="text-gray-600 text-[10px]">VS</span>
+                          <span className="text-gray-600 text-xs">VS</span>
                         )}
                       </div>
 

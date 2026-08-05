@@ -11,7 +11,7 @@ export default function FMHistory({ history }: { history: HistoricalChampion[] }
         {history.map((record) => (
           <tr key={record.season_year} className="hover:bg-[#383838] transition-colors">
             <td className="px-3 py-1.5 flex items-center gap-2">
-              <span className="w-4 h-4 flex items-center justify-center bg-yellow-600/20 rounded-full text-yellow-500 text-[10px]">★</span>
+              <span className="w-4 h-4 flex items-center justify-center bg-yellow-600/20 rounded-full text-yellow-500 text-xs">★</span>
               <span className="text-white font-medium">{record.champion_name}</span>
             </td>
             <td className="px-3 py-1.5 text-right text-gray-500 font-mono">

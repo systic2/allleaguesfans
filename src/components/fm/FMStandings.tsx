@@ -18,7 +18,7 @@ function FormBadge({ result }: { result: string }) {
 
   return (
     <div 
-      className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${color}`} 
+      className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${color}`}
       title={result === 'W' ? '승리' : result === 'D' ? '무승부' : '패배'}
     >
       {text}
@@ -79,7 +79,7 @@ export default function FMStandings({ standings }: { standings: TeamStanding[] }
                 <div className="flex justify-center gap-1">
                   {team.form ? team.form.split('').slice(0, 5).map((r, i) => (
                     <FormBadge key={i} result={r} />
-                  )) : <span className="text-gray-600 text-[10px]">-</span>}
+                  )) : <span className="text-gray-600 text-xs">-</span>}
                 </div>
               </td>
             </tr>
