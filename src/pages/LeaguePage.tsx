@@ -158,7 +158,7 @@ export default function LeaguePage() {
               {league.current_season || '2025'}
             </span>
           </div>
-          <div className="text-xs text-gray-400 flex gap-4">
+          <div className="text-xs text-gray-300 flex gap-4">
             <span>국가: {league.country}</span>
             <span>디펜딩 챔피언: {history?.[0]?.champion_name || '-'}</span>
           </div>
@@ -183,14 +183,14 @@ export default function LeaguePage() {
             <FMBox title="경기/결과 >" className="h-full" 
               action={
                 <div className="flex items-center gap-1">
-                  <button 
-                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333] rounded"
+                  <button
+                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-xs hover:bg-[#333] rounded"
                     onClick={handlePreviousRound}
                     disabled={currentRound === allRounds[0]}
                   >{'<'}</button>
                   <span className="text-gray-300 text-xs font-medium whitespace-nowrap">Round {currentRound}</span>
-                  <button 
-                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-[10px] hover:bg-[#333] rounded"
+                  <button
+                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-xs hover:bg-[#333] rounded"
                     onClick={handleNextRound}
                     disabled={currentRound === allRounds[allRounds.length - 1]}
                   >{'>'}</button>
@@ -210,7 +210,7 @@ export default function LeaguePage() {
             </div>
             <div className="flex-1">
               <FMBox title="대회 명성 >" className="h-full">
-                <div className="p-4 flex items-center justify-center h-full text-gray-500 text-xs">
+                <div className="p-4 flex items-center justify-center h-full text-gray-300 text-xs">
                   {/* Placeholder for reputation or other stats */}
                   <div className="text-center">
                     <div className="text-2xl font-bold text-gray-300 mb-1">Top 5</div>
