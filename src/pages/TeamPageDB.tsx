@@ -19,7 +19,7 @@ import FMSubNav from "@/components/FMSubNav";
 // Types
 type FormResult = 'W' | 'D' | 'L';
 
-const CURRENT_SEASON = '2025';
+const CURRENT_SEASON = String(new Date().getFullYear());
 
 // Helper Components
 function LoadingSpinner() {

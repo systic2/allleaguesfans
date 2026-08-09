@@ -90,9 +90,12 @@ export default function LeaguePage() {
 
 
   // 2. Parallel Fetching for Dashboard Data
+  // currentSeason isn't required to be defined before firing: fetchLeagueStandings
+  // falls back to the current calendar year on its own, and the season is part of
+  // the query key so this refetches once the league record resolves the real value.
   const { data: standings } = useQuery({
-    queryKey: ['standings', slug],
-    queryFn: () => fetchLeagueStandings(slug!),
+    queryKey: ['standings', slug, currentSeason],
+    queryFn: () => fetchLeagueStandings(slug!, currentSeason),
     enabled: !!slug
   });
 
@@ -110,14 +113,14 @@ export default function LeaguePage() {
   });
 
   const { data: scorers } = useQuery({
-    queryKey: ['scorers', leagueId],
-    queryFn: () => fetchTopScorers(leagueId!),
+    queryKey: ['scorers', leagueId, currentSeason],
+    queryFn: () => fetchTopScorers(leagueId!, currentSeason),
     enabled: !!leagueId
   });
 
   const { data: assists } = useQuery({
-    queryKey: ['assists', leagueId],
-    queryFn: () => fetchTopAssists(leagueId!),
+    queryKey: ['assists', leagueId, currentSeason],
+    queryFn: () => fetchTopAssists(leagueId!, currentSeason),
     enabled: !!leagueId
   });
 
@@ -155,7 +158,7 @@ export default function LeaguePage() {
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words">{league.name}</h1>
             <span className="bg-white/10 text-xs px-2 py-0.5 rounded text-gray-300 border border-white/10 whitespace-nowrap">
-              {league.current_season || '2025'}
+              {league.current_season || new Date().getFullYear()}
             </span>
           </div>
           <div className="text-xs text-gray-300 flex gap-4 flex-wrap">

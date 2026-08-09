@@ -90,6 +90,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Environment-specific sourcemaps (disabled in production)
 - Vercel deployment configuration (`vercel.json`)
 
+## Agent Team Workflow (Claude Code + Codex CLI + Gemini CLI)
+
+For non-trivial fixes/features in this repo, use the three-role pipeline instead of a single agent doing everything end to end:
+
+1. **Claude Code (implementer)** — investigates root cause, writes the actual code/config fix.
+2. **Codex CLI (test writer)** — after the fix lands, invoke `codex exec -s workspace-write "<prompt>"` with the specific change described (what changed, why, which files) and ask it to write/extend the relevant Vitest tests under `src/tests/` and run them to confirm they pass. Keep its scope explicitly limited to the tests for that change.
+3. **Gemini CLI (verifier)** — invoke `gemini -p "<prompt>"` with the diff and the root-cause narrative, and ask it to review for bugs, missed edge cases, and whether the fix actually addresses the root cause (not just symptoms). `gemini -p` can take >2 minutes; expect it to run in the background and check back rather than blocking on it.
+
+Both CLIs are pre-authenticated on this machine (`codex`, `gemini` on PATH). Only move to commit/push after Codex's tests pass and Gemini's review comes back clean (or its concerns are addressed).
+
 ## Development Workflow
 
 1. Always run `pnpm typecheck` before committing changes

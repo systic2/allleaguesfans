@@ -9,6 +9,7 @@ import {
   mapTheSportsDBTeamToDomain, TheSportsDBTeam
 } from '../../src/lib/mappers/thesportsdb-mappers.js';
 import type { Standing, Match, Team } from '../../src/types/domain';
+import { getCurrentSeasonForFormat } from '../../src/lib/season.js';
 
 // --- Configuration ---
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || '460915';
@@ -84,23 +85,7 @@ class DataOrchestrator {
   }
 
   private getCurrentSeason(format: string): { queryParam: string, dbValue: string } {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-12
-
-    if (format === 'split') {
-      const startYear = currentMonth >= 7 ? currentYear : currentYear - 1;
-      const endYear = startYear + 1;
-      return {
-        queryParam: `${startYear}-${endYear}`,
-        dbValue: String(startYear)
-      };
-    } else {
-      return {
-        queryParam: String(currentYear),
-        dbValue: String(currentYear)
-      };
-    }
+    return getCurrentSeasonForFormat(format);
   }
   
   /**
@@ -118,7 +103,7 @@ class DataOrchestrator {
       try {
         const { queryParam, dbValue } = this.getCurrentSeason(league.seasonFormat || 'single');
         console.log(`\n🏆 [Standings & Teams] Processing ${league.name} (Season: ${queryParam}, DB: ${dbValue})...`);
-        
+
         const rawStandings = await this.client.getStandings(league.id, queryParam);
         if (rawStandings.length === 0) {
           console.log(`🟡 No standings data found for ${league.name}. Skipping.`);
@@ -164,6 +149,23 @@ class DataOrchestrator {
         }
         totalStandingsImported += standingsData.length;
         console.log(`[DB] ✅ Successfully imported ${standingsData.length} standings.`);
+
+        // Keep the leagues table's displayed season in sync with what this run just
+        // persisted. Only done after a successful standings write so the badge never
+        // points at a season with no backing data. Previously this column was set once
+        // by a one-off script and never refreshed, so the UI season badge stayed stuck.
+        const { data: leagueSeasonRows, error: leagueSeasonError } = await supa
+          .from('leagues')
+          .update({ strCurrentSeason: dbValue })
+          .eq('idLeague', league.id)
+          .select('idLeague');
+        if (leagueSeasonError) {
+          console.error(`[DB] ❌ Failed to update strCurrentSeason for ${league.name}:`, leagueSeasonError);
+          hasCriticalError = true;
+        } else if (!leagueSeasonRows || leagueSeasonRows.length === 0) {
+          console.error(`[DB] ❌ strCurrentSeason update matched no row for ${league.name} (idLeague=${league.id}).`);
+          hasCriticalError = true;
+        }
 
         // Short delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));

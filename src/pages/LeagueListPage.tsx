@@ -111,7 +111,7 @@ function LeagueCard({ league }: { league: LeagueLite }) {
         {/* 추가 정보 표시 영역 */}
         <div className="mt-4 pt-4 border-t border-slate-700/50 mt-auto">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>시즌 {league.current_season || '2025'}</span>
+            <span>시즌 {league.current_season || new Date().getFullYear()}</span>
           </div>
         </div>
       </div>

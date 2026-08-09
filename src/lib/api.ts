@@ -72,7 +72,9 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
     banner_url: null, 
     country_code: x.strCountry, 
     primary_source: "thesportsdb",
-    current_season: x.strCurrentSeason // Map from DB
+    // Postgres NULL comes through as `null`, not `undefined`; coerce so callers relying
+    // on a `= DEFAULT_SEASON` default parameter (which only triggers on `undefined`) work.
+    current_season: x.strCurrentSeason ?? undefined
   }));
 }
 
@@ -96,7 +98,7 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
 
   return {
     id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
-    name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason 
+    name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason ?? undefined
   };
 }
 

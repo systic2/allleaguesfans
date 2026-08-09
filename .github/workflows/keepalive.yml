@@ -8,7 +8,7 @@ name: Keep Repository Active
 
 on:
   schedule:
-    - cron: '0 0 1 * *'  # 매월 1일 00:00 UTC (09:00 KST)
+    - cron: '0 0 * * 0'  # 매주 일요일 00:00 UTC (월간보다 여유를 둬서 60일 비활성 임계값에 안전마진 확보)
 
   workflow_dispatch: # Manual trigger available
 
@@ -28,33 +28,20 @@ jobs:
       - name: Keep Repository Active
         run: |
           echo "🔄 Keepalive workflow running..."
-          echo "Last keepalive: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> .github/keepalive.log
-          echo "Purpose: Prevent scheduled workflow deactivation" >> .github/keepalive.log
-          echo "---" >> .github/keepalive.log
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add .github/keepalive.log
-
-          if git diff --quiet && git diff --staged --quiet; then
-            echo "✅ No changes to commit (already up to date)"
-          else
-            git commit -m "chore: keepalive $(date -u +%Y-%m-%d) [skip ci]"
-            git push
-            echo "✅ Keepalive commit pushed successfully"
-          fi
-
-      - name: Verify Active Workflows
-        run: |
-          echo "📊 Verifying scheduled workflows are active..."
-          echo "✅ K League Official Data Sync: Active"
-          echo "✅ Data Quality Automation: Active"
-          echo "🔄 This keepalive ensures they stay active"
+          # .github/keepalive.log is covered by the repo-wide *.log gitignore rule,
+          # so `git add` on it always failed and no commit/push ever happened.
+          # An allow-empty commit sidesteps gitignore entirely and always succeeds.
+          git commit --allow-empty -m "chore: keepalive $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+          echo "✅ Keepalive commit pushed successfully"
 
       - name: Workflow Summary
         run: |
           echo "🎉 Keepalive Workflow Completed"
           echo "Status: Repository activity recorded"
           echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-          echo "Next run: 1st day of next month at 00:00 UTC"
+          echo "Next run: next Sunday at 00:00 UTC"
