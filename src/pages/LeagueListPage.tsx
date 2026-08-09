@@ -74,11 +74,11 @@ function LeagueCard({ league }: { league: LeagueLite }) {
             )}
             
             <div className="flex-1 min-w-0"> {/* Ensure flex-1 gives it space, min-w-0 allows shrinking */}
-              <h3 className="text-white text-xl font-bold group-hover:text-blue-400 transition-colors leading-tight mb-1 whitespace-nowrap">
+              <h3 className="text-white text-xl font-bold group-hover:text-blue-400 transition-colors leading-tight mb-1 truncate">
                 {league.name}
               </h3>
               {league.name_korean && league.name_korean !== league.name && (
-                <p className="text-slate-300 text-sm whitespace-nowrap"> {/* Removed truncate */}
+                <p className="text-slate-300 text-sm truncate">
                   {league.name_korean}
                 </p>
               )}

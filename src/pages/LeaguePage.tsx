@@ -147,18 +147,18 @@ export default function LeaguePage() {
   return (
     <div className="flex flex-col h-full bg-[#1b1b1b] text-gray-200 font-sans min-h-screen">
       {/* Top Header Bar */}
-      <div className="bg-gradient-to-r from-[#2c3e50] to-[#1a1a1a] p-4 border-b border-[#444] shadow-md flex items-center gap-6">
+      <div className="bg-gradient-to-r from-[#2c3e50] to-[#1a1a1a] p-4 border-b border-[#444] shadow-md flex items-center gap-4 sm:gap-6 flex-wrap">
         {league.logo_url && (
-          <img src={league.logo_url} alt={league.name} className="w-16 h-16 object-contain drop-shadow-lg" />
+          <img src={league.logo_url} alt={league.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg flex-shrink-0" />
         )}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-white tracking-tight">{league.name}</h1>
-            <span className="bg-white/10 text-xs px-2 py-0.5 rounded text-gray-300 border border-white/10">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words">{league.name}</h1>
+            <span className="bg-white/10 text-xs px-2 py-0.5 rounded text-gray-300 border border-white/10 whitespace-nowrap">
               {league.current_season || '2025'}
             </span>
           </div>
-          <div className="text-xs text-gray-300 flex gap-4">
+          <div className="text-xs text-gray-300 flex gap-4 flex-wrap">
             <span>국가: {league.country}</span>
             <span>디펜딩 챔피언: {history?.[0]?.champion_name || '-'}</span>
           </div>
@@ -166,21 +166,21 @@ export default function LeaguePage() {
       </div>
 
       {/* Main Dashboard Grid */}
-      <div className="flex-1 p-2 grid grid-rows-[3fr_2fr] gap-2 overflow-hidden">
-        
+      <div className="flex-1 p-2 grid grid-cols-1 gap-2 lg:grid-rows-[3fr_2fr] lg:overflow-hidden">
+
         {/* Top Row: 3 Columns (Standings | Fixtures | History) */}
-        <div className="grid grid-cols-12 gap-2 h-full min-h-[400px]">
-          
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:h-full lg:min-h-[400px]">
+
           {/* Left: League Table (Wide) */}
-          <div className="col-span-5 h-full">
-            <FMBox title="리그 순위 >" className="h-full">
+          <div className="lg:col-span-5">
+            <FMBox title="리그 순위 >" className="h-[420px] lg:h-full">
               <FMStandings standings={standings || []} />
             </FMBox>
           </div>
 
           {/* Middle: Fixtures */}
-          <div className="col-span-4 h-full">
-            <FMBox title="경기/결과 >" className="h-full" 
+          <div className="lg:col-span-4">
+            <FMBox title="경기/결과 >" className="h-[420px] lg:h-full"
               action={
                 <div className="flex items-center gap-1">
                   <button
@@ -202,28 +202,24 @@ export default function LeaguePage() {
           </div>
 
           {/* Right: History & Info */}
-          <div className="col-span-3 h-full flex flex-col gap-2">
-            <div className="flex-1">
-              <FMBox title="지난 우승팀 >" className="h-full">
-                <FMHistory history={history || []} />
-              </FMBox>
-            </div>
-            <div className="flex-1">
-              <FMBox title="대회 명성 >" className="h-full">
-                <div className="p-4 flex items-center justify-center h-full text-gray-300 text-xs">
-                  {/* Placeholder for reputation or other stats */}
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-300 mb-1">Top 5</div>
-                    <div>Global Ranking</div>
-                  </div>
+          <div className="lg:col-span-3 flex flex-col gap-2">
+            <FMBox title="지난 우승팀 >" className="h-64 lg:h-auto lg:flex-1">
+              <FMHistory history={history || []} />
+            </FMBox>
+            <FMBox title="대회 명성 >" className="h-40 lg:h-auto lg:flex-1">
+              <div className="p-4 flex items-center justify-center h-full text-gray-300 text-xs">
+                {/* Placeholder for reputation or other stats */}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-300 mb-1">Top 5</div>
+                  <div>Global Ranking</div>
                 </div>
-              </FMBox>
-            </div>
+              </div>
+            </FMBox>
           </div>
         </div>
 
         {/* Bottom Row: Player Stats Grid */}
-        <div className="h-full min-h-[200px]">
+        <div className="lg:h-full lg:min-h-[200px]">
           <FMPlayerStats scorers={scorers || []} assists={assists || []} />
         </div>
 

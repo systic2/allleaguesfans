@@ -3,7 +3,7 @@ import { LayoutDashboard, Users, Calendar, BarChart3, Trophy } from "lucide-reac
 import { useQuery } from "@tanstack/react-query";
 import { fetchLeagues } from "@/lib/api";
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const item = "flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-white/5 transition-colors";
   const active = "bg-white/10 text-white font-medium";
   
@@ -29,6 +29,7 @@ export default function Sidebar() {
         <div className="px-4 text-xs font-bold text-white/40 uppercase mb-2">Main</div>
         <NavLink
           to="/"
+          onClick={onNavigate}
           className={({ isActive }) => `${item} ${isActive ? active : ""}`}
         >
           <LayoutDashboard className="w-4 h-4" />
@@ -45,6 +46,7 @@ export default function Sidebar() {
             <NavLink
               key={league.id}
               to={`/leagues/${league.slug}`}
+              onClick={onNavigate}
               className={({ isActive }) => `${item} ${isActive ? active : ""}`}
             >
               {league.logo_url ? (
@@ -64,6 +66,7 @@ export default function Sidebar() {
           <NavLink
             to={`/teams/${teamId}?tab=overview`}
             end
+            onClick={onNavigate}
             className={() => {
               // Custom active logic for query params since NavLink defaults to path matching
               const search = new URLSearchParams(window.location.search);
@@ -77,6 +80,7 @@ export default function Sidebar() {
           </NavLink>
           <NavLink
             to={`/teams/${teamId}?tab=squad`}
+            onClick={onNavigate}
             className={() => {
                const search = new URLSearchParams(window.location.search);
                return `${item} ${search.get("tab") === "squad" ? active : ""}`;
@@ -87,6 +91,7 @@ export default function Sidebar() {
           </NavLink>
           <NavLink
             to={`/teams/${teamId}?tab=fixtures`}
+            onClick={onNavigate}
             className={() => {
                const search = new URLSearchParams(window.location.search);
                return `${item} ${search.get("tab") === "fixtures" ? active : ""}`;
@@ -97,6 +102,7 @@ export default function Sidebar() {
           </NavLink>
           <NavLink
             to={`/teams/${teamId}?tab=stats`}
+            onClick={onNavigate}
             className={() => {
                const search = new URLSearchParams(window.location.search);
                return `${item} ${search.get("tab") === "stats" ? active : ""}`;

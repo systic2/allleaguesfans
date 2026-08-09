@@ -61,7 +61,7 @@ export default function FMPlayerStats({ scorers, assists }: { scorers: TopScorer
   }));
 
   return (
-    <div className="grid grid-cols-4 gap-1 h-full">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-1">
       <StatCard title="평균 평점 >" items={ratingItems} />
       <StatCard title="경기 MVP >" items={ratingItems} /> {/* Mock using ratings */}
       <StatCard title="득점 >" items={goalItems} />

@@ -79,16 +79,16 @@ export default function GlobalSearch() {
   const visible = open && dq.trim().length > 0;
 
   return (
-    <div ref={boxRef} className="relative">
+    <div ref={boxRef} className="relative w-full max-w-96">
       <input
         value={q}
         onFocus={() => setOpen(true)}
         onChange={(e) => setQ(e.target.value)}
         placeholder="리그/팀/선수 검색"
-        className="w-96 rounded-lg border border-white/20 bg-transparent px-3 py-2 text-white placeholder:text-white/30 focus:border-blue-500 focus:outline-none transition-colors"
+        className="w-full rounded-lg border border-white/20 bg-transparent px-3 py-2 text-white placeholder:text-white/30 focus:border-blue-500 focus:outline-none transition-colors"
       />
       {visible && (
-        <div className="absolute mt-2 w-96 rounded-xl border border-white/10 bg-black/80 backdrop-blur p-2">
+        <div className="absolute mt-2 w-full rounded-xl border border-white/10 bg-black/80 backdrop-blur p-2">
           {results.length === 0 ? (
             <div className="p-3 text-sm text-white/60">
               검색 결과가 없습니다.
