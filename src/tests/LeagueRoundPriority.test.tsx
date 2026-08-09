@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -86,6 +86,44 @@ describe('LeaguePage initial round priority (Live > Upcoming > Completed > Fallb
       expect(screen.getByText('Round 5')).toBeInTheDocument();
     });
 
+    expectNoReactQueryUndefinedDataWarning();
+  });
+
+  it('waits for slower priority queries before choosing a round when allRounds resolves first', async () => {
+    let resolveLive!: (round: string | null) => void;
+    let resolveUpcoming!: (round: string | null) => void;
+    let resolveCompleted!: (round: string | null) => void;
+
+    (api.getAllRounds as any).mockResolvedValue(['21', '22', '34']);
+    (api.getCurrentLiveRound as any).mockImplementation(
+      () => new Promise<string | null>((resolve) => { resolveLive = resolve; })
+    );
+    (api.getNextUpcomingRound as any).mockImplementation(
+      () => new Promise<string | null>((resolve) => { resolveUpcoming = resolve; })
+    );
+    (api.getLatestCompletedRound as any).mockImplementation(
+      () => new Promise<string | null>((resolve) => { resolveCompleted = resolve; })
+    );
+
+    renderLeaguePage();
+
+    // allRounds has settled, but the three priority queries are still in flight.
+    // The component must not prematurely lock onto the last-round fallback.
+    await waitFor(() => {
+      expect(screen.getByText('Loading Round Data...')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Round 34')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveLive(null);
+      resolveUpcoming('22');
+      resolveCompleted('21');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Round 22')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Round 34')).not.toBeInTheDocument();
     expectNoReactQueryUndefinedDataWarning();
   });
 

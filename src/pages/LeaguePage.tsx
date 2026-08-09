@@ -67,26 +67,31 @@ export default function LeaguePage() {
   });
 
   // Set initial round based on priority: Live > Upcoming > Completed > Fallback
+  // All four round queries (allRounds, live, latest, next) run independently and can
+  // resolve in any order. Deciding the fallback (Priority 4) as soon as allRounds loads
+  // — without waiting for live/latest/next — treated an in-flight query as "no data" and
+  // permanently locked currentRound onto the wrong round (the outer `currentRound ===
+  // undefined` guard means this effect never reruns once a round is set).
+  const roundQueriesSettled = !isLoadingAllRounds && !isLoadingLive && !isLoadingLatest && !isLoadingNext;
   useEffect(() => {
-    if (currentRound === undefined && !isLoadingAllRounds && allRounds.length > 0) {
-      if (initialCurrentLiveRound) { // Priority 1: Live Round
-        setCurrentRound(initialCurrentLiveRound);
-      } else if (initialNextUpcomingRound) { // Priority 2: Upcoming Round (in-season)
-        setCurrentRound(initialNextUpcomingRound);
-      } else if (initialLatestCompletedRound) { // Priority 3: Completed Round (off-season/past)
-        const latestIdx = allRounds.indexOf(initialLatestCompletedRound);
-        if (latestIdx !== -1) {
-          setCurrentRound(allRounds[latestIdx]); 
-        } else {
-          setCurrentRound(allRounds[allRounds.length - 1]); 
-        }
-      } else { // Priority 4: Fallback to last available round
-        setCurrentRound(allRounds[allRounds.length - 1]); 
-      }
-    } else if (currentRound === undefined && !isLoadingAllRounds && allRounds.length === 0 && !isLoadingLive && !isLoadingLatest && !isLoadingNext && league) {
-      setCurrentRound('1'); 
+    if (currentRound !== undefined || !roundQueriesSettled) return;
+
+    if (allRounds.length === 0) {
+      if (league) setCurrentRound('1');
+      return;
     }
-  }, [currentRound, initialCurrentLiveRound, initialLatestCompletedRound, initialNextUpcomingRound, isLoadingLive, isLoadingLatest, isLoadingNext, isLoadingAllRounds, allRounds, league]);
+
+    if (initialCurrentLiveRound) { // Priority 1: Live Round
+      setCurrentRound(initialCurrentLiveRound);
+    } else if (initialNextUpcomingRound) { // Priority 2: Upcoming Round (in-season)
+      setCurrentRound(initialNextUpcomingRound);
+    } else if (initialLatestCompletedRound) { // Priority 3: Completed Round (off-season/past)
+      const latestIdx = allRounds.indexOf(initialLatestCompletedRound);
+      setCurrentRound(latestIdx !== -1 ? allRounds[latestIdx] : allRounds[allRounds.length - 1]);
+    } else { // Priority 4: Fallback to last available round
+      setCurrentRound(allRounds[allRounds.length - 1]);
+    }
+  }, [currentRound, roundQueriesSettled, initialCurrentLiveRound, initialLatestCompletedRound, initialNextUpcomingRound, allRounds, league]);
 
 
   // 2. Parallel Fetching for Dashboard Data
