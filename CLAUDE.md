@@ -90,15 +90,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Environment-specific sourcemaps (disabled in production)
 - Vercel deployment configuration (`vercel.json`)
 
-## Agent Team Workflow (Claude Code + Codex CLI + Gemini CLI)
+## Agent Team Workflow (Claude Code + Codex CLI + Antigravity CLI)
 
 For non-trivial fixes/features in this repo, use the three-role pipeline instead of a single agent doing everything end to end:
 
 1. **Claude Code (implementer)** — investigates root cause, writes the actual code/config fix.
 2. **Codex CLI (test writer)** — after the fix lands, invoke `codex exec -s workspace-write "<prompt>"` with the specific change described (what changed, why, which files) and ask it to write/extend the relevant Vitest tests under `src/tests/` and run them to confirm they pass. Keep its scope explicitly limited to the tests for that change.
-3. **Gemini CLI (verifier)** — invoke `gemini -p "<prompt>"` with the diff and the root-cause narrative, and ask it to review for bugs, missed edge cases, and whether the fix actually addresses the root cause (not just symptoms). `gemini -p` can take >2 minutes; expect it to run in the background and check back rather than blocking on it.
+3. **Independent verifier — Codex CLI second pass + Antigravity CLI (`agy`)** — after tests pass, run a second, independent `codex exec -s read-only --skip-git-repo-check "<prompt>"` review pass (fresh session, no memory of the implementation) with the diff and root-cause narrative, asking it to find bugs/missed edge cases/whether the fix addresses the root cause. Then cross-check with `agy -p "<prompt>" --dangerously-skip-permissions` (see note below) as a second independent model/vendor opinion on the same diff. Only move to commit/push once both come back clean (or concerns are addressed and re-verified).
 
-Both CLIs are pre-authenticated on this machine (`codex`, `gemini` on PATH). Only move to commit/push after Codex's tests pass and Gemini's review comes back clean (or its concerns are addressed).
+**Gemini CLI (`gemini`) is currently unusable — do not use it.** Google removed "Sign in with Google" / OAuth for Gemini CLI on 2026-06-18 (including paid AI Pro/Ultra subscriber logins); only API-key auth remains, and the local key has no billing account attached, so every call 429s on the free-tier quota (confirmed 2026-08-09). Attaching billing to the key at aistudio.google.com/apikey would fix it, but that's a user decision, not something to do silently.
+
+**Antigravity CLI (`agy`) is the working Google-account-based replacement** (`agy --version` confirms it's installed and already authenticated on this machine). Headless usage: `agy -p "<prompt>"`. In headless/print mode, `agy` soft-denies shell commands (e.g. `git show`, `git diff`) by default and returns "no output produced" instead of prompting — for a read-only review pass, add `--dangerously-skip-permissions` (safe here because the review prompt only asks it to read files/git history, never to edit). If `agy` is asked to make edits unattended, use `--mode=accept-edits` instead of the skip-permissions flag.
+
+`codex` and `agy` are both pre-authenticated on this machine and confirmed working as of 2026-08-09 (verified during the K League 2026-season sync fix, see git log). `gemini` is on PATH but non-functional until its API key gets a billing account.
 
 ## Development Workflow
 
