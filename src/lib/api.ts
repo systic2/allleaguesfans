@@ -226,10 +226,16 @@ export async function fetchTopAssists(leagueId: number, season: string = DEFAULT
   return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
 }
 
-export async function fetchHistoricalChampions(leagueId: number): Promise<HistoricalChampion[]> {
+export async function fetchHistoricalChampions(leagueId: number, currentSeason?: string): Promise<HistoricalChampion[]> {
   const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
-  const currentYear = new Date().getFullYear();
-  const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", String(currentYear)).order("season", { ascending: false }).limit(15);
+  // Split-format leagues (EPL, La Liga, etc.) store season as the split's start year,
+  // e.g. "2025" for the 2025-2026 season, which stays the active season through June of
+  // the following calendar year. Using new Date().getFullYear() as the "current" cutoff
+  // would fail to exclude that still-active season from Jan-Jun. Prefer the league's own
+  // current_season (already resolved by fetchLeagueBySlug/getCurrentSeasonForFormat) and
+  // only fall back to the calendar year when it isn't available yet.
+  const excludeFrom = currentSeason || String(new Date().getFullYear());
+  const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", excludeFrom).order("season", { ascending: false }).limit(15);
   if (standingsError) { console.warn("Failed to fetch historical champions standings:", standingsError); return []; }
   if (!standingsData || standingsData.length === 0) return [];
   return standingsData.map((standing) => ({ season_year: Number(standing.season || 0), champion_name: String(standing.teamName || "Unknown"), champion_logo: null }));

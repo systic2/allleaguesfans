@@ -112,8 +112,8 @@ export default function LeaguePage() {
   });
 
   const { data: history } = useQuery({
-    queryKey: ['history', leagueId],
-    queryFn: () => fetchHistoricalChampions(leagueId!),
+    queryKey: ['history', leagueId, currentSeason],
+    queryFn: () => fetchHistoricalChampions(leagueId!, currentSeason),
     enabled: !!leagueId
   });
 
