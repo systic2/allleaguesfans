@@ -102,6 +102,62 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
   };
 }
 
+// TheSportsDB's strForm field is sourced from their own standings snapshot and is
+// sometimes empty for lower-tier leagues (confirmed empty for K League 2's current
+// season while K League 1 is populated) even though we have fresher, complete match
+// results in events_v2. Derive a fallback "recent 5" form from real results for any
+// team whose standings_v2.form came back empty, without touching teams that already
+// have real data from TheSportsDB.
+async function computeFormFallback(theSportsDBLeagueId: string, season: string, teamIds: number[]): Promise<Map<number, string>> {
+  const formMap = new Map<number, string>();
+  if (teamIds.length === 0) return formMap;
+
+  // Form is supplementary display data — a network-level failure here (as opposed to a
+  // Supabase-reported query error, already handled below) must not take down the whole
+  // standings fetch for every league, including ones that didn't need this fallback.
+  try {
+    const { data, error } = await supabase
+      .from("events_v2")
+      .select("homeTeamId, awayTeamId, homeScore, awayScore, date")
+      .eq("leagueId", theSportsDBLeagueId)
+      .eq("season", season)
+      .in("status", ["FINISHED", "FT", "AET", "PEN"])
+      .not("homeScore", "is", null)
+      .not("awayScore", "is", null)
+      .order("date", { ascending: false });
+    if (error || !data) return formMap;
+
+    const idSet = new Set(teamIds);
+    const results = new Map<number, FormResult[]>();
+
+    for (const match of data) {
+      const homeId = Number(match.homeTeamId);
+      const awayId = Number(match.awayTeamId);
+      const homeScore = Number(match.homeScore);
+      const awayScore = Number(match.awayScore);
+      if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) continue;
+
+      if (idSet.has(homeId)) {
+        const list = results.get(homeId) ?? [];
+        if (list.length < 5) list.push(homeScore > awayScore ? 'W' : homeScore < awayScore ? 'L' : 'D');
+        results.set(homeId, list);
+      }
+      if (idSet.has(awayId)) {
+        const list = results.get(awayId) ?? [];
+        if (list.length < 5) list.push(awayScore > homeScore ? 'W' : awayScore < homeScore ? 'L' : 'D');
+        results.set(awayId, list);
+      }
+    }
+
+    for (const [teamId, list] of results) {
+      if (list.length > 0) formMap.set(teamId, list.join(''));
+    }
+  } catch (err) {
+    console.error("Error computing form fallback from events_v2:", err);
+  }
+  return formMap;
+}
+
 export async function fetchLeagueStandings(leagueSlug: string, season: string = DEFAULT_SEASON): Promise<TeamStanding[]> {
   let theSportsDBLeagueId: string;
   if (leagueSlug === 'k-league-1') theSportsDBLeagueId = '4689';
@@ -117,8 +173,12 @@ export async function fetchLeagueStandings(leagueSlug: string, season: string = 
   const { data, error } = await supabase.from("standings_v2").select(`*`).eq("leagueId", theSportsDBLeagueId).eq("season", normalized).order("rank", { ascending: true });
   if (error) throw error;
 
-  return (data ?? []).map((standing) => ({
-    team_id: Number(standing.teamId || 0), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form,
+  const rows = data ?? [];
+  const teamIdsMissingForm = rows.filter((standing) => !standing.form).map((standing) => Number(standing.teamId));
+  const fallbackForm = await computeFormFallback(theSportsDBLeagueId, normalized, teamIdsMissingForm);
+
+  return rows.map((standing) => ({
+    team_id: Number(standing.teamId || 0), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form || fallbackForm.get(Number(standing.teamId)) || null,
   }));
 }
 
