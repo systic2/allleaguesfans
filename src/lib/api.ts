@@ -436,11 +436,12 @@ export async function fetchTeamFromDB(idTeam: string): Promise<TeamFromDB | null
 
 export type TeamDetails = {
   id: string; name: string; nameKorean: string | null; badgeUrl: string | null; strStadium?: string | null; intFormedYear?: string | null;
+  strLocation?: string | null; intStadiumCapacity?: number | null; strWebsite?: string | null; strDescriptionEN?: string | null; strEquipment?: string | null;
   current_position?: number | null; points?: number | null; matches_played?: number | null; wins?: number | null; draws?: number | null; losses?: number | null; goals_for?: number | null; goals_against?: number | null; goal_difference?: number | null; currentLeagueId?: string;
 };
 
 export async function fetchTeamDetails(teamId: string, season: string = DEFAULT_SEASON): Promise<TeamDetails | null> {
-  const { data: teamData, error: teamError } = await supabase.from('teams_v2').select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear').eq('id', teamId).maybeSingle();
+  const { data: teamData, error: teamError } = await supabase.from('teams_v2').select('id, name, nameKorean, badgeUrl, strStadium, intFormedYear, strLocation, intStadiumCapacity, strWebsite, strDescriptionEN, strEquipment').eq('id', teamId).maybeSingle();
   if (teamError) { console.error('Error fetching team from teams_v2:', teamError); return null; }
   if (!teamData) return null;
   const normalized = normalizeSeason(season);
@@ -448,8 +449,36 @@ export async function fetchTeamDetails(teamId: string, season: string = DEFAULT_
   if (standingError) { console.warn(`Error fetching standing for team ${teamId}:`, standingError); }
   return {
     id: teamData.id, name: teamData.name, nameKorean: teamData.nameKorean, badgeUrl: teamData.badgeUrl, strStadium: teamData.strStadium, intFormedYear: teamData.intFormedYear,
+    strLocation: teamData.strLocation, intStadiumCapacity: teamData.intStadiumCapacity, strWebsite: teamData.strWebsite, strDescriptionEN: teamData.strDescriptionEN, strEquipment: teamData.strEquipment,
     current_position: standingData?.rank ?? null, points: standingData?.points ?? null, matches_played: standingData?.gamesPlayed ?? null, wins: standingData?.wins ?? null, draws: standingData?.draws ?? null, losses: standingData?.losses ?? null, goals_for: standingData?.goalsFor ?? null, goals_against: standingData?.goalsAgainst ?? null, goal_difference: standingData?.goalDifference ?? null, currentLeagueId: standingData?.leagueId ?? null,
   };
+}
+
+// Counts *completed* league titles (rank=1 finishes) recorded for this team
+// across the historical standings_v2 backfill (see import-historical-champions-euro.ts
+// and 10-insert-historical-champions.sql) plus any completed previous season
+// the daily sync has already written. Excludes the in-progress season — a
+// team sitting in 1st place mid-season hasn't won it yet, same reasoning as
+// fetchHistoricalChampions's currentSeason cutoff.
+export async function fetchTeamTrophyCount(teamId: string, currentSeason: string = DEFAULT_SEASON): Promise<number> {
+  const { count, error } = await supabase.from('standings_v2').select('season', { count: 'exact', head: true }).eq('teamId', teamId).eq('rank', 1).lt('season', normalizeSeason(currentSeason));
+  if (error) { console.warn(`Error fetching trophy count for team ${teamId}:`, error); return 0; }
+  return count ?? 0;
+}
+
+// Returns the standings rows immediately above/below this team's current
+// rank (a compact "mini league table"), rather than the full table.
+export async function fetchNearbyStandings(leagueId: string, season: string, teamId: string, windowSize: number = 2): Promise<TeamStanding[]> {
+  const normalized = normalizeSeason(season);
+  const { data, error } = await supabase.from('standings_v2').select('*').eq('leagueId', leagueId).eq('season', normalized).order('rank', { ascending: true });
+  if (error) { console.warn(`Error fetching nearby standings for league ${leagueId}:`, error); return []; }
+  const rows = data ?? [];
+  const teamIndex = rows.findIndex((row) => String(row.teamId) === String(teamId));
+  const start = teamIndex === -1 ? 0 : Math.max(0, teamIndex - windowSize);
+  const end = teamIndex === -1 ? rows.length : teamIndex + windowSize + 1;
+  return rows.slice(start, end).map((standing) => ({
+    team_id: Number(standing.teamId || 0), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form || null,
+  }));
 }
 
 export type TeamFixture = { id: number; date_utc: string; status_short: string; home_team: string; away_team: string; home_goals: number | null; away_goals: number | null; is_home: boolean; opponent_name: string; opponent_logo: string | null; result: 'W' | 'D' | 'L' | null; };

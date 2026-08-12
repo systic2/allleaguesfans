@@ -73,7 +73,12 @@ async function populateTeamDetails() {
     // 3. Update teams_v2
     const updates = {
       strStadium: tsdbTeam.strStadium,
-      intFormedYear: tsdbTeam.intFormedYear
+      intFormedYear: tsdbTeam.intFormedYear,
+      strLocation: tsdbTeam.strLocation || null,
+      intStadiumCapacity: tsdbTeam.intStadiumCapacity ? parseInt(tsdbTeam.intStadiumCapacity, 10) : null,
+      strWebsite: tsdbTeam.strWebsite || null,
+      strDescriptionEN: tsdbTeam.strDescriptionEN || null,
+      strEquipment: tsdbTeam.strEquipment || null,
     };
 
     const { error: updateError } = await supabase
@@ -84,7 +89,7 @@ async function populateTeamDetails() {
     if (updateError) {
       console.error(`❌ Failed to update ${team.name}:`, updateError);
     } else {
-      console.log(`✅ Updated ${team.name}: Stadium=${updates.strStadium}, Founded=${updates.intFormedYear}`);
+      console.log(`✅ Updated ${team.name}: Stadium=${updates.strStadium}, Founded=${updates.intFormedYear}, Capacity=${updates.intStadiumCapacity}`);
       updatedCount++;
     }
     

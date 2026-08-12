@@ -1,13 +1,16 @@
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, Users, Calendar, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, BarChart3, Trophy, MapPin } from "lucide-react";
 import {
   fetchTeamDetails,
   fetchTeamStandingsData,
   fetchPlayersByTeam,
   fetchTeamFormGuide,
+  fetchTeamTrophyCount,
+  fetchNearbyStandings,
   type TeamDetails,
   type TeamPlayer,
+  type TeamStanding,
 } from "@/lib/api";
 import type { Standing } from "@/types/domain";
 import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api";
@@ -20,6 +23,16 @@ import FMSubNav from "@/components/FMSubNav";
 type FormResult = 'W' | 'D' | 'L';
 
 const CURRENT_SEASON = String(new Date().getFullYear());
+
+const LEAGUE_NAMES: Record<string, string> = {
+  '4689': 'K리그1',
+  '4822': 'K리그2',
+  '4328': 'Premier League',
+  '4335': 'La Liga',
+  '4332': 'Serie A',
+  '4331': 'Bundesliga',
+  '4334': 'Ligue 1',
+};
 
 // Helper Components
 function LoadingSpinner() {
@@ -83,6 +96,19 @@ export default function TeamPageDB() {
     enabled: !!teamIdParam,
   });
 
+  const { data: trophyCount } = useQuery<number>({
+    queryKey: ["team-trophies-db", teamIdParam, CURRENT_SEASON],
+    queryFn: () => fetchTeamTrophyCount(teamIdParam, CURRENT_SEASON),
+    enabled: !!teamIdParam && currentTab === 'overview',
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const { data: nearbyStandings, isLoading: isLoadingNearbyStandings } = useQuery<TeamStanding[]>({
+    queryKey: ["team-nearby-standings-db", teamData?.currentLeagueId, teamIdParam],
+    queryFn: () => fetchNearbyStandings(teamData!.currentLeagueId!, CURRENT_SEASON, teamIdParam),
+    enabled: !!teamData?.currentLeagueId && !!teamIdParam && currentTab === 'overview',
+  });
+
   // --- Helper Functions ---
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -110,7 +136,7 @@ export default function TeamPageDB() {
           <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{teamData.name}</h1>
           <div className="flex items-center gap-4 text-white/70 text-sm">
             {teamData.currentLeagueId && (
-              <span className="bg-white/10 px-2 py-0.5 rounded">{teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2'}</span>
+              <span className="bg-white/10 px-2 py-0.5 rounded">{LEAGUE_NAMES[teamData.currentLeagueId] || teamData.currentLeagueId}</span>
             )}
             {standingsData?.rank && (
               <>
@@ -179,13 +205,21 @@ export default function TeamPageDB() {
                 {teamData.currentLeagueId && (
                   <div>
                     <p className="text-white/50 text-xs uppercase">League</p>
-                    <p className="text-white font-medium">{teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2'}</p>
+                    <p className="text-white font-medium">{LEAGUE_NAMES[teamData.currentLeagueId] || teamData.currentLeagueId}</p>
                   </div>
                 )}
                 {standingsData?.rank && (
                   <div>
                     <p className="text-white/50 text-xs uppercase">Current Position</p>
                     <p className="text-white font-medium">{standingsData.rank}위</p>
+                  </div>
+                )}
+                {!!trophyCount && trophyCount > 0 && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase flex items-center gap-1">
+                      <Trophy className="w-3 h-3 text-yellow-500" /> League Titles
+                    </p>
+                    <p className="text-yellow-400 font-bold">{trophyCount}회</p>
                   </div>
                 )}
               </div>
@@ -290,34 +324,49 @@ export default function TeamPageDB() {
               </div>
             )}
 
-            {/* Key Staff & Facilities Card */}
+            {/* Club Info Card */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <Users className="w-3 h-3" /> Staff & Facilities
+                <MapPin className="w-3 h-3" /> Club Info
               </h3>
+              {teamData.strEquipment && (
+                <img src={teamData.strEquipment} alt={`${teamData.name} kit`} className="h-20 mx-auto mb-4 object-contain" />
+              )}
               <div className="space-y-3">
-                <div>
-                  <p className="text-white/50 text-xs uppercase">Manager</p>
-                  <p className="text-white font-medium">홍길동 (Placeholder)</p>
-                </div>
-                <div>
-                  <p className="text-white/50 text-xs uppercase">Assistant Manager</p>
-                  <p className="text-white font-medium">이순신 (Placeholder)</p>
-                </div>
-                {teamData.strStadium && (
+                {teamData.strLocation && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Stadium</p>
-                    <p className="text-white font-medium">{teamData.strStadium}</p>
+                    <p className="text-white/50 text-xs uppercase">Location</p>
+                    <p className="text-white font-medium">{teamData.strLocation}</p>
                   </div>
                 )}
-                <div>
-                  <p className="text-white/50 text-xs uppercase">Training Ground</p>
-                  <p className="text-white font-medium">Excellent (Placeholder)</p>
-                </div>
-                <div>
-                  <p className="text-white/50 text-xs uppercase">Youth Academy</p>
-                  <p className="text-white font-medium">Good (Placeholder)</p>
-                </div>
+                {!!teamData.intStadiumCapacity && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Stadium Capacity</p>
+                    <p className="text-white font-medium">{teamData.intStadiumCapacity.toLocaleString()}명</p>
+                  </div>
+                )}
+                {teamData.strWebsite && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">Website</p>
+                    <a
+                      href={teamData.strWebsite.startsWith('http') ? teamData.strWebsite : `https://${teamData.strWebsite}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-400 font-medium hover:underline break-all"
+                    >
+                      {teamData.strWebsite}
+                    </a>
+                  </div>
+                )}
+                {teamData.strDescriptionEN && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase">About</p>
+                    <p className="text-white/70 text-xs leading-relaxed line-clamp-4">{teamData.strDescriptionEN}</p>
+                  </div>
+                )}
+                {!teamData.strLocation && !teamData.intStadiumCapacity && !teamData.strWebsite && !teamData.strDescriptionEN && !teamData.strEquipment && (
+                  <p className="text-white/30 text-xs italic">아직 등록된 구단 정보가 없습니다.</p>
+                )}
               </div>
             </div>
 
@@ -326,29 +375,30 @@ export default function TeamPageDB() {
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
                 <BarChart3 className="w-3 h-3" /> League Standing
               </h3>
-              <div className="space-y-3">
-                {teamData.currentLeagueId && (
-                  <div>
-                    <p className="text-white/50 text-xs uppercase">League</p>
-                    <p className="text-white font-medium">{teamData.currentLeagueId === '4689' ? 'K리그1' : 'K리그2'}</p>
-                  </div>
-                )}
-                {standingsData?.rank && (
-                  <div>
-                    <p className="text-white/50 text-xs uppercase">Current Rank</p>
-                    <p className="text-white font-medium">{standingsData.rank}위</p>
-                  </div>
-                )}
-                {standingsData?.points && (
-                  <div>
-                    <p className="text-white/50 text-xs uppercase">Points</p>
-                    <p className="text-white font-medium">{standingsData.points} pts</p>
-                  </div>
-                )}
-                <div className="mt-4 text-center text-white/50 text-xs italic border-t border-white/10 pt-3">
-                  Nearby teams and full league table coming soon.
+              {isLoadingNearbyStandings ? (
+                <p className="text-white/30 py-8 text-center text-sm">불러오는 중...</p>
+              ) : nearbyStandings && nearbyStandings.length > 0 ? (
+                <div className="space-y-1">
+                  {nearbyStandings.map((row) => (
+                    <div
+                      key={row.team_id}
+                      className={`flex items-center justify-between px-2 py-1.5 rounded text-sm ${
+                        String(row.team_id) === teamIdParam ? 'bg-purple-500/20 border border-purple-500/30' : 'hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-white/50 w-4 text-right shrink-0">{row.rank}</span>
+                        <span className={`truncate ${String(row.team_id) === teamIdParam ? 'text-white font-semibold' : 'text-white/80'}`}>
+                          {row.team_name}
+                        </span>
+                      </div>
+                      <span className="text-white/60 font-mono text-xs shrink-0">{row.points}pts</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <p className="text-white/30 py-8 text-center text-sm">순위 정보가 없습니다.</p>
+              )}
             </div>
           </div>
         )}
