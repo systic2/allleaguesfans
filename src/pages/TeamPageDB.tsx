@@ -444,7 +444,14 @@ export default function TeamPageDB() {
                   <tbody className="divide-y divide-white/5">
                     {/* Upcoming */}
                     {teamFixtures?.upcoming.map(match => (
-                      <tr key={match.id} className="hover:bg-white/5 transition-colors">
+                      <tr
+                        key={match.id}
+                        onClick={() => navigate(`/matches/${match.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/matches/${match.id}`); } }}
+                        tabIndex={0}
+                        role="link"
+                        className="hover:bg-white/5 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500 focus:ring-inset"
+                      >
                         <td className="px-6 py-4 font-medium text-white/90">{formatDate(match.date)}</td>
                         <td className="px-6 py-4 flex items-center gap-3">
                           {match.homeTeamId === teamIdParam ? (
@@ -465,7 +472,14 @@ export default function TeamPageDB() {
                     ))}
                     {/* Recent */}
                     {teamFixtures?.recent.map(match => (
-                      <tr key={match.id} className="hover:bg-white/5 transition-colors bg-white/5">
+                      <tr
+                        key={match.id}
+                        onClick={() => navigate(`/matches/${match.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/matches/${match.id}`); } }}
+                        tabIndex={0}
+                        role="link"
+                        className="hover:bg-white/5 transition-colors bg-white/5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500 focus:ring-inset"
+                      >
                         <td className="px-6 py-4 font-medium text-white/60">{formatDate(match.date)}</td>
                         <td className="px-6 py-4 flex items-center gap-3 text-white/60">
                           {match.homeTeamId === teamIdParam ? (

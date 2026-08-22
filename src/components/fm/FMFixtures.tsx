@@ -37,12 +37,16 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                       </Link>
                       
                       {/* Score / VS / Status */}
-                      <div className={`px-2 text-center min-w-[60px] font-bold mx-3 py-1 rounded border ${
-                        isLive 
-                          ? 'bg-red-900/30 text-red-400 border-red-800 animate-pulse' 
-                          : 'bg-[#1a1a1a] text-white border-[#333]'
-                      }`}>
-                        {(isFinished || isLive) && match.homeScore !== null && match.homeScore !== undefined ? (
+                      <Link
+                        to={`/matches/${match.id}`}
+                        aria-label={`${match.homeTeam?.name || `Team ${match.homeTeamId}`} 대 ${match.awayTeam?.name || `Team ${match.awayTeamId}`} 경기 상세`}
+                        className={`px-2 text-center min-w-[60px] font-bold mx-3 py-1 rounded border hover:brightness-125 transition-[filter] ${
+                          isLive
+                            ? 'bg-red-900/30 text-red-400 border-red-800 animate-pulse'
+                            : 'bg-[#1a1a1a] text-white border-[#333]'
+                        }`}
+                      >
+                        {(isFinished || isLive) && match.homeScore != null && match.awayScore != null ? (
                           <span>
                             {match.homeScore} - {match.awayScore}
                           </span>
@@ -51,7 +55,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                         ) : (
                           <span className="text-gray-600 text-xs">VS</span>
                         )}
-                      </div>
+                      </Link>
 
                       {/* Away Team */}
                       <Link to={`/teams/${match.awayTeamId}`} className="flex-1 flex items-center justify-start gap-2 text-left hover:text-white group">

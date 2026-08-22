@@ -280,6 +280,58 @@ export async function fetchKLeague2PreviousFixtures(): Promise<MatchWithTeams[]>
   return fetchLeaguePreviousFixtures('4822');
 }
 
+export type MatchDetails = MatchWithTeams & {
+  leagueName: string | null;
+  leagueBadge: string | null;
+};
+
+/**
+ * Fetch a single match with its home/away team and league info for the match detail page.
+ * Lineups, in-match events, and live stats are not populated in the current schema
+ * (v2_events_enhanced is entirely null for every match as of this writing), so this
+ * intentionally only returns what actually has real data.
+ */
+export async function fetchMatchDetails(matchId: string): Promise<MatchDetails | null> {
+  try {
+    const { data, error } = await supabase
+      .from('events_v2')
+      .select(`
+        *,
+        homeTeam:teams_v2!homeTeamId(id, name, badgeUrl),
+        awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)
+      `)
+      .eq('id', matchId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Database error fetching match details:', error);
+      return null;
+    }
+    if (!data) return null;
+
+    const match = data as MatchWithTeams;
+
+    const { data: league, error: leagueError } = await supabase
+      .from('leagues')
+      .select('strLeague, strBadge')
+      .eq('idLeague', match.leagueId)
+      .maybeSingle();
+
+    if (leagueError) {
+      console.warn(`Error fetching league info for match ${matchId}:`, leagueError);
+    }
+
+    return {
+      ...match,
+      leagueName: league?.strLeague ?? null,
+      leagueBadge: league?.strBadge ?? null,
+    };
+  } catch (error) {
+    console.error('Error fetching match details:', error);
+    return null;
+  }
+}
+
 // Combined function to get both upcoming and recent fixtures for a league
 export async function fetchLeagueFixtures(leagueId: string): Promise<{
   upcoming: MatchWithTeams[];

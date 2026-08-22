@@ -6,6 +6,7 @@ const LeagueListPage = lazy(() => import("@/pages/LeagueListPage"));
 const LeaguePage = lazy(() => import("@/pages/LeaguePage"));
 const TeamPage = lazy(() => import("@/pages/TeamPageDB")); // Using new DB-based version
 const PlayerPage = lazy(() => import("@/pages/PlayerPage"));
+const MatchPage = lazy(() => import("@/pages/MatchPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 
 function Fallback() {
@@ -29,9 +30,10 @@ const router = createBrowserRouter([
       // 리그 상세
       { path: "leagues/:slug", element: <LeaguePage /> },
 
-      // 팀 / 선수
+      // 팀 / 선수 / 경기
       { path: "teams/:id", element: <TeamPage /> },
       { path: "players/:id", element: <PlayerPage /> },
+      { path: "matches/:id", element: <MatchPage /> },
 
       // 검색
       { path: "search", element: <SearchPage /> },
