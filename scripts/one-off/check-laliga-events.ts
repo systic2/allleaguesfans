@@ -3,7 +3,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const theSportsDBApiKey = process.env.THESPORTSDB_API_KEY || '460915';
+const theSportsDBApiKey = process.env.THESPORTSDB_API_KEY;
+if (!theSportsDBApiKey) throw new Error('THESPORTSDB_API_KEY is not set');
 
 async function checkLaLiga() {
   const leagueId = '4335';

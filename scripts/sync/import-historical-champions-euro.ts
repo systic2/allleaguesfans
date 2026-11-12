@@ -18,7 +18,8 @@ import {
 } from '../../src/lib/mappers/thesportsdb-mappers.js';
 import type { Standing, Team } from '../../src/types/domain';
 
-const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || '460915';
+const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY;
+if (!THESPORTSDB_API_KEY) throw new Error('THESPORTSDB_API_KEY is not set');
 const STANDINGS_V2_TABLE = 'standings_v2';
 const TEAMS_V2_TABLE = 'teams_v2';
 

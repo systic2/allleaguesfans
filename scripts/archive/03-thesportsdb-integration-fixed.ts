@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { supa } from './lib/supabase.js';
 
 // Environment variables
-const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || process.env.TheSportsDB_KEY || '460915';
+const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || process.env.TheSportsDB_KEY;
 const SEASON_YEAR = process.env.SEASON_YEAR || '2025';
 
 if (!THESPORTSDB_API_KEY) {

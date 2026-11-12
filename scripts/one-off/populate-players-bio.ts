@@ -18,7 +18,8 @@ if (!supabaseKey) {
   supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 }
 
-const theSportsDBApiKey = process.env.THESPORTSDB_API_KEY || '460915';
+const theSportsDBApiKey = process.env.THESPORTSDB_API_KEY;
+if (!theSportsDBApiKey) throw new Error('THESPORTSDB_API_KEY is not set');
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase credentials.');

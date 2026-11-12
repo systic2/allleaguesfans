@@ -2,7 +2,8 @@
 // TheSportsDB API 통합 클라이언트
 
 const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v2/json';
-const THESPORTSDB_KEY = process.env.TheSportsDB_KEY || '460915'; // Free key fallback
+const THESPORTSDB_KEY = process.env.THESPORTSDB_API_KEY || process.env.TheSportsDB_KEY;
+if (!THESPORTSDB_KEY) throw new Error('THESPORTSDB_API_KEY is not set');
 
 // K League IDs in TheSportsDB
 export const THESPORTSDB_LEAGUES = {
