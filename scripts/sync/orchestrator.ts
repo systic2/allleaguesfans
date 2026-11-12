@@ -28,19 +28,7 @@ class TheSportsDBClient {
   
   private async fetch(url: string): Promise<any> {
     console.log(`[TheSportsDB] 🔍 Fetching: ${url}`);
-    // Use a browser-like User-Agent to avoid potential blocking on CI environments
-    const response = await fetch(url, {
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      console.error(`[TheSportsDB] ❌ API error: ${response.status} ${response.statusText}`);
-      // Throwing error here to be caught by caller
-      throw new Error(`TheSportsDB API error: ${response.status}`);
-    }
+    const response = await this.fetchWithRetry(url);
     
     const data = await response.json();
     // Check if data is empty or null (API sometimes returns "" or null for empty results)
@@ -53,6 +41,40 @@ class TheSportsDBClient {
     return data;
   }
   
+  // 네트워크 오류·429·5xx 는 2s/4s/8s 간격으로 최대 3번 재시도, 그 외 4xx 는 즉시 실패
+  private async fetchWithRetry(url: string): Promise<Response> {
+    const maxRetries = 3;
+    for (let attempt = 0; ; attempt++) {
+      let response: Response | undefined;
+      let networkError: unknown;
+      try {
+        // Use a browser-like User-Agent to avoid potential blocking on CI environments
+        response = await fetch(url, {
+          headers: { 
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json'
+          }
+        });
+      } catch (error) {
+        networkError = error;
+      }
+
+      if (response?.ok) return response;
+
+      const retryable = !response || response.status === 429 || response.status >= 500;
+      const reason = response ? `${response.status} ${response.statusText}` : String(networkError);
+      if (!retryable || attempt >= maxRetries) {
+        console.error(`[TheSportsDB] ❌ API error: ${reason}`);
+        // Throwing error here to be caught by caller
+        throw new Error(`TheSportsDB API error: ${response?.status ?? reason}`);
+      }
+
+      const delayMs = 2000 * 2 ** attempt;
+      console.warn(`[TheSportsDB] ⚠️  ${reason} — retrying in ${delayMs / 1000}s (${attempt + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
   async getStandings(idLeague: string, season: string): Promise<TheSportsDBStanding[]> {
     const data = await this.fetch(
       `https://www.thesportsdb.com/api/v1/json/${this.apiKey}/lookuptable.php?l=${idLeague}&s=${season}`
@@ -66,6 +88,45 @@ class TheSportsDBClient {
     );
     return data.events || [];
   }
+}
+
+// --- DB helpers ---
+// 같은 키가 한 번의 upsert 에 두 번 들어가면 Postgres 가 21000 으로 전체를 거부하므로 마지막 값만 남긴다.
+function dedupeBy<T>(rows: T[], key: (row: T) => string): T[] {
+  return [...new Map(rows.map(row => [key(row), row])).values()];
+}
+
+// 이번 API 응답에 없는 행(리그·시즌 범위)만 지운다.
+// 응답이 일부만 온 경우 대량 삭제를 막기 위해, 지울 행이 기존의 20%를 넘으면 건너뛴다.
+async function deleteStaleRows(
+  table: string, keyColumn: string, leagueId: string, season: string, keepKeys: string[], label: string
+): Promise<boolean> {
+  const { data: existing, error: selectError } = await supa
+    .from(table).select(keyColumn).eq('leagueId', leagueId).eq('season', season);
+  if (selectError) {
+    console.error(`[DB] ❌ Failed to list existing ${table} rows for ${label}:`, selectError);
+    return false;
+  }
+
+  const keep = new Set(keepKeys);
+  const stale = (existing as unknown as Record<string, string>[]).map(row => String(row[keyColumn])).filter(key => !keep.has(key));
+  if (stale.length === 0) return true;
+
+  if (stale.length > existing!.length * 0.2) {
+    console.warn(`[DB] ⚠️  Skipping stale cleanup for ${label}: ${stale.length}/${existing!.length} ${table} rows missing from API response (possible partial response).`);
+    return true;
+  }
+
+  for (let i = 0; i < stale.length; i += 200) {
+    const { error } = await supa.from(table).delete()
+      .eq('leagueId', leagueId).eq('season', season).in(keyColumn, stale.slice(i, i + 200));
+    if (error) {
+      console.error(`[DB] ❌ Stale ${table} cleanup failed for ${label}:`, error);
+      return false;
+    }
+  }
+  console.log(`[DB] 🧹 Removed ${stale.length} stale ${table} rows for ${label}.`);
+  return true;
 }
 
 // --- Main Orchestrator Logic ---
@@ -114,7 +175,7 @@ class DataOrchestrator {
         // 1. Extract Team info from standings and upsert into teams_v2
         const teamsFromStandings: TheSportsDBTeam[] = rawStandings.map(s => ({ idTeam: s.idTeam, strTeam: s.strTeam, strBadge: s.strBadge }));
         console.log(`[ACL] 🛡️  Mapping ${teamsFromStandings.length} teams from standings...`);
-        const domainTeams: Team[] = teamsFromStandings.map(mapTheSportsDBTeamToDomain);
+        const domainTeams: Team[] = dedupeBy(teamsFromStandings.map(mapTheSportsDBTeamToDomain), t => t.id);
 
         console.log(`[DB] 💾 Upserting ${domainTeams.length} teams into '${TEAMS_V2_TABLE}'...`);
         const { data: teamsData, error: teamsUpsertError } = await supa
@@ -132,21 +193,26 @@ class DataOrchestrator {
         
         // 2. Map and Insert Standings data
         console.log(`[ACL] 🛡️  Mapping ${rawStandings.length} standings...`);
-        const domainStandings: Standing[] = rawStandings.map(s => {
+        const domainStandings: Standing[] = dedupeBy(rawStandings.map(s => {
             const mapped = mapTheSportsDBStandingToDomain(s);
             return { ...mapped, season: dbValue };
-        });
+        }), s => s.teamId);
 
-        console.log(`[DB] 🧹 Clearing existing standings for ${league.name} (Season ${dbValue})...`);
-        await supa.from(STANDINGS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', dbValue);
-        
-        console.log(`[DB] 💾 Inserting ${domainStandings.length} standings...`);
-        const { data: standingsData, error: standingsInsertError } = await supa.from(STANDINGS_V2_TABLE).insert(domainStandings).select();
+        // 예전처럼 먼저 전부 지우면 insert 실패 시 순위가 비어 버리므로 upsert 후 사라진 팀만 지운다.
+        console.log(`[DB] 💾 Upserting ${domainStandings.length} standings...`);
+        const { data: standingsData, error: standingsUpsertError } = await supa
+          .from(STANDINGS_V2_TABLE)
+          .upsert(domainStandings, { onConflict: 'leagueId,teamId,season' })
+          .select();
 
-        if (standingsInsertError) {
-          console.error(`[DB] ❌ Standings insert failed for ${league.name}:`, standingsInsertError);
+        if (standingsUpsertError) {
+          console.error(`[DB] ❌ Standings upsert failed for ${league.name}:`, standingsUpsertError);
           hasCriticalError = true;
           continue;
+        }
+
+        if (!await deleteStaleRows(STANDINGS_V2_TABLE, 'teamId', league.id, dbValue, domainStandings.map(s => s.teamId), league.name)) {
+          hasCriticalError = true;
         }
         totalStandingsImported += standingsData.length;
         console.log(`[DB] ✅ Successfully imported ${standingsData.length} standings.`);
@@ -205,21 +271,27 @@ class DataOrchestrator {
         }
 
         console.log(`[ACL] 🛡️  Mapping ${rawEvents.length} events...`);
-        const domainEvents: Match[] = rawEvents.map(e => {
+        const domainEvents: Match[] = dedupeBy(rawEvents.map(e => {
             const mapped = mapTheSportsDBEventToDomain(e);
             return { ...mapped, season: dbValue };
-        });
+        }), e => e.id);
 
-        console.log(`[DB] 🧹 Clearing existing events for ${league.name} (Season ${dbValue})...`);
-        await supa.from(EVENTS_V2_TABLE).delete().eq('leagueId', league.id).eq('season', dbValue);
-        
-        console.log(`[DB] 💾 Inserting ${domainEvents.length} events...`);
-        const { data: eventsData, error: eventsInsertError } = await supa.from(EVENTS_V2_TABLE).insert(domainEvents).select();
+        // 먼저 전부 지우면 insert 실패 시 경기가 비고 events_highlightly_enhanced 도 ON DELETE CASCADE 로
+        // 매시간 함께 지워지므로, upsert 후 사라진 경기만 지운다.
+        console.log(`[DB] 💾 Upserting ${domainEvents.length} events...`);
+        const { data: eventsData, error: eventsUpsertError } = await supa
+          .from(EVENTS_V2_TABLE)
+          .upsert(domainEvents, { onConflict: 'id' })
+          .select('id');
 
-        if (eventsInsertError) {
-          console.error(`[DB] ❌ Event insert failed for ${league.name}:`, eventsInsertError);
+        if (eventsUpsertError) {
+          console.error(`[DB] ❌ Event upsert failed for ${league.name}:`, eventsUpsertError);
           hasCriticalError = true;
           continue;
+        }
+
+        if (!await deleteStaleRows(EVENTS_V2_TABLE, 'id', league.id, dbValue, domainEvents.map(e => e.id), league.name)) {
+          hasCriticalError = true;
         }
         totalEventsImported += eventsData.length;
         console.log(`[DB] ✅ Successfully imported ${eventsData.length} events.`);

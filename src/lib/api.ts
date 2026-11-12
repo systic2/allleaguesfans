@@ -1,7 +1,7 @@
 // src/lib/api.ts
 // FIXED VERSION: Updated to match actual database schema and v2 tables
 import { supabase } from "@/lib/supabaseClient";
-import type { SearchRow, TeamFromDB, EventLiveData, FormResult } from "@/domain/types";
+import type { SearchRow, TeamFromDB, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 
@@ -496,12 +496,6 @@ export async function fetchTeamEventsData(teamId: string, season: string, limit?
   const { data, error } = await query;
   if (error) { console.error('Error fetching team events from events_v2:', error); throw error; }
   return data || []; 
-}
-
-export async function fetchEventLiveData(idEvent: string): Promise<EventLiveData | null> {
-  const { data, error } = await supabase.from('events_highlightly_enhanced').select('*').eq('idEvent', idEvent).maybeSingle();
-  if (error) { console.warn('No live data found for event:', idEvent); return null; }
-  return data;
 }
 
 export async function fetchTeamFormGuide(teamId: string, season: string, limit: number = 5): Promise<FormResult[]> {
