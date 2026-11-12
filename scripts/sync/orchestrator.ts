@@ -12,7 +12,8 @@ import type { Standing, Match, Team } from '../../src/types/domain';
 import { getCurrentSeasonForFormat } from '../../src/lib/season.js';
 
 // --- Configuration ---
-const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || '460915';
+const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY;
+if (!THESPORTSDB_API_KEY) throw new Error('THESPORTSDB_API_KEY is not set');
 const STANDINGS_V2_TABLE = 'standings_v2';
 const EVENTS_V2_TABLE = 'events_v2';
 const TEAMS_V2_TABLE = 'teams_v2';

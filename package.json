@@ -11,14 +11,14 @@
     "preview": "vite preview",
     "lint:unused": "eslint . --fix",
     "analyze:bundle": "ANALYZE=1 vite build",
-    "sync:full": "npx tsx scripts/sync/orchestrator.ts",
-    "sync:daily": "npx tsx scripts/sync/orchestrator.ts",
-    "sync:weekly": "npx tsx scripts/sync/orchestrator.ts",
-    "git:cleanup": "npx tsx scripts/git-branch-cleanup.ts",
-    "git:cleanup:execute": "npx tsx scripts/git-branch-cleanup.ts --no-dry-run",
+    "sync:full": "tsx scripts/sync/orchestrator.ts",
+    "sync:daily": "tsx scripts/sync/orchestrator.ts",
+    "sync:weekly": "tsx scripts/sync/orchestrator.ts",
+    "git:cleanup": "tsx scripts/git-branch-cleanup.ts",
+    "git:cleanup:execute": "tsx scripts/git-branch-cleanup.ts --no-dry-run",
     "git:cleanup:manual": "bash scripts/git-manual-cleanup.sh",
-    "sync:check": "npx tsx scripts/final-verification.ts",
-    "test:integration": "npx tsx tests/integration/data-integrity.test.ts"
+    "sync:check": "tsx scripts/final-verification.ts",
+    "test:integration": "tsx tests/integration/data-integrity.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
@@ -26,7 +26,7 @@
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.8.2"
+    "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
@@ -47,6 +47,7 @@
     "jsdom": "^26.1.0",
     "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^4.1.12",
+    "tsx": "4.23.15",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0",
     "undici-types": "^7.16.0",

@@ -9,7 +9,8 @@ coverage/
 
 # env
 .env
-.env.* !.env.example
+.env.*
+!.env.example
 
 # tmp/dumps (임시 JSON, 덤프, 스크립트 결과물 등)
 tmp/
@@ -43,3 +44,9 @@ logs/
 
 # Deprecated pages
 src/pages/TeamPageOld.tsx
+
+# Local tool state
+.vercel
+supabase/.temp/
+.playwright-mcp/
+.omc/

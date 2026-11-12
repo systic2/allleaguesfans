@@ -1,10 +1,11 @@
 /**
  * Import team players from TheSportsDB API
- * Endpoint: https://www.thesportsdb.com/api/v1/json/460915/lookup_all_players.php?id={teamId}
+ * Endpoint: https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_API_KEY}/lookup_all_players.php?id={teamId}
  */
 import { supa } from './lib/supabase.ts';
 
-const THESPORTSDB_API_KEY = '460915'; // Free API key
+const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY;
+if (!THESPORTSDB_API_KEY) throw new Error('THESPORTSDB_API_KEY is not set');
 const DELAY_MS = 500; // Delay between API calls to avoid rate limiting
 
 interface TheSportsDBPlayer {
