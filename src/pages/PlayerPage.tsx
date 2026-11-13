@@ -4,6 +4,7 @@ import { fetchPlayerDetail, type PlayerDetail } from "@/lib/api";
 import { Users, Zap, Clock, AlertCircle } from "lucide-react";
 import CrestImg from "@/app/components/CrestImg";
 import FMSubNav from "@/components/FMSubNav";
+import { useTeamName } from "@/hooks/useTeamName";
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -31,6 +32,7 @@ export default function PlayerPage() {
   const { id = "0" } = useParams<{ id: string }>();
   const playerId = Number(id);
 
+  const teamName = useTeamName();
   const { data: player, isLoading } = useQuery<PlayerDetail | null>({
     queryKey: ["player-detail", playerId],
     queryFn: () => fetchPlayerDetail(playerId),
@@ -65,8 +67,8 @@ export default function PlayerPage() {
                 <span className="text-yellow-400 font-bold">{player.position}</span>
                 <span>•</span>
                 <span className="flex items-center gap-2">
-                   <CrestImg src={undefined} size={20} alt={player.teamName} />
-                   {player.teamName}
+                   <CrestImg src={undefined} size={20} alt={teamName(player.teamId, player.teamName)} />
+                   {teamName(player.teamId, player.teamName)}
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { searchByName } from "@/lib/api";
+import { useTeamName } from "@/hooks/useTeamName";
 
 /**
  * 검색 행을 컴포넌트 지역에서 상위 호환 타입으로 선언
@@ -126,6 +127,7 @@ export default function GlobalSearch() {
 }
 
 function Row({ row }: { row: GSRow }) {
+  const teamName = useTeamName();
   if (row.type === "league") {
     return (
       <span className="inline-flex items-center gap-2">
@@ -160,7 +162,7 @@ function Row({ row }: { row: GSRow }) {
           )}
         </span>
         <span>{row.name}</span>
-        {row.team_name && <span className="text-white/40 text-xs">({row.team_name})</span>}
+        {row.team_name && <span className="text-white/40 text-xs">({teamName(row.team_id, row.team_name)})</span>}
       </span>
     );
   }

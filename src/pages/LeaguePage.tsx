@@ -17,10 +17,12 @@ import FMBox from "@/components/fm/FMBox";
 import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
 import FMHistory from "@/components/fm/FMHistory";
+import { useTeamName } from "@/hooks/useTeamName";
 import FMPlayerStats from "@/components/fm/FMPlayerStats";
 
 export default function LeaguePage() {
   const { slug } = useParams<{ slug: string }>();
+  const teamName = useTeamName();
   
   // 1. Fetch League Basic Info
   const { data: league, isLoading: leagueLoading } = useQuery({
@@ -168,7 +170,7 @@ export default function LeaguePage() {
           </div>
           <div className="text-xs text-gray-300 flex gap-4 flex-wrap">
             <span>국가: {league.country}</span>
-            <span>디펜딩 챔피언: {history?.[0]?.champion_name || '-'}</span>
+            <span>디펜딩 챔피언: {history?.[0] ? teamName(history[0].champion_team_id, history[0].champion_name) : '-'}</span>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { TeamStanding } from "@/lib/api";
+import { useTeamName } from "@/hooks/useTeamName";
 
 function FormBadge({ result }: { result: string }) {
   let color = "bg-gray-500 text-gray-200";
@@ -27,6 +28,7 @@ function FormBadge({ result }: { result: string }) {
 }
 
 export default function FMStandings({ standings }: { standings: TeamStanding[] }) {
+  const teamName = useTeamName();
   if (!standings || standings.length === 0) {
     return <div className="p-4 text-xs text-gray-400">데이터 없음</div>;
   }
@@ -60,7 +62,7 @@ export default function FMStandings({ standings }: { standings: TeamStanding[] }
                   {team.crest_url && (
                     <img src={team.crest_url} alt="" className="w-5 h-5 object-contain" />
                   )}
-                  <span className="truncate">{team.team_name}</span>
+                  <span className="truncate">{teamName(team.team_id, team.team_name)}</span>
                 </Link>
               </td>
               <td className="px-1 py-1 text-center">{team.played}</td>

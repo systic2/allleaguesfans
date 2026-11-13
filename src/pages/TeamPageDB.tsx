@@ -19,6 +19,7 @@ import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
 import FMSubNav from "@/components/FMSubNav";
 import { getCurrentSeasonForFormat } from "@/lib/season";
+import { useTeamName } from "@/hooks/useTeamName";
 
 // Types
 type FormResult = 'W' | 'D' | 'L';
@@ -61,6 +62,7 @@ export default function TeamPageDB() {
   const { id = "0" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const teamName = useTeamName();
   const teamIdParam = id;
   
   const currentTab = searchParams.get("tab") || "overview";
@@ -141,7 +143,8 @@ export default function TeamPageDB() {
           className="rounded-lg shadow-lg drop-shadow-2xl"
         />
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">{teamData.name}</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">{teamData.nameKorean || teamData.name}</h1>
+          {teamData.nameKorean && <p className="text-white/50 text-sm mb-2">{teamData.name}</p>}
           <div className="flex items-center gap-4 text-white/70 text-sm">
             {teamData.currentLeagueId && (
               <span className="bg-white/10 px-2 py-0.5 rounded">{LEAGUE_NAMES[teamData.currentLeagueId] || teamData.currentLeagueId}</span>
@@ -196,7 +199,7 @@ export default function TeamPageDB() {
               <div className="space-y-3">
                 <div>
                   <p className="text-white/50 text-xs uppercase">Full Name</p>
-                  <p className="text-white font-medium">{teamData.name}</p>
+                  <p className="text-white font-medium">{teamData.nameKorean || teamData.name}</p>
                 </div>
                 {teamData.strStadium && (
                   <div>
@@ -245,7 +248,7 @@ export default function TeamPageDB() {
                       <div className="w-16 h-16 bg-white/5 rounded-full mb-2 flex items-center justify-center p-2">
                          <CrestImg src={teamFixtures.upcoming[0].homeTeam?.badgeUrl} alt={teamFixtures.upcoming[0].homeTeam?.name || 'Home Team'} size={48} />
                       </div> 
-                      <span className="font-bold text-sm text-center truncate w-full">{teamFixtures.upcoming[0].homeTeam?.name || 'Unknown'}</span>
+                      <span className="font-bold text-sm text-center truncate w-full">{teamName(teamFixtures.upcoming[0].homeTeamId, teamFixtures.upcoming[0].homeTeam?.name || 'Unknown')}</span>
                     </div>
                     <div className="flex flex-col items-center">
                       <span className="text-xl font-bold text-white/30">VS</span>
@@ -254,7 +257,7 @@ export default function TeamPageDB() {
                       <div className="w-16 h-16 bg-white/5 rounded-full mb-2 flex items-center justify-center p-2">
                          <CrestImg src={teamFixtures.upcoming[0].awayTeam?.badgeUrl} alt={teamFixtures.upcoming[0].awayTeam?.name || 'Away Team'} size={48} />
                       </div> 
-                      <span className="font-bold text-sm text-center truncate w-full">{teamFixtures.upcoming[0].awayTeam?.name || 'Unknown'}</span>
+                      <span className="font-bold text-sm text-center truncate w-full">{teamName(teamFixtures.upcoming[0].awayTeamId, teamFixtures.upcoming[0].awayTeam?.name || 'Unknown')}</span>
                     </div>
                   </div>
                   <div className="text-center">
@@ -275,8 +278,9 @@ export default function TeamPageDB() {
               </h3>
               <div className="space-y-2">
                 {teamFixtures?.recent.slice(0, 5).map(match => { // Changed to slice(0, 5)
+                  const opponentId = match.homeTeamId === teamIdParam ? match.awayTeamId : match.homeTeamId;
                   const opponent = match.homeTeamId === teamIdParam ? match.awayTeam : match.homeTeam;
-                  const opponentName = opponent?.name || 'Unknown';
+                  const opponentName = teamName(opponentId, opponent?.name || 'Unknown');
                   const opponentBadge = opponent?.badgeUrl;
 
                   return (
@@ -397,7 +401,7 @@ export default function TeamPageDB() {
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-white/50 w-4 text-right shrink-0">{row.rank}</span>
                         <span className={`truncate ${String(row.team_id) === teamIdParam ? 'text-white font-semibold' : 'text-white/80'}`}>
-                          {row.team_name}
+                          {teamName(row.team_id, row.team_name)}
                         </span>
                       </div>
                       <span className="text-white/60 font-mono text-xs shrink-0">{row.points}pts</span>
@@ -465,12 +469,12 @@ export default function TeamPageDB() {
                           {match.homeTeamId === teamIdParam ? (
                             <>
                               <span className="text-white/50 text-xs font-bold bg-white/10 px-1.5 py-0.5 rounded">VS</span>
-                              <span className="text-white font-medium">{match.awayTeam?.name || 'Unknown'}</span>
+                              <span className="text-white font-medium">{teamName(match.awayTeamId, match.awayTeam?.name || 'Unknown')}</span>
                             </>
                           ) : (
                             <>
                               <span className="text-white/50 text-xs font-bold bg-white/10 px-1.5 py-0.5 rounded">@</span>
-                              <span className="text-white font-medium">{match.homeTeam?.name || 'Unknown'}</span>
+                              <span className="text-white font-medium">{teamName(match.homeTeamId, match.homeTeam?.name || 'Unknown')}</span>
                             </>
                           )}
                         </td>
@@ -493,12 +497,12 @@ export default function TeamPageDB() {
                           {match.homeTeamId === teamIdParam ? (
                             <>
                               <span className="text-white/30 text-xs font-bold bg-white/5 px-1.5 py-0.5 rounded">VS</span>
-                              <span>{match.awayTeam?.name || 'Unknown'}</span>
+                              <span>{teamName(match.awayTeamId, match.awayTeam?.name || 'Unknown')}</span>
                             </>
                           ) : (
                             <>
                               <span className="text-white/30 text-xs font-bold bg-white/5 px-1.5 py-0.5 rounded">@</span>
-                              <span>{match.homeTeam?.name || 'Unknown'}</span>
+                              <span>{teamName(match.homeTeamId, match.homeTeam?.name || 'Unknown')}</span>
                             </>
                           )}
                         </td>

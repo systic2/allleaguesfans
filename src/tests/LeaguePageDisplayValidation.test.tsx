@@ -41,6 +41,7 @@ describe('LeaguePage Display Validation', () => {
     (api.getNextUpcomingRound as any).mockResolvedValue(null);
     (api.getLatestCompletedRound as any).mockResolvedValue(null);
     (api.fetchFixturesByRound as any).mockResolvedValue([]);
+    (api.fetchTeamKoreanNames as any).mockResolvedValue({});
   });
 
   const renderLeaguePage = (slug = 'k-league-1') => {

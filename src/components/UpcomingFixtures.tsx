@@ -2,6 +2,7 @@
 // FINAL REFACTORED VERSION: Uses the new MatchWithTeams[] model directly
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTeamName } from "@/hooks/useTeamName";
 import { 
   fetchEnhancedUpcomingFixtures, 
   type HighlightlyEnhancedFixture 
@@ -132,6 +133,7 @@ const LEAGUE_NAMES: Record<string, string> = {
 function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
   // The fixture object now contains nested homeTeam and awayTeam objects
   const { date, status, round, homeTeam, awayTeam, venueName, leagueId } = fixture;
+  const teamName = useTeamName();
   const leagueName = LEAGUE_NAMES[leagueId];
 
   const fixtureDate = new Date(date);
@@ -226,7 +228,7 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
                 />
               )}
               <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                {homeTeam?.name || `Team ${fixture.homeTeamId}`}
+                {teamName(fixture.homeTeamId, homeTeam?.name || `Team ${fixture.homeTeamId}`)}
               </span>
             </Link>
           </div>
@@ -246,7 +248,7 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
           <div className="flex items-center space-x-3 flex-1 justify-end">
             <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group">
               <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                {awayTeam?.name || `Team ${fixture.awayTeamId}`}
+                {teamName(fixture.awayTeamId, awayTeam?.name || `Team ${fixture.awayTeamId}`)}
               </span>
               {awayTeam?.badgeUrl && (
                 <img 

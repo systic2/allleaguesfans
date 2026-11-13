@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
+import { useTeamName } from "@/hooks/useTeamName";
 
 export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] }) {
+  const teamName = useTeamName();
   if (!fixtures || fixtures.length === 0) {
     return <div className="p-4 text-xs text-gray-400">예정된 경기가 없습니다.</div>;
   }
@@ -30,7 +32,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                     <div className="flex items-center justify-between">
                       {/* Home Team */}
                       <Link to={`/teams/${match.homeTeamId}`} className="flex-1 flex items-center justify-end gap-2 text-right hover:text-white group">
-                        <span className="truncate">{match.homeTeam?.name || `Team ${match.homeTeamId}`}</span>
+                        <span className="truncate">{teamName(match.homeTeamId, match.homeTeam?.name || `Team ${match.homeTeamId}`)}</span>
                         {match.homeTeam?.badgeUrl && (
                           <img src={match.homeTeam.badgeUrl} alt="" className="w-5 h-5 object-contain opacity-80 group-hover:opacity-100" />
                         )}
@@ -39,7 +41,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                       {/* Score / VS / Status */}
                       <Link
                         to={`/matches/${match.id}`}
-                        aria-label={`${match.homeTeam?.name || `Team ${match.homeTeamId}`} 대 ${match.awayTeam?.name || `Team ${match.awayTeamId}`} 경기 상세`}
+                        aria-label={`${teamName(match.homeTeamId, match.homeTeam?.name || `Team ${match.homeTeamId}`)} 대 ${teamName(match.awayTeamId, match.awayTeam?.name || `Team ${match.awayTeamId}`)} 경기 상세`}
                         className={`px-2 text-center min-w-[60px] font-bold mx-3 py-1 rounded border hover:brightness-125 transition-[filter] ${
                           isLive
                             ? 'bg-red-900/30 text-red-400 border-red-800 animate-pulse'
@@ -62,7 +64,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                         {match.awayTeam?.badgeUrl && (
                           <img src={match.awayTeam.badgeUrl} alt="" className="w-5 h-5 object-contain opacity-80 group-hover:opacity-100" />
                         )}
-                        <span className="truncate">{match.awayTeam?.name || `Team ${match.awayTeamId}`}</span>
+                        <span className="truncate">{teamName(match.awayTeamId, match.awayTeam?.name || `Team ${match.awayTeamId}`)}</span>
                       </Link>
                     </div>
                   </td>
