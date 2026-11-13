@@ -4,91 +4,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Essential Commands
-- **Dev server**: `pnpm dev` (runs Vite development server)
-- **Build**: `pnpm build` (includes typecheck + Vite build)
-- **Type checking**: `pnpm typecheck` (runs `tsc -b`)
-- **Linting**: `pnpm lint:unused` (ESLint with unused imports cleanup)
-- **Testing**: `vitest` (Vitest test runner with jsdom environment)
+- **Dev server**: `pnpm dev`
+- **Build**: `pnpm build` (runs `tsc -b`, then `vite build`)
+- **Type checking**: `pnpm typecheck`
+- **Tests**: `pnpm test` (Vitest, jsdom, files in `src/tests/`)
+- **Lint**: `pnpm lint:unused` (ESLint with `--fix`; removes unused imports)
+- **Bundle analysis**: `pnpm analyze:bundle`
+- **Data sync**: `pnpm sync:full` (runs `scripts/sync/orchestrator.ts`; needs the sync env vars below)
+- **DB integrity check**: `pnpm test:integration` (queries the live DB with the service role key)
 
-### Code Quality & Analysis
-- **Dependency check**: `pnpm deps:check` (uses depcheck for unused dependencies)
-- **Exports analysis**: `pnpm exports:check` (uses ts-prune to find unused exports)
-- **Dead code detection**: `pnpm files:check` (uses knip for comprehensive analysis)
-- **Bundle analysis**: `pnpm analyze:bundle` (sets ANALYZE=1 and builds with rollup-plugin-visualizer)
-
-### Package Management
-- Uses **pnpm** as the package manager (pnpm-lock.yaml present)
-- All scripts should be run with `pnpm` prefix
+Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 22.
 
 ## Architecture Overview
 
 ### Technology Stack
-- **React 19** with TypeScript in strict mode
-- **React Router DOM v7** for client-side routing with lazy loading
-- **TanStack React Query v5** for server state management
-- **Supabase** as the backend/database service
-- **Tailwind CSS v4** for styling
-- **Vite** as the build tool with SWC for Fast Refresh
-- **Vitest** for testing with jsdom environment
-- **Zod v4** for schema validation
+- **React 19** + TypeScript (strict), **Vite**, **Tailwind CSS v4** (`@tailwindcss/postcss`)
+- **React Router v7** with lazy-loaded routes (`src/app/router.tsx`)
+- **TanStack Query v5** for all server state
+- **Supabase** (PostgreSQL + PostgREST) as the only runtime backend; the browser reads with the anon key
+- **Vitest** + Testing Library
+
+### Routes (`src/app/router.tsx`)
+- `/leagues`, `/leagues/:slug` – league list and league page (standings, fixtures, scorers, champions)
+- `/teams/:id` – `TeamPageDB` (tabs via `?tab=overview|squad|fixtures|stats`)
+- `/players/:id`, `/matches/:id`, `/search`
 
 ### Project Structure
-- `src/app/` - Core application setup (router, layout, query client, shared components)
-- `src/pages/` - Route components (leagues, teams, players, search)
-- `src/lib/` - Utilities and API layer (Supabase client, common fetch functions)
-- `src/domain/` - Type definitions for core entities
-- `src/features/` - Feature-specific code and APIs
-- `src/components/` - Reusable UI components (standings, fixtures, team lineups)
-- `src/hooks/` - Custom React hooks (API utilities, data fetching)
-- `src/styles/` - Global styles and component-specific styling
-- `src/tests/` - Test files and setup
+- `src/app/` – router, layout, query client, shared app components (`GlobalSearch`, `CrestImg`, `Sidebar`); the per-route error boundary is in `layout/RootLayout.tsx`
+- `src/pages/` – route components
+- `src/components/` – page sections; `fm/` holds the league page boxes (`FMStandings`, `FMFixtures`, `FMPlayerStats`, `FMHistory`)
+- `src/lib/api.ts` – most Supabase queries used by the pages
+- `src/lib/thesportsdb-api.ts` – match details and team fixtures from `events_v2`
+- `src/lib/highlightly-enhanced-fixtures-api.ts` – upcoming fixtures from the `v2_events_enhanced` view
+- `src/lib/season.ts` – `getCurrentSeasonForFormat` (see Seasons below)
+- `src/lib/mappers/` – pure parsing/aggregation functions used by the sync scripts (TheSportsDB mappers, timeline parsing, player-stats helpers); kept under `src/` so Vitest covers them
+- `src/hooks/useTeamName.ts` – Korean team names (see below)
+- `src/types/domain.ts`, `src/domain/types.ts` – domain types
+- `scripts/sync/` – data sync (see Data Sync)
+- `scripts/migrations/` – SQL migrations, applied by hand in the Supabase SQL Editor. Older files are mixed (duplicate numbers, some unnumbered); new ones continue the sequence (latest: 19)
+- `scripts/one-off/`, `scripts/archive/` – old one-off scripts, not part of any pipeline
 
-### Key Patterns
-
-#### Routing & Code Splitting
-- Uses React Router v7 with lazy-loaded route components
-- All page components are dynamically imported with Suspense
-- Korean fallback loading text: "로딩중…"
-
-#### State Management
-- React Query for server state with centralized query client
-- Supabase client configured with environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
-- Local component state for UI-only concerns
-
-#### TypeScript Configuration
-- Composite TypeScript setup with `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
-- Strict type checking enabled
-- Path alias `@/` maps to `src/` directory
-
-#### API Layer Design
-- Centralized API functions in `src/lib/api.ts`
-- Generic `getJson()` and `postJson()` utilities for HTTP requests
-- Domain-specific "Lite" types for API responses
-- Supabase queries with proper error handling and type mapping
-
-#### Code Quality Configuration
-- ESLint v9 flat config with TypeScript, React, and React Hooks plugins
-- Unused imports plugin for automatic cleanup
-- Different rule sets for different directories (scripts, pages, tests)
-- `@typescript-eslint/no-explicit-any` disabled for pages/features during development
-
-### Database & Search
-- Uses Supabase PostgreSQL with typed queries
-- Global search implementation supporting leagues and teams
-- Search results use discriminated union types (`SearchRow`)
-- Korean language support in UI text
-
-### Testing Setup
-- Vitest with jsdom environment
-- Testing Library React for component testing
-- Setup file at `src/tests/setup.ts`
-- Test files use `.test.ts` or `.test.tsx` extensions
-
-### Build & Deployment
-- Vite configuration with bundle analyzer (rollup-plugin-visualizer)
-- Environment-specific sourcemaps (disabled in production)
-- Vercel deployment configuration (`vercel.json`)
+### Key Conventions
+- **Team ids are strings.** `teams_v2.id` (and the team ids in `events_v2`, `standings_v2`, routes) is text and includes historical ids like `hist_*`; never `Number()` one. Some older types (`src/domain/types.ts`, parts of `api.ts`) still use numbers; use strings in new code.
+- **Seasons**: K League (4689, 4822) uses single-year seasons (`'2026'`). The European leagues (4328 EPL, 4335 La Liga, 4332 Serie A, 4331 Bundesliga, 4334 Ligue 1) use split seasons stored as the start year (`'2025'` = 2025-26; the new season starts in July). Use `getCurrentSeasonForFormat(format)` instead of hard-coding a year (`highlightly-enhanced-fixtures-api.ts` still has old `2025` defaults). Team pages take the team's latest season from `fetchTeamDetails` (`currentSeason`).
+- **Korean team names**: `teams_v2.nameKorean` is filled for every team (migration 19). Components call `const teamName = useTeamName()` and render `teamName(teamId, englishFallback)`; the hook loads all names once and falls back to the English name.
+- **No fabricated data in new code.** Show `-` or an empty state when a value is not collected; do not invent ratings or placeholder stats. (Known leftovers: missing player-stat fields become `0` in `fetchPlayerDetail`, and migration 10 stores `0` for uncollected historical standings metrics.)
+- Korean UI text; keep it Korean. Loading fallback text: "로딩중…".
+- Path alias `@/` → `src/`.
 
 ## Agent Team Workflow (Claude Code + Codex CLI + Antigravity CLI)
 
@@ -104,347 +66,46 @@ For non-trivial fixes/features in this repo, use the three-role pipeline instead
 
 `codex` and `agy` are both pre-authenticated on this machine and confirmed working as of 2026-08-09 (verified during the K League 2026-season sync fix, see git log). `gemini` is on PATH but non-functional until its API key gets a billing account.
 
-## Development Workflow
 
-1. Always run `pnpm typecheck` before committing changes
-2. Use `pnpm lint:unused` to clean up unused imports
-3. Run dependency checks periodically with quality analysis commands
-4. Korean text is used in UI components - preserve language consistency
-5. Follow existing naming patterns for components and files
+## Data Sync
 
-## Data Import & Management
+### Pipeline
+`.github/workflows/data-sync.yml` runs `pnpm sync:full` every hour (and on manual dispatch; runs never overlap). `scripts/sync/orchestrator.ts` does, in order:
 
-### Data Sources Integration
-- **Primary Sources**: K League API, TheSportsDB, Highlightly API
-- **Supported Leagues**: K League 1 (ID: 4001), K League 2 (ID: 4002)
-- **Season**: 2025 (current active season)
-- **Rate Limiting**: Built-in retry logic and delay handling
+1. **Standings and teams** from TheSportsDB → `standings_v2`, `teams_v2`
+2. **Events** (fixtures and results) from TheSportsDB → `events_v2`
+3. **K League player stats** (`lib/kleague-player-stats.ts`): goal/assist rankings from kleague.com `/record/rankSort.do` → `player_statistics`
+4. **European player stats** (`lib/europe-player-stats.ts`): TheSportsDB v2 `event_timeline` per finished match, cached in `event_timelines` (migration 18), aggregated → `player_statistics`. Bounded per run (600 requests, 12-minute deadline, fair share per league); stats for a league are written only once every finished match is cached.
 
-### Database Schema
-- **Primary Database**: Supabase PostgreSQL with Row Level Security (RLS)
-- **Schema Files**: 
-  - `01-drop-all-tables.sql` - Clean database reset
-  - `02-create-all-tables.sql` - Complete schema creation with indexes and policies
-- **Key Tables**: leagues, teams, players, fixtures, events, standings, lineups
+Any failed step makes the script exit 1 so the workflow run shows as failed.
 
-### Import Scripts
-- **Primary Sync**: `scripts/sync-kleague-final.ts` - Complete K League data synchronization
-- **Environment Check**: `scripts/env-check.ts` - Validates all required environment variables
-- **Data Verification**: `scripts/final-verification.ts` - Comprehensive data quality validation
-- **Schema Check**: `scripts/check-database-schema.ts` - Database schema verification
-- **API Endpoints**: `scripts/fix-api-endpoints-simple.ts` - API endpoint configuration
+Manual backfills, not run by the workflow: `import-historical-champions-euro.ts` (`standings_v2` history) and `import-team-players.ts`. `import-historical-standings.ts` is outdated: it still writes the old `standings` table, which migration 05 dropped.
 
 ### Environment Variables
-#### Required for 3-API Integration System
-```bash
-# Supabase Configuration (supports both formats for cross-environment compatibility)
-SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_URL=https://your-project.supabase.co  # Alternative format
-SUPABASE_SERVICE_ROLE=your-service-role-key         # For admin operations
-VITE_SUPABASE_ANON_KEY=your-anon-key               # For client operations
+Sync scripts (`scripts/sync/lib/supabase.ts`):
+- `SUPABASE_URL` (or `VITE_SUPABASE_URL`)
+- `SUPABASE_SERVICE_ROLE` – service role key; only for scripts, never in the frontend
+- `THESPORTSDB_API_KEY` – TheSportsDB premium key (v1 and v2 APIs)
 
-# 3-API Integration System Configuration
-# K League Official API: No key required (free public API)
-# TheSportsDB Premium API: Enhanced metadata and images
-THESPORTSDB_API_KEY=your-thesportsdb-premium-key
+Frontend (`src/lib/supabaseClient.ts`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
-# Highlightly API: Real-time live match data
-HIGHLIGHTLY_API_KEY=your-highlightly-api-key
+GitHub Actions maps the repo secrets `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SERVICE_ROLE`) and `THESPORTSDB_API_KEY` to these names.
 
-# Optional Configuration
-SEASON_YEAR=2025          # Target season for imports
-NODE_ENV=production       # Environment indicator
-```
+### Database
+- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `leagues`, plus the `v2_events_enhanced` view and `top_scorers` / `top_assisters`.
+- RLS is on; anon can only read (migration 16). Views use `security_invoker` (migration 17). `event_timelines` is service-role only.
+- New schema changes go in a new numbered file in `scripts/migrations/` and are applied manually in the Supabase SQL Editor. Make migrations safe to re-run.
 
-#### New Data Source Benefits
-- **K League Official API**: 공식 정확한 데이터 (무료)
-- **TheSportsDB**: 팀 로고, 선수 이미지, 풍부한 메타데이터
-- **Highlightly API**: 실시간 라이브 매치 데이터, 하이라이트
-- **Cost Optimization**: 100% 무료 K-League 데이터
-- **Data Reliability**: 공식 소스로 정확성 확보
+### Script Imports
+Scripts run with `tsx`. Existing scripts import TypeScript modules with a `.js` extension (`import { supa } from './lib/supabase.js'`), which tsx resolves to the `.ts` file; follow the surrounding file's style.
 
-#### Environment Variable Debugging
-- Run `npx tsx scripts/env-check.ts` to validate all environment variables
-- Supports both GitHub Actions and local development environments
-- Provides masked output for sensitive keys with detailed diagnostics
+## Build & Deployment
+- Vercel deploys `main` to production on every merge; pull requests get preview deployments.
+- `vercel.json` rewrites every non-`/assets/` path to `/` for client-side routing and sets cache and security headers.
+- `.github/workflows/ci-cd.yml` runs typecheck, tests and build on pushes to `main`, PRs into `main`, and manual dispatch. `keepalive.yml` runs weekly so GitHub does not disable the hourly sync schedule.
 
-### GitHub Actions CI/CD (3-API Integration)
-- **Primary Workflow**: `.github/workflows/triple-api-sync.yml`
-- **Legacy Workflow**: `.github/workflows/data-sync.yml` (deprecated)
-- **Enhanced Schedule**: 
-  - Daily sync: 2:00 AM UTC (11:00 AM KST) - 3-API 통합 데이터 동기화
-  - Weekly sync: Monday 3:00 AM UTC - 전체 3-API 데이터 재동기화
-  - Live sync: Weekend 10-15 UTC (19-24 KST) - 실시간 라이브 매치 데이터
-  - Manual trigger: Available via GitHub Actions UI
-- **3-API Integration Features**:
-  - Multi-API environment validation (K League + TheSportsDB + Highlightly)
-  - Intelligent API fallback and error resilience
-  - Real-time live match data synchronization
-  - Comprehensive data quality validation across all APIs
-  - Cost-optimized scheduling with peak-hour live updates
-
-### Data Import Troubleshooting
-
-#### Common Issues & Solutions
-
-**Environment Variable Errors:**
-```bash
-# Check environment setup
-npx tsx scripts/env-check.ts
-
-# Common fixes:
-# 1. Ensure both SUPABASE_URL and VITE_SUPABASE_URL are set
-# 2. Verify SUPABASE_SERVICE_ROLE has admin permissions
-```
-
-**PostgreSQL Constraint Errors:**
-```bash
-# Error 42830: "there is no unique constraint matching given keys"
-# Fix: Update leagues table primary key structure
-\i scripts/fix-leagues-primary-key-safe.sql
-
-# Error 42601: "syntax error at or near 'RAISE'"
-# Fix: Use corrected script with proper PL/pgSQL blocks
-\i scripts/fix-leagues-primary-key-corrected.sql
-
-# Error P0001: "cannot drop constraint because other objects depend on it"
-# Fix: Use safe migration with dependency handling
-\i scripts/fix-leagues-primary-key-safe.sql
-
-# Verify fixes
-\i scripts/quick-verify-leagues-fix.sql
-```
-
-**ON CONFLICT Specification Errors:**
-```bash
-# Error 42P10: "there is no unique or exclusion constraint matching the ON CONFLICT specification"
-# 1. First ensure database schema is up to date
-\i scripts/fix-leagues-primary-key-safe.sql
-
-# 2. Use improved import logic with proper conflict handling
-npx tsx scripts/fix-import-upsert-logic.ts
-
-# 3. Verify constraint structure
-\i scripts/diagnose-leagues-dependencies.sql
-```
-
-**Database Connection Issues:**
-```bash
-# Test Supabase connection
-npx tsx -e "
-import { supa } from './scripts/lib/supabase.js';
-console.log('✅ Connection test:', await supa.from('leagues').select('count').single());
-"
-```
-
-**TypeScript Import Errors (ERR_MODULE_NOT_FOUND):**
-```bash
-# Error: Cannot find module './file.js' imported from './script.ts'
-# Root Cause: TypeScript files imported with .js extension
-
-# Common error pattern:
-# Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/path/to/script.js' 
-# imported from /path/to/another-script.ts
-
-# Fix: Use .ts extension for TypeScript imports
-# ❌ Wrong:
-import { func } from "./module.js";
-
-# ✅ Correct:
-import { func } from "./module.ts";
-
-# Quick fix command to find and check import issues:
-grep -r "import.*\.js['\"]" scripts/ --include="*.ts"
-
-# Verify fix with test import:
-npx tsx -e "import { yourFunction } from './scripts/your-file.ts'; console.log('✅ Import successful');"
-```
-
-**Common TypeScript Import Fixes:**
-```bash
-# 1. Scripts directory imports
-# Files: master-import-complete.ts, master-import-improved.ts, etc.
-# Fix: Change .js to .ts in import statements
-
-# 2. Library imports in scripts/lib/
-# Fix: Update supabase.js → supabase.ts, kleague-api.js → kleague-api.ts
-
-# 3. Src directory imports from scripts
-# Fix: Update relative paths to use .ts extension
-
-# Prevention: Always use .ts extension for TypeScript file imports
-# GitHub Actions runs tsx which requires correct TypeScript import syntax
-```
-
-### Database Migration and Error Resolution Guide
-
-#### Step-by-Step Fix Process
-When encountering GitHub Actions data sync errors or PostgreSQL constraint violations:
-
-1. **Diagnose the Problem**
-   ```bash
-   # Check current database state
-   \i scripts/diagnose-leagues-dependencies.sql
-   \i scripts/quick-verify-leagues-fix.sql
-   ```
-
-2. **Apply Safe Migration**
-   ```bash
-   # Fix leagues table primary key structure (resolves 42830, P0001 errors)
-   \i scripts/fix-leagues-primary-key-safe.sql
-   ```
-
-3. **Verify Migration Success**
-   ```bash
-   # Ensure migration completed successfully
-   \i scripts/quick-verify-leagues-fix.sql
-   # Expected results: "CORRECT", "CORRECT", "CLEAN"
-   ```
-
-4. **Run Data Import**
-   ```bash
-   # Execute master import with fixed database structure
-   SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts
-   ```
-
-5. **Validate Results**
-   ```bash
-   # Check GitHub Actions logs for resolved errors
-   # No more 42830, P0001, or 42P10 errors should occur
-   ```
-
-#### Error Resolution Map
-- **42830**: leagues table missing composite primary key → `fix-leagues-primary-key-safe.sql`
-- **42601**: RAISE statement syntax error → `fix-leagues-primary-key-corrected.sql`  
-- **P0001**: Constraint dependency error → `fix-leagues-primary-key-safe.sql`
-- **42P10**: ON CONFLICT specification error → Apply migration first, then retry import
-- **ERR_MODULE_NOT_FOUND**: TypeScript import with .js extension → Change .js to .ts in import statements
-
-### Import Process Flow
-1. **Environment Validation** - Verify all required variables and connections
-2. **Database Migration** - Apply any necessary schema fixes using migration scripts
-3. **Teams & Venues** - Import team information and stadium data  
-4. **Players & Squads** - Import player profiles and team rosters
-5. **Fixtures** - Import match schedules and results
-6. **Events** - Import match events (goals, cards, substitutions)
-7. **Standings** - Import league tables and rankings
-8. **Statistics** - Import player and team statistics
-9. **Quality Check** - Validate data integrity and completeness
-
-### Performance Considerations
-- **Rate Limiting**: API calls include automatic retry with exponential backoff
-- **Batch Processing**: Large datasets processed in chunks to avoid timeouts
-- **Foreign Key Validation**: Ensures referential integrity before inserting events
-- **Duplicate Prevention**: Built-in duplicate detection and prevention mechanisms
-
-## Script Reference
-
-### Essential Data Scripts
-```bash
-# Full data import (recommended for initial setup)
-SEASON_YEAR=2025 npx tsx scripts/sync-kleague-final.ts
-
-# Environment validation (run before any script)
-npx tsx scripts/env-check.ts
-
-# Database schema setup (if needed)
-psql -f 01-drop-all-tables.sql    # Reset database
-psql -f 02-create-all-tables.sql  # Create schema
-
-# Database integrity fixes (run if encountering constraint errors)
-\i scripts/fix-leagues-primary-key-safe.sql        # Fix leagues primary key structure
-\i scripts/quick-verify-leagues-fix.sql            # Verify migration results
-\i scripts/diagnose-leagues-dependencies.sql       # Analyze dependencies
-```
-
-### Development Best Practices
-```bash
-# Pre-commit workflow
-pnpm typecheck          # Type checking
-pnpm lint:unused       # Clean unused imports  
-pnpm build             # Production build test
-pnpm test              # Run all tests
-
-# Code quality checks
-pnpm deps:check        # Find unused dependencies
-pnpm exports:check     # Find unused exports
-pnpm files:check       # Comprehensive dead code analysis
-
-# TypeScript import validation (prevent GitHub Actions errors)
-grep -r "import.*\.js['\"]" scripts/ --include="*.ts"  # Should return no results
-npx tsx scripts/env-check.ts                           # Test environment setup
-
-# Development server
-pnpm dev               # Start development server with hot reload
-```
-
-### TypeScript Import Guidelines
-```bash
-# ✅ ALWAYS use .ts extension for TypeScript imports
-import { func } from "./module.ts";
-import { helper } from "./lib/utility.ts";
-import { api } from "../src/lib/client.ts";
-
-# ❌ NEVER use .js extension for TypeScript files (causes GitHub Actions errors)
-import { func } from "./module.js";     # Will fail in tsx
-import { helper } from "./lib/utility.js";  # Runtime module not found
-
-# Validation commands to run before committing scripts:
-1. Check for problematic imports: grep -r "import.*\.js['\"]" scripts/ --include="*.ts"
-2. Test import syntax: npx tsx -e "import { testFunc } from './scripts/your-script.ts';"
-3. Validate environment: npx tsx scripts/env-check.ts
-
-# Quick fix for import errors:
-find scripts/ -name "*.ts" -exec sed -i 's/\.js["'"'"']/\.ts["'"'"']/g' {} \;
-```
-
-### Debugging Commands
-```bash
-# Test Supabase connection
-npx tsx -e "
-import { supa } from './scripts/lib/supabase.js';
-const { data, error } = await supa.from('teams').select('count');
-console.log('Teams:', data, error);
-"
-
-# Monitor GitHub Actions logs
-# Visit: https://github.com/your-repo/actions/workflows/data-sync.yml
-```
-
-### Data Quality Improvements
-- **Duplicate Resolution**: Clean imports prevent player name duplicates
-- **Data Source Consistency**: Single source of truth eliminates "Jeon Jin-woo" vs "Jinwoo" issues
-- **Verification Scripts**: Automated duplicate detection and data integrity checks
-
-## Recent Changes & Cleanup (2025-09-21)
-
-### Widget Removal and Code Cleanup
-- **Widget Components Removed**: All widget-related components have been removed from the codebase
-  - Removed: `APIFootballGamesWidget`, `LiveStandingsWidget`, widget hooks, and related utilities
-  - Simplified: `EnhancedFixturesSection` → `FixturesSection` (removed tab functionality)
-  - Simplified: `EnhancedStandingsSection` → `StandingsSection` (removed widget integration)
-
-### Dependency Optimization
-- **Removed Unused Dependencies**: Cleaned up development dependencies for better performance
-  - Removed: `@tailwindcss/postcss` (initially), `depcheck`, `knip`, `ts-prune`
-  - Added: `glob` for script compatibility
-  - **Note**: `@tailwindcss/postcss` was restored as it's required for TailwindCSS v4 build process
-
-### Build Configuration
-- **PostCSS Configuration**: Fixed build issues related to TailwindCSS v4
-  - TailwindCSS v4 requires `@tailwindcss/postcss` package for production builds
-  - Updated `postcss.config.js` to properly reference the PostCSS plugin
-
-### Code Quality Improvements
-- **Removed Unused Code**: Cleaned up unused imports, variables, and functions
-  - Fixed TypeScript compilation errors
-  - Improved maintainability and reduced bundle size
-  - Removed obsolete package.json scripts for deleted tools
-
-## Important Notes
-- **Never commit sensitive environment variables** to the repository
-- **Always test scripts in development** before running in production
-- **Monitor API rate limits** - External APIs have daily request limits
-- **Database changes require schema updates** - Use SQL migration files
-- **Korean language support** - Preserve Korean text in UI components
-- **Environment compatibility** - Scripts support both local and CI/CD environments
+## Development Workflow
+1. Work on a feature branch; open a PR into `main`.
+2. Before committing: `pnpm typecheck`, `pnpm lint:unused`, `pnpm test`, `pnpm build`.
+3. After merging, check the change on the production site.
+4. Never commit secrets (`.env*` files are ignored).
