@@ -4,68 +4,31 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTeamName } from "@/hooks/useTeamName";
 import { 
-  fetchEnhancedUpcomingFixtures, 
-  type HighlightlyEnhancedFixture 
-} from "@/lib/highlightly-enhanced-fixtures-api";
-import { 
   fetchAllUpcomingFixtures,
   fetchLeagueUpcomingFixtures,
   type MatchWithTeams, 
 } from "@/lib/thesportsdb-api";
 
-// This component now expects the rich MatchWithTeams object or a compatible one
-type FixtureData = MatchWithTeams | HighlightlyEnhancedFixture;
-
 interface UpcomingFixturesProps {
-  teamId?: number;
   leagueId?: number;
   title?: string;
   limit?: number;
   className?: string;
-  useTheSportsDB?: boolean;
 }
 
 export default function UpcomingFixtures({ 
-  teamId, 
   leagueId, 
   title = "다음 경기", 
   limit = 5,
   className = "",
-  useTheSportsDB = false
 }: UpcomingFixturesProps) {
-  
-  const safeUseTheSportsDB = useTheSportsDB;
-  
-  // This query now uses the refactored API functions that return joined team data
-  const theSportsDBQuery = useQuery({
-    queryKey: ["v2-upcoming-fixtures", leagueId ?? 'all'], 
-    queryFn: async () => {
-      if (leagueId) {
-        return fetchLeagueUpcomingFixtures(String(leagueId));
-      }
-      // Fetch for ALL leagues
-      return fetchAllUpcomingFixtures(limit);
-    },
-    enabled: safeUseTheSportsDB && !teamId,
+  const { data: fixtures, isLoading, error } = useQuery({
+    queryKey: ["v2-upcoming-fixtures", leagueId ?? 'all'],
+    queryFn: () => leagueId
+      ? fetchLeagueUpcomingFixtures(String(leagueId))
+      : fetchAllUpcomingFixtures(limit),
     staleTime: 5 * 60 * 1000,
   });
-
-  // The enhanced query also needs to be compatible
-  const enhancedQuery = useQuery({
-    queryKey: teamId ? ["v2-enhanced-team-upcoming-fixtures", teamId] : ["v2-enhanced-upcoming-fixtures", leagueId],
-    queryFn: () => {
-      if (teamId) {
-        return Promise.resolve([]); // Placeholder for now
-      } else {
-        return fetchEnhancedUpcomingFixtures(String(leagueId), limit);
-      }
-    },
-    enabled: !safeUseTheSportsDB,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const activeQuery = safeUseTheSportsDB ? theSportsDBQuery : enhancedQuery;
-  const { data: fixtures, isLoading, error } = activeQuery;
 
   if (isLoading) {
     return (
@@ -107,7 +70,6 @@ export default function UpcomingFixtures({
           <FixtureCard 
             key={fixture.id} 
             fixture={fixture} 
-            showTeams={!teamId}
           />
         ))}
       </div>
@@ -116,8 +78,7 @@ export default function UpcomingFixtures({
 }
 
 interface FixtureCardProps {
-  fixture: FixtureData;
-  showTeams?: boolean;
+  fixture: MatchWithTeams;
 }
 
 const LEAGUE_NAMES: Record<string, string> = {
@@ -130,7 +91,7 @@ const LEAGUE_NAMES: Record<string, string> = {
   '4334': 'Ligue 1',
 };
 
-function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
+function FixtureCard({ fixture }: FixtureCardProps) {
   // The fixture object now contains nested homeTeam and awayTeam objects
   const { date, status, round, homeTeam, awayTeam, venueName, leagueId } = fixture;
   const teamName = useTeamName();
@@ -216,51 +177,49 @@ function FixtureCard({ fixture, showTeams = true }: FixtureCardProps) {
         </div>
       </div>
 
-      {showTeams && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 flex-1">
-            <Link to={`/teams/${homeTeam?.id || fixture.homeTeamId}`} className="flex items-center space-x-2 group">
-              {homeTeam?.badgeUrl && (
-                <img 
-                  src={homeTeam.badgeUrl} 
-                  alt={homeTeam.name}
-                  className="w-6 h-6 object-contain"
-                />
-              )}
-              <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                {teamName(fixture.homeTeamId, homeTeam?.name || `Team ${fixture.homeTeamId}`)}
-              </span>
-            </Link>
-          </div>
-          
-          <div className="px-4 text-slate-400 font-bold text-center min-w-[60px]">
-            {(isFinished || isLive) && 
-             fixture.homeScore !== undefined && fixture.homeScore !== null &&
-             fixture.awayScore !== undefined && fixture.awayScore !== null ? (
-              <span className={`text-xl font-mono ${isLive ? 'text-red-500' : 'text-white'}`}>
-                {fixture.homeScore} - {fixture.awayScore}
-              </span>
-            ) : (
-              "VS"
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3 flex-1">
+          <Link to={`/teams/${homeTeam?.id || fixture.homeTeamId}`} className="flex items-center space-x-2 group">
+            {homeTeam?.badgeUrl && (
+              <img 
+                src={homeTeam.badgeUrl} 
+                alt={homeTeam.name}
+                className="w-6 h-6 object-contain"
+              />
             )}
-          </div>
-          
-          <div className="flex items-center space-x-3 flex-1 justify-end">
-            <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group">
-              <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                {teamName(fixture.awayTeamId, awayTeam?.name || `Team ${fixture.awayTeamId}`)}
-              </span>
-              {awayTeam?.badgeUrl && (
-                <img 
-                  src={awayTeam.badgeUrl} 
-                  alt={awayTeam.name}
-                  className="w-6 h-6 object-contain"
-                />
-              )}
-            </Link>
-          </div>
+            <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
+              {teamName(fixture.homeTeamId, homeTeam?.name || `Team ${fixture.homeTeamId}`)}
+            </span>
+          </Link>
         </div>
-      )}
+        
+        <div className="px-4 text-slate-400 font-bold text-center min-w-[60px]">
+          {(isFinished || isLive) && 
+           fixture.homeScore !== undefined && fixture.homeScore !== null &&
+           fixture.awayScore !== undefined && fixture.awayScore !== null ? (
+            <span className={`text-xl font-mono ${isLive ? 'text-red-500' : 'text-white'}`}>
+              {fixture.homeScore} - {fixture.awayScore}
+            </span>
+          ) : (
+            "VS"
+          )}
+        </div>
+        
+        <div className="flex items-center space-x-3 flex-1 justify-end">
+          <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group">
+            <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
+              {teamName(fixture.awayTeamId, awayTeam?.name || `Team ${fixture.awayTeamId}`)}
+            </span>
+            {awayTeam?.badgeUrl && (
+              <img 
+                src={awayTeam.badgeUrl} 
+                alt={awayTeam.name}
+                className="w-6 h-6 object-contain"
+              />
+            )}
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

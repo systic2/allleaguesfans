@@ -34,8 +34,7 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 - `src/pages/` – route components
 - `src/components/` – page sections; `fm/` holds the league page boxes (`FMStandings`, `FMFixtures`, `FMPlayerStats`, `FMHistory`)
 - `src/lib/api.ts` – most Supabase queries used by the pages
-- `src/lib/thesportsdb-api.ts` – match details and team fixtures from `events_v2`
-- `src/lib/highlightly-enhanced-fixtures-api.ts` – upcoming fixtures from the `v2_events_enhanced` view
+- `src/lib/thesportsdb-api.ts` – match details, team fixtures and upcoming fixtures from `events_v2`
 - `src/lib/season.ts` – `getCurrentSeasonForFormat` (see Seasons below)
 - `src/lib/mappers/` – pure parsing/aggregation functions used by the sync scripts (TheSportsDB mappers, timeline parsing, player-stats helpers); kept under `src/` so Vitest covers them
 - `src/hooks/useTeamName.ts` – Korean team names (see below)
@@ -46,7 +45,7 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 
 ### Key Conventions
 - **Team ids are strings.** `teams_v2.id` (and the team ids in `events_v2`, `standings_v2`, routes) is text and includes historical ids like `hist_*`; never `Number()` one. Some older types (`src/domain/types.ts`, parts of `api.ts`) still use numbers; use strings in new code.
-- **Seasons**: K League (4689, 4822) uses single-year seasons (`'2026'`). The European leagues (4328 EPL, 4335 La Liga, 4332 Serie A, 4331 Bundesliga, 4334 Ligue 1) use split seasons stored as the start year (`'2025'` = 2025-26; the new season starts in July). Use `getCurrentSeasonForFormat(format)` instead of hard-coding a year (`highlightly-enhanced-fixtures-api.ts` still has old `2025` defaults). Team pages take the team's latest season from `fetchTeamDetails` (`currentSeason`).
+- **Seasons**: K League (4689, 4822) uses single-year seasons (`'2026'`). The European leagues (4328 EPL, 4335 La Liga, 4332 Serie A, 4331 Bundesliga, 4334 Ligue 1) use split seasons stored as the start year (`'2025'` = 2025-26; the new season starts in July). Use `getCurrentSeasonForFormat(format)` instead of hard-coding a year. Team pages take the team's latest season from `fetchTeamDetails` (`currentSeason`).
 - **Korean team names**: `teams_v2.nameKorean` is filled for every team (migration 19). Components call `const teamName = useTeamName()` and render `teamName(teamId, englishFallback)`; the hook loads all names once and falls back to the English name.
 - **No fabricated data in new code.** Show `-` or an empty state when a value is not collected; do not invent ratings or placeholder stats. (Known leftovers: missing player-stat fields become `0` in `fetchPlayerDetail`, and migration 10 stores `0` for uncollected historical standings metrics.)
 - Korean UI text; keep it Korean. Loading fallback text: "로딩중…".
@@ -79,7 +78,7 @@ For non-trivial fixes/features in this repo, use the three-role pipeline instead
 
 Any failed step makes the script exit 1 so the workflow run shows as failed.
 
-Manual backfills, not run by the workflow: `import-historical-champions-euro.ts` (`standings_v2` history) and `import-team-players.ts`. `import-historical-standings.ts` is outdated: it still writes the old `standings` table, which migration 05 dropped.
+Manual backfills, not run by the workflow: `import-historical-champions-euro.ts` (European champions history in `standings_v2`) and `import-team-players.ts` (`players_v2`).
 
 ### Environment Variables
 Sync scripts (`scripts/sync/lib/supabase.ts`):
@@ -92,7 +91,7 @@ Frontend (`src/lib/supabaseClient.ts`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON
 GitHub Actions maps the repo secrets `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SERVICE_ROLE`) and `THESPORTSDB_API_KEY` to these names.
 
 ### Database
-- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `leagues`, plus the `v2_events_enhanced` view and `top_scorers` / `top_assisters`.
+- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `leagues`, and the `top_scorers` / `top_assisters` views. (`v2_events_enhanced` still exists in the DB but the app no longer reads it.)
 - RLS is on; anon can only read (migration 16). Views use `security_invoker` (migration 17). `event_timelines` is service-role only.
 - New schema changes go in a new numbered file in `scripts/migrations/` and are applied manually in the Supabase SQL Editor. Make migrations safe to re-run.
 
