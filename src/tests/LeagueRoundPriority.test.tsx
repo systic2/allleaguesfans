@@ -59,6 +59,7 @@ describe('LeaguePage initial round priority (Live > Upcoming > Completed > Fallb
     (api.fetchTopScorers as any).mockResolvedValue([]);
     (api.fetchTopAssists as any).mockResolvedValue([]);
     (api.fetchFixturesByRound as any).mockResolvedValue([]);
+    (api.fetchTeamKoreanNames as any).mockResolvedValue({});
   });
 
   afterEach(() => {

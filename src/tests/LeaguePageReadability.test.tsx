@@ -81,6 +81,7 @@ describe('LeaguePage readability', () => {
     (api.getNextUpcomingRound as any).mockResolvedValue('2');
     (api.getLatestCompletedRound as any).mockResolvedValue('1');
     (api.fetchFixturesByRound as any).mockResolvedValue([]);
+    (api.fetchTeamKoreanNames as any).mockResolvedValue({});
   });
 
   const renderLeaguePage = () => {

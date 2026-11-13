@@ -2,11 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchPlayerDetail, type PlayerDetail } from '@/lib/api';
+import { fetchPlayerDetail, fetchTeamKoreanNames, type PlayerDetail } from '@/lib/api';
 import PlayerPage from '@/pages/PlayerPage';
 
 vi.mock('@/lib/api', () => ({
   fetchPlayerDetail: vi.fn(),
+  fetchTeamKoreanNames: vi.fn(),
 }));
 
 vi.mock('@/components/FMSubNav', () => ({
@@ -18,6 +19,7 @@ vi.mock('@/app/components/CrestImg', () => ({
 }));
 
 const mockFetchPlayerDetail = vi.mocked(fetchPlayerDetail);
+const mockFetchTeamKoreanNames = vi.mocked(fetchTeamKoreanNames);
 
 const player: PlayerDetail = {
   id: '1',
@@ -65,6 +67,8 @@ function renderPlayerPage() {
 describe('PlayerPage', () => {
   beforeEach(() => {
     mockFetchPlayerDetail.mockReset();
+    mockFetchTeamKoreanNames.mockReset();
+    mockFetchTeamKoreanNames.mockResolvedValue({});
   });
 
   it('shows real season statistics without fabricated player details', async () => {

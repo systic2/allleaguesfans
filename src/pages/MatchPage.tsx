@@ -4,6 +4,7 @@ import { Calendar, ChevronLeft, MapPin, Trophy } from "lucide-react";
 import { fetchMatchDetails, type MatchDetails } from "@/lib/thesportsdb-api";
 import { fetchNearbyStandings, type TeamStanding } from "@/lib/api";
 import CrestImg from "@/app/components/CrestImg";
+import { useTeamName } from "@/hooks/useTeamName";
 
 const FINISHED_STATUSES = ['FINISHED', 'FT', 'AET', 'PEN'];
 const LIVE_STATUSES = ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P'];
@@ -40,6 +41,7 @@ function LoadingSpinner() {
 export default function MatchPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const teamName = useTeamName();
 
   const { data: match, isLoading, error } = useQuery<MatchDetails | null>({
     queryKey: ["match-details", id],
@@ -129,7 +131,7 @@ export default function MatchPage() {
         <Link to={`/teams/${match.homeTeamId}`} className="flex flex-col items-center gap-3 flex-1 group">
           <CrestImg src={match.homeTeam?.badgeUrl} alt={match.homeTeam?.name || ''} size={64} />
           <span className="font-bold text-center group-hover:text-purple-300 transition-colors">
-            {match.homeTeam?.name || `Team ${match.homeTeamId}`}
+            {teamName(match.homeTeamId, match.homeTeam?.name || `Team ${match.homeTeamId}`)}
           </span>
           {homeRank && (
             <span className="text-xs text-white/40">{homeRank.rank}위 · {homeRank.points}점</span>
@@ -154,7 +156,7 @@ export default function MatchPage() {
         <Link to={`/teams/${match.awayTeamId}`} className="flex flex-col items-center gap-3 flex-1 group">
           <CrestImg src={match.awayTeam?.badgeUrl} alt={match.awayTeam?.name || ''} size={64} />
           <span className="font-bold text-center group-hover:text-purple-300 transition-colors">
-            {match.awayTeam?.name || `Team ${match.awayTeamId}`}
+            {teamName(match.awayTeamId, match.awayTeam?.name || `Team ${match.awayTeamId}`)}
           </span>
           {awayRank && (
             <span className="text-xs text-white/40">{awayRank.rank}위 · {awayRank.points}점</span>

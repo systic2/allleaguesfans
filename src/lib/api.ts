@@ -211,22 +211,22 @@ export async function fetchLeagueStats(leagueId: number, season: string = DEFAUL
   return { total_goals: totalGoals, total_matches: totalMatches > 0 ? totalMatches : Math.round(avgMatchesPerTeam * totalTeams / 2), avg_goals_per_match: totalMatches > 0 ? Number((totalGoals / totalMatches).toFixed(2)) : avgMatchesPerTeam > 0 ? Number((totalGoals / (avgMatchesPerTeam * totalTeams / 2)).toFixed(2)) : 0, total_teams: totalTeams };
 }
 
-export type TopScorer = { player_name: string; team_name: string; goals: number; assists: number; matches: number; };
-export type TopAssist = { player_name: string; team_name: string; assists: number; goals: number; matches: number; };
-export type HistoricalChampion = { season_year: number; champion_name: string; champion_logo: string | null; };
+export type TopScorer = { player_name: string; team_id: string; team_name: string; goals: number; assists: number; matches: number; };
+export type TopAssist = { player_name: string; team_id: string; team_name: string; assists: number; goals: number; matches: number; };
+export type HistoricalChampion = { season_year: number; champion_team_id: string; champion_name: string; champion_logo: string | null; };
 
 export async function fetchTopScorers(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopScorer[]> {
   const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const stats = await fetchTopScorersStats(theSportsDBLeagueId, normalized, limit);
-  return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
+  return stats.map(stat => ({ player_name: stat.strPlayer, team_id: String(stat.idTeam ?? ''), team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
 }
 
 export async function fetchTopAssists(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopAssist[]> {
   const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const stats = await fetchTopAssistersStats(theSportsDBLeagueId, normalized, limit);
-  return stats.map(stat => ({ player_name: stat.strPlayer, team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
+  return stats.map(stat => ({ player_name: stat.strPlayer, team_id: String(stat.idTeam ?? ''), team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
 }
 
 export async function fetchHistoricalChampions(leagueId: number, currentSeason?: string): Promise<HistoricalChampion[]> {
@@ -238,10 +238,10 @@ export async function fetchHistoricalChampions(leagueId: number, currentSeason?:
   // current_season (already resolved by fetchLeagueBySlug/getCurrentSeasonForFormat) and
   // only fall back to the calendar year when it isn't available yet.
   const excludeFrom = currentSeason || String(new Date().getFullYear());
-  const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", excludeFrom).order("season", { ascending: false }).limit(15);
+  const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamId, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", excludeFrom).order("season", { ascending: false }).limit(15);
   if (standingsError) { console.warn("Failed to fetch historical champions standings:", standingsError); return []; }
   if (!standingsData || standingsData.length === 0) return [];
-  return standingsData.map((standing) => ({ season_year: Number(standing.season || 0), champion_name: String(standing.teamName || "Unknown"), champion_logo: null }));
+  return standingsData.map((standing) => ({ season_year: Number(standing.season || 0), champion_team_id: String(standing.teamId ?? ''), champion_name: String(standing.teamName || "Unknown"), champion_logo: null }));
 }
 
 export interface UpcomingFixture { id: string; date_utc: string; status: string; round: string; home_team: { id: string; name: string; logo_url: string | null; }; away_team: { id: string; name: string; logo_url: string | null; }; venue?: string; league_id: string; }
@@ -345,6 +345,14 @@ export async function fetchUpcomingRoundFixtures(leagueId: number, season: strin
   return fetchFixturesByRound(leagueId, nextRound, season);
 }
 
+/** 팀 ID → 한글 이름 (nameKorean 이 있는 팀만). 화면 표시용으로 한 번 불러와 캐시한다. */
+export async function fetchTeamKoreanNames(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.from('teams_v2').select('id, nameKorean').not('nameKorean', 'is', null);
+  // 오류를 빈 결과로 바꾸면 staleTime: Infinity 캐시에 남아 다시 시도하지 않으므로 그대로 던진다
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map(row => [String(row.id), String(row.nameKorean)]));
+}
+
 export async function searchByName(q: string): Promise<SearchRow[]> {
   const qq = q.trim();
   if (!qq) return [];
@@ -354,7 +362,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
     supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").ilike("strLeague", pattern).limit(10),
     // 화면의 팀 데이터(teams_v2)에서 영문·한글 이름으로 찾는다
     supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(`name.ilike.${pattern},nameKorean.ilike.${pattern}`).limit(10),
-    supabase.from("players_v2").select("idPlayer, strPlayer, strTeam, strThumb").ilike("strPlayer", pattern).limit(10)
+    supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb").ilike("strPlayer", pattern).limit(10)
   ]);
   const rows: SearchRow[] = [];
   for (const x of leagues.data ?? []) {
@@ -370,6 +378,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
       type: "player",
       entity_id: playerId,
       name: String(p.strPlayer),
+      team_id: p.idTeam ? String(p.idTeam) : undefined,
       team_name: p.strTeam,
       crest_url: p.strThumb
     } as SearchRow);

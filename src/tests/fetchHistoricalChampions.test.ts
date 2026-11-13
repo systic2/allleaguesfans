@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 type StandingRow = {
   season: string;
+  teamId: string;
   teamName: string;
 };
 
@@ -61,18 +62,20 @@ describe('fetchHistoricalChampions', () => {
 
   it('uses an explicitly passed current season as the exclusion cutoff', async () => {
     const query = createMockSupabaseChain([
-      { season: '2026', teamName: 'Current Season Leader' },
-      { season: '2025', teamName: 'Previous Champion' },
+      { season: '2026', teamId: '100', teamName: 'Current Season Leader' },
+      { season: '2025', teamId: '101', teamName: 'Previous Champion' },
     ]);
     (supabase.from as any).mockReturnValueOnce(query);
 
     const result = await fetchHistoricalChampions(4328, '2026');
 
     expect(supabase.from).toHaveBeenCalledWith('standings_v2');
+    expect(query.select).toHaveBeenCalledWith('season, teamId, teamName');
     expect(query.lt).toHaveBeenCalledWith('season', '2026');
     expect(result).toEqual([
       {
         season_year: 2025,
+        champion_team_id: '101',
         champion_name: 'Previous Champion',
         champion_logo: null,
       },
@@ -93,6 +96,7 @@ describe('fetchHistoricalChampions', () => {
   it('maps champions and keeps descending season order capped at 15 rows', async () => {
     const rows = Array.from({ length: 18 }, (_, index) => ({
       season: String(2008 + index),
+      teamId: String(1000 + index),
       teamName: `Champion ${2008 + index}`,
     }));
     const query = createMockSupabaseChain(rows);
@@ -105,11 +109,13 @@ describe('fetchHistoricalChampions', () => {
     expect(result).toHaveLength(15);
     expect(result[0]).toEqual({
       season_year: 2025,
+      champion_team_id: '1017',
       champion_name: 'Champion 2025',
       champion_logo: null,
     });
     expect(result.at(-1)).toEqual({
       season_year: 2011,
+      champion_team_id: '1003',
       champion_name: 'Champion 2011',
       champion_logo: null,
     });

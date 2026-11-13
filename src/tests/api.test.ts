@@ -8,6 +8,7 @@ import {
   fetchTeamRecentFixtures,
   fetchTeamFormGuide,
   fetchPlayerDetail,
+  fetchTeamKoreanNames,
   fetchLeagueBySlug,
   leagueSlugFor,
   searchByName,
@@ -89,6 +90,31 @@ describe('API Functions', () => {
       expect(k1?.slug).toBe('k-league-1');
 
       expect(supabase.from).toHaveBeenCalledWith('leagues');
+    });
+  });
+
+  describe('fetchTeamKoreanNames', () => {
+    it('maps team IDs to their Korean names', async () => {
+      const teamChain = createMockSupabaseChain([
+        { id: 1, nameKorean: '울산 HD' },
+        { id: '2', nameKorean: '전북 현대' },
+      ]);
+      (supabase.from as any).mockReturnValueOnce(teamChain);
+
+      await expect(fetchTeamKoreanNames()).resolves.toEqual({
+        '1': '울산 HD',
+        '2': '전북 현대',
+      });
+      expect(supabase.from).toHaveBeenCalledWith('teams_v2');
+      expect(teamChain.select).toHaveBeenCalledWith('id, nameKorean');
+      expect(teamChain.not).toHaveBeenCalledWith('nameKorean', 'is', null);
+    });
+
+    it('rejects when the query fails so callers can retry', async () => {
+      const error = { message: 'database unavailable' };
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(null, error));
+
+      await expect(fetchTeamKoreanNames()).rejects.toBe(error);
     });
   });
 
@@ -305,6 +331,35 @@ describe('API Functions', () => {
       expect(leagueChain.ilike).toHaveBeenCalledWith('strLeague', pattern);
       expect(teamChain.or).toHaveBeenCalledWith(`name.ilike.${pattern},nameKorean.ilike.${pattern}`);
       expect(playerChain.ilike).toHaveBeenCalledWith('strPlayer', pattern);
+    });
+
+    it('includes the player team ID in search results', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([
+        {
+          idPlayer: '34145937',
+          strPlayer: 'Lee Dong-gyeong',
+          idTeam: '138001',
+          strTeam: 'Ulsan HD FC',
+          strThumb: 'lee.png',
+        },
+      ]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      const result = await searchByName('Lee');
+
+      expect(playerChain.select).toHaveBeenCalledWith('idPlayer, strPlayer, idTeam, strTeam, strThumb');
+      expect(result).toContainEqual(expect.objectContaining({
+        type: 'player',
+        entity_id: 34145937,
+        name: 'Lee Dong-gyeong',
+        team_id: '138001',
+        team_name: 'Ulsan HD FC',
+      }));
     });
   });
 

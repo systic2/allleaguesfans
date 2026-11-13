@@ -1,4 +1,5 @@
 import type { TopScorer, TopAssist } from "@/lib/api";
+import { useTeamName } from "@/hooks/useTeamName";
 
 type StatItem = {
   rank: number;
@@ -38,32 +39,23 @@ function StatCard({ title, items }: { title: string, items: StatItem[] }) {
 }
 
 export default function FMPlayerStats({ scorers, assists }: { scorers: TopScorer[], assists: TopAssist[] }) {
+  const teamName = useTeamName();
   const goalItems: StatItem[] = scorers.map((p, i) => ({
     rank: i + 1,
     name: p.player_name,
-    team: p.team_name,
+    team: teamName(p.team_id, p.team_name),
     value: p.goals
   }));
 
   const assistItems: StatItem[] = assists.map((p, i) => ({
     rank: i + 1,
     name: p.player_name,
-    team: p.team_name,
+    team: teamName(p.team_id, p.team_name),
     value: p.assists
   }));
 
-  // Mock Rating Data (since API doesn't provide bulk ratings yet)
-  const ratingItems: StatItem[] = scorers.slice(0, 5).map((p, i) => ({
-    rank: i + 1,
-    name: p.player_name,
-    team: p.team_name,
-    value: (7.8 - i * 0.1).toFixed(2)
-  }));
-
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-1">
-      <StatCard title="평균 평점 >" items={ratingItems} />
-      <StatCard title="경기 MVP >" items={ratingItems} /> {/* Mock using ratings */}
+    <div className="grid grid-cols-2 gap-1">
       <StatCard title="득점 >" items={goalItems} />
       <StatCard title="도움 >" items={assistItems} />
     </div>

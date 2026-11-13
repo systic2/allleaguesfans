@@ -29,7 +29,7 @@ export interface Player {
 export type SearchRow =
   | { type: 'league'; entity_id: number; name: string; slug: string; tier?: number | null; country?: string | null }
   | { type: 'team'; entity_id: number; name: string; team_id: string; season_id?: number; short_name?: string | null; crest_url?: string | null }
-  | { type: 'player'; entity_id: number; name: string; team_name?: string | null; crest_url?: string | null };
+  | { type: 'player'; entity_id: number; name: string; team_id?: string; team_name?: string | null; crest_url?: string | null };
 
 // TheSportsDB Teams 테이블 타입
 export interface TeamFromDB {
