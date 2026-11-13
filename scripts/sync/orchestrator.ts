@@ -11,6 +11,7 @@ import {
 import type { Standing, Match, Team } from '../../src/types/domain';
 import { getCurrentSeasonForFormat } from '../../src/lib/season.js';
 import { syncKLeaguePlayerStats } from './lib/kleague-player-stats.js';
+import { syncEuropePlayerStats } from './lib/europe-player-stats.js';
 
 // --- Configuration ---
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY;
@@ -323,8 +324,9 @@ async function main() {
   const standingsSuccess = await orchestrator.syncStandingsAndTeams();
   const eventsSuccess = await orchestrator.syncEvents();
   const playerStatsSuccess = await syncKLeaguePlayerStats(getCurrentSeasonForFormat('single').dbValue);
+  const europePlayerStatsSuccess = await syncEuropePlayerStats(THESPORTSDB_API_KEY!, getCurrentSeasonForFormat('split').dbValue);
   
-  if (!standingsSuccess || !eventsSuccess || !playerStatsSuccess) {
+  if (!standingsSuccess || !eventsSuccess || !playerStatsSuccess || !europePlayerStatsSuccess) {
     console.error('\n❌ Some sync tasks failed. Check logs for details.');
     process.exit(1); // Exit with error code to notify GitHub Actions
   }
