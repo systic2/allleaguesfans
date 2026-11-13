@@ -8,6 +8,9 @@ import {
   fetchTeamRecentFixtures,
   fetchTeamFormGuide,
   fetchPlayerDetail,
+  fetchLeagueBySlug,
+  leagueSlugFor,
+  searchByName,
   normalizeSeason,
   TeamDetails,
   TeamPlayer,
@@ -24,6 +27,8 @@ const createMockSupabaseChain = (mockData: any, mockError: any = null) => {
   mockChain.gte = vi.fn(() => mockChain);
   mockChain.lt = vi.fn(() => mockChain);
   mockChain.or = vi.fn(() => mockChain);
+  mockChain.not = vi.fn(() => mockChain);
+  mockChain.ilike = vi.fn(() => mockChain);
   mockChain.order = vi.fn(() => mockChain);
   mockChain.limit = vi.fn(() => mockChain); // limit also returns the chain to allow further methods like .then or .single
 
@@ -87,6 +92,29 @@ describe('API Functions', () => {
     });
   });
 
+  describe('league slug helpers', () => {
+    it('maps known and unknown TheSportsDB league IDs to route slugs', () => {
+      expect(leagueSlugFor('4328')).toBe('premier-league');
+      expect(leagueSlugFor('9999')).toBe('league-9999');
+    });
+
+    it('queries the Premier League by TheSportsDB league ID', async () => {
+      const leagueChain = createMockSupabaseChain({
+        idLeague: '4328',
+        strLeague: 'English Premier League',
+        strCountry: 'England',
+        strBadge: 'epl.png',
+        strCurrentSeason: '2026-2027',
+      });
+      (supabase.from as any).mockReturnValueOnce(leagueChain);
+
+      const result = await fetchLeagueBySlug('premier-league');
+
+      expect(leagueChain.eq).toHaveBeenCalledWith('idLeague', '4328');
+      expect(result?.slug).toBe('premier-league');
+    });
+  });
+
   describe('fetchTeamDetails', () => {
     it('should fetch team details and current standing', async () => {
       const mockTeamData = {
@@ -106,6 +134,7 @@ describe('API Functions', () => {
         goalsAgainst: 30,
         goalDifference: 10,
         leagueId: '4689', // K League 1
+        season: '2025',
       };
 
       // Mock sequence for supabase.from calls
@@ -114,7 +143,7 @@ describe('API Functions', () => {
 
       const result: TeamDetails | null = await fetchTeamDetails(mockTeamId, mockSeason);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         id: mockTeamId,
         name: 'Busan IPark',
         nameKorean: '부산 아이파크',
@@ -131,6 +160,7 @@ describe('API Functions', () => {
         goals_against: 30,
         goal_difference: 10,
         currentLeagueId: '4689',
+        currentSeason: '2025',
       });
       expect(supabase.from).toHaveBeenCalledWith('teams_v2');
       expect(supabase.from).toHaveBeenCalledWith('standings_v2');
@@ -156,7 +186,7 @@ describe('API Functions', () => {
 
       const result: TeamDetails | null = await fetchTeamDetails(mockTeamId, mockSeason);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         id: mockTeamId,
         name: 'Busan IPark',
         nameKorean: '부산 아이파크',
@@ -174,6 +204,107 @@ describe('API Functions', () => {
         goal_difference: null,
         currentLeagueId: null,
       });
+    });
+
+    it('uses the latest standing without adding a season filter when season is omitted', async () => {
+      const teamChain = createMockSupabaseChain({
+        id: mockTeamId,
+        name: 'Busan IPark',
+        nameKorean: '부산 아이파크',
+        badgeUrl: 'busan.png',
+      });
+      const standingChain = createMockSupabaseChain({
+        rank: 2,
+        points: 61,
+        gamesPlayed: 32,
+        wins: 18,
+        draws: 7,
+        losses: 7,
+        goalsFor: 52,
+        goalsAgainst: 31,
+        goalDifference: 21,
+        leagueId: '4689',
+        season: '2026',
+      });
+      (supabase.from as any)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(standingChain);
+
+      const result = await fetchTeamDetails(mockTeamId);
+
+      expect(standingChain.eq).toHaveBeenCalledTimes(1);
+      expect(standingChain.eq).toHaveBeenCalledWith('teamId', mockTeamId);
+      expect(standingChain.order).toHaveBeenNthCalledWith(1, 'season', { ascending: false });
+      expect(result?.currentSeason).toBe('2026');
+    });
+
+    it('normalizes and filters an explicitly requested season', async () => {
+      const teamChain = createMockSupabaseChain({
+        id: mockTeamId,
+        name: 'Busan IPark',
+        nameKorean: '부산 아이파크',
+        badgeUrl: 'busan.png',
+      });
+      const standingChain = createMockSupabaseChain({
+        rank: 4,
+        leagueId: '4689',
+        season: '2025',
+      });
+      (supabase.from as any)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(standingChain);
+
+      const result = await fetchTeamDetails(mockTeamId, '2025-2026');
+
+      expect(standingChain.eq).toHaveBeenCalledWith('season', '2025');
+      expect(result?.currentSeason).toBe('2025');
+    });
+  });
+
+  describe('searchByName', () => {
+    it('searches teams_v2 in English and Korean and prefers the Korean display name', async () => {
+      const leagueChain = createMockSupabaseChain([
+        { idLeague: '4328', strLeague: 'English Premier League', strCountry: 'England', highlightly_id: null },
+        { idLeague: '9999', strLeague: 'Unknown League', strCountry: 'Nowhere', highlightly_id: null },
+      ]);
+      const teamChain = createMockSupabaseChain([
+        { id: '138106', name: 'Busan IPark', nameKorean: '부산 아이파크', badgeUrl: 'busan.png' },
+        { id: 'hist_hallelujah', name: 'Hallelujah FC', nameKorean: null, badgeUrl: null },
+      ]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      const result = await searchByName('Busan');
+
+      expect(supabase.from).toHaveBeenNthCalledWith(2, 'teams_v2');
+      expect(teamChain.select).toHaveBeenCalledWith('id, name, nameKorean, badgeUrl');
+      expect(teamChain.or).toHaveBeenCalledWith('name.ilike.%Busan%,nameKorean.ilike.%Busan%');
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({ type: 'team', entity_id: 138106, team_id: '138106', name: '부산 아이파크', crest_url: 'busan.png' }),
+        expect.objectContaining({ type: 'team', entity_id: 0, team_id: 'hist_hallelujah', name: 'Hallelujah FC' }),
+        expect.objectContaining({ type: 'league', slug: 'premier-league' }),
+        expect.objectContaining({ type: 'league', slug: 'league-9999' }),
+      ]));
+    });
+
+    it('replaces PostgREST filter metacharacters with spaces', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      await searchByName('foo,(bar)*%\\baz');
+
+      const pattern = '%foo  bar    baz%';
+      expect(leagueChain.ilike).toHaveBeenCalledWith('strLeague', pattern);
+      expect(teamChain.or).toHaveBeenCalledWith(`name.ilike.${pattern},nameKorean.ilike.${pattern}`);
+      expect(playerChain.ilike).toHaveBeenCalledWith('strPlayer', pattern);
     });
   });
 
@@ -293,6 +424,11 @@ describe('API Functions', () => {
 
       expect(result).toEqual(['W', 'D', 'L']);
       expect(supabase.from).toHaveBeenCalledWith('events_v2');
+      const eventsChain = (supabase.from as any).mock.results[0].value;
+      expect(eventsChain.eq).toHaveBeenCalledWith('status', 'FINISHED');
+      expect(eventsChain.lt).toHaveBeenCalledWith('date', expect.any(String));
+      expect(eventsChain.not).toHaveBeenNthCalledWith(1, 'homeScore', 'is', null);
+      expect(eventsChain.not).toHaveBeenNthCalledWith(2, 'awayScore', 'is', null);
     });
 
     it('should handle undefined scores gracefully', async () => {
@@ -326,7 +462,9 @@ describe('API Functions', () => {
         dateBorn: '2000-01-01',
         strThumb: 'http://example.com/photo.jpg'
       };
-      const mockPlayerStats = {
+      const mockPlayerStats = [{
+        strSeason: '2026',
+        idTeam: '999',
         goals: 10,
         assists: 5,
         appearances: 20,
@@ -336,7 +474,7 @@ describe('API Functions', () => {
         penalties_scored: 1,
         penalties_missed: 0,
         own_goals: 0
-      };
+      }];
 
       (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerData)); // players
       (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerStats)); // player_statistics
@@ -358,8 +496,18 @@ describe('API Functions', () => {
       expect(result?.age).toBeGreaterThanOrEqual(expectedAge - 1);
       
       // Verify Real Stats
-      expect(result?.stats.goals).toBe(10);
-      expect(result?.stats.minutesPlayed).toBe(1800);
+      expect(result?.stats).toMatchObject({
+        season: '2026',
+        goals: 10,
+        minutesPlayed: 1800,
+      });
+
+      const statsChain = (supabase.from as any).mock.results[1].value;
+      expect(statsChain.eq).toHaveBeenCalledWith('idPlayer', String(mockPlayerId));
+      expect(statsChain.eq).not.toHaveBeenCalledWith('strSeason', expect.anything());
+      expect(statsChain.order).toHaveBeenCalledWith('strSeason', { ascending: false });
+      expect(statsChain.order).toHaveBeenCalledWith('last_updated', { ascending: false });
+      expect(statsChain.limit).toHaveBeenCalledWith(10);
       
       expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
@@ -370,6 +518,66 @@ describe('API Functions', () => {
 
       const result = await fetchPlayerDetail(99999);
       expect(result).toBeNull();
+    });
+
+    it('returns stats=null when the player has no statistics row', async () => {
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain({
+          idPlayer: '12345',
+          strPlayer: 'Test Player',
+          strTeam: 'Test FC',
+          idTeam: '999',
+          strPosition: 'Forward',
+        }))
+        .mockReturnValueOnce(createMockSupabaseChain([]));
+
+      const result = await fetchPlayerDetail(12345);
+
+      expect(result?.stats).toBeNull();
+    });
+
+    it('uses the latest-season statistics row for the player current team after a transfer', async () => {
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain({
+          idPlayer: '12345',
+          strPlayer: 'Transferred Player',
+          strTeam: 'Current FC',
+          idTeam: 'current-team',
+          strPosition: 'Forward',
+        }))
+        .mockReturnValueOnce(createMockSupabaseChain([
+          { strSeason: '2026', idTeam: 'former-team', goals: 3, appearances: 8 },
+          { strSeason: '2026', idTeam: 'current-team', goals: 7, appearances: 12 },
+          { strSeason: '2025', idTeam: 'current-team', goals: 20, appearances: 30 },
+        ]));
+
+      const result = await fetchPlayerDetail(12345);
+
+      expect(result?.stats).toMatchObject({
+        season: '2026',
+        goals: 7,
+        appearances: 12,
+      });
+    });
+
+    it('returns null age and dash fallbacks when player bio fields are missing', async () => {
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain({
+          idPlayer: '12345',
+          strPlayer: 'Test Player',
+          strTeam: 'Test FC',
+          idTeam: '999',
+        }))
+        .mockReturnValueOnce(createMockSupabaseChain([]));
+
+      const result = await fetchPlayerDetail(12345);
+
+      expect(result).toMatchObject({
+        age: null,
+        birthDate: '-',
+        nationality: '-',
+        position: '-',
+      });
     });
   });
 

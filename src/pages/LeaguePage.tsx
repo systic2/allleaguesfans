@@ -214,15 +214,6 @@ export default function LeaguePage() {
             <FMBox title="지난 우승팀 >" className="h-64 lg:h-auto lg:flex-1">
               <FMHistory history={history || []} />
             </FMBox>
-            <FMBox title="대회 명성 >" className="h-40 lg:h-auto lg:flex-1">
-              <div className="p-4 flex items-center justify-center h-full text-gray-300 text-xs">
-                {/* Placeholder for reputation or other stats */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-300 mb-1">Top 5</div>
-                  <div>Global Ranking</div>
-                </div>
-              </div>
-            </FMBox>
           </div>
         </div>
 

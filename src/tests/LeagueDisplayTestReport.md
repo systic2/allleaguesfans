@@ -66,7 +66,7 @@ interface LeagueDetail {
 }
 
 interface TeamStanding {
-  team_id: number;
+  team_id: string;
   team_name: string;
   rank: number;
   points: number;

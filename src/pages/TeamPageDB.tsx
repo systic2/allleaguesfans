@@ -18,11 +18,12 @@ import TeamLineup from "@/components/TeamLineup";
 import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
 import FMSubNav from "@/components/FMSubNav";
+import { getCurrentSeasonForFormat } from "@/lib/season";
 
 // Types
 type FormResult = 'W' | 'D' | 'L';
 
-const CURRENT_SEASON = String(new Date().getFullYear());
+const FALLBACK_SEASON = String(new Date().getFullYear());
 
 const LEAGUE_NAMES: Record<string, string> = {
   '4689': 'K리그1',
@@ -71,41 +72,48 @@ export default function TeamPageDB() {
     enabled: !!teamIdParam,
     staleTime: 5 * 60 * 1000,
   });
+  // 팀이 속한 리그의 최근 시즌 (K리그는 달력 연도, 유럽은 시즌 시작 연도)
+  const currentSeason = teamData?.currentSeason ?? FALLBACK_SEASON;
+  // 우승 횟수에서 빼야 하는 '진행 중' 시즌은 팀의 마지막 시즌이 아니라 리그의 현재 시즌이다
+  // (해체된 팀은 마지막 시즌도 끝난 시즌이라 그 우승을 세야 한다)
+  const inProgressSeason = getCurrentSeasonForFormat(
+    teamData?.currentLeagueId === '4689' || teamData?.currentLeagueId === '4822' ? 'single' : 'split'
+  ).dbValue;
 
   const { data: standingsData } = useQuery<Standing | null>({
-    queryKey: ["team-standings-db", teamData?.currentLeagueId, teamData?.name],
-    queryFn: () => fetchTeamStandingsData(teamData!.currentLeagueId!, CURRENT_SEASON, teamData!.name),
+    queryKey: ["team-standings-db", teamData?.currentLeagueId, teamData?.name, currentSeason],
+    queryFn: () => fetchTeamStandingsData(teamData!.currentLeagueId!, currentSeason, teamData!.name),
     enabled: !!teamData?.currentLeagueId && !!teamData?.name,
   });
 
   const { data: players } = useQuery<TeamPlayer[]>({
-    queryKey: ["team-players-db", teamIdParam],
-    queryFn: () => fetchPlayersByTeam(teamIdParam),
-    enabled: !!teamIdParam,
+    queryKey: ["team-players-db", teamIdParam, currentSeason],
+    queryFn: () => fetchPlayersByTeam(teamIdParam, currentSeason),
+    enabled: !!teamIdParam && !!teamData,
   });
 
   const { data: teamFixtures } = useQuery<{ upcoming: MatchWithTeams[]; recent: MatchWithTeams[] }>({
-    queryKey: ["team-fixtures-tsdb", teamIdParam, CURRENT_SEASON],
+    queryKey: ["team-fixtures-tsdb", teamIdParam],
     queryFn: () => fetchTeamFixturesTSDB(teamIdParam),
     enabled: !!teamIdParam,
   });
 
   const { data: formGuide } = useQuery<FormResult[]>({
-    queryKey: ["team-form-db", teamIdParam],
-    queryFn: () => fetchTeamFormGuide(teamIdParam, CURRENT_SEASON, 5),
-    enabled: !!teamIdParam,
+    queryKey: ["team-form-db", teamIdParam, currentSeason],
+    queryFn: () => fetchTeamFormGuide(teamIdParam, currentSeason, 5),
+    enabled: !!teamIdParam && !!teamData,
   });
 
   const { data: trophyCount } = useQuery<number>({
-    queryKey: ["team-trophies-db", teamIdParam, CURRENT_SEASON],
-    queryFn: () => fetchTeamTrophyCount(teamIdParam, CURRENT_SEASON),
-    enabled: !!teamIdParam && currentTab === 'overview',
+    queryKey: ["team-trophies-db", teamIdParam, inProgressSeason],
+    queryFn: () => fetchTeamTrophyCount(teamIdParam, inProgressSeason),
+    enabled: !!teamIdParam && !!teamData && currentTab === 'overview',
     staleTime: 60 * 60 * 1000,
   });
 
   const { data: nearbyStandings, isLoading: isLoadingNearbyStandings } = useQuery<TeamStanding[]>({
-    queryKey: ["team-nearby-standings-db", teamData?.currentLeagueId, teamIdParam],
-    queryFn: () => fetchNearbyStandings(teamData!.currentLeagueId!, CURRENT_SEASON, teamIdParam),
+    queryKey: ["team-nearby-standings-db", teamData?.currentLeagueId, teamIdParam, currentSeason],
+    queryFn: () => fetchNearbyStandings(teamData!.currentLeagueId!, currentSeason, teamIdParam),
     enabled: !!teamData?.currentLeagueId && !!teamIdParam && currentTab === 'overview',
   });
 

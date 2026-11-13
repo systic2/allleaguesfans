@@ -25,7 +25,7 @@ vi.mock("../lib/thesportsdb-api", () => ({
 vi.mock("../lib/enhanced-standings-api", () => ({
   fetchEnhancedLeagueStandings: vi.fn().mockResolvedValue([
     {
-      team_id: 1,
+      team_id: "1",
       team_name: "Ulsan Hyundai FC",
       short_name: "ULS",
       crest_url: "https://example.com/ulsan.png",
@@ -41,7 +41,7 @@ vi.mock("../lib/enhanced-standings-api", () => ({
       form: "WWWDW",
     },
     {
-      team_id: 2,
+      team_id: "2",
       team_name: "Jeonbuk Hyundai Motors",
       short_name: "JBH",
       crest_url: "https://example.com/jeonbuk.png", 

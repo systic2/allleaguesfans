@@ -7,7 +7,7 @@ type GSRow = {
   entity_id: number;
   name: string;
   slug?: string;
-  team_id?: number;
+  team_id?: string;
   crest_url?: string | null;
   short_name?: string | null;
 };
@@ -34,7 +34,7 @@ export default function SearchPage() {
         else href = `/players/${r.entity_id}`;
 
         return (
-          <li key={`${r.type}-${r.entity_id}`}>
+          <li key={`${r.type}-${r.team_id ?? r.entity_id}-${r.name}`}>
             <Link to={href} className="hover:underline">
               {r.name}
             </Link>

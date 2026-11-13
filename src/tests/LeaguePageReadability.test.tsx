@@ -133,12 +133,12 @@ describe('LeaguePage readability', () => {
     expectGray300OrBrighter(defendingChampion);
   });
 
-  it('uses gray-300 or brighter for the competition reputation placeholder', async () => {
+  it('does not render the fabricated competition reputation placeholder', async () => {
     renderLeaguePage();
 
-    const placeholder = await screen.findByText('Global Ranking');
+    await screen.findByText('Round 2');
 
-    expectGray300OrBrighter(placeholder);
+    expect(screen.queryByText('Global Ranking')).not.toBeInTheDocument();
   });
 
   it('keeps the existing league identity and section headings visible', async () => {

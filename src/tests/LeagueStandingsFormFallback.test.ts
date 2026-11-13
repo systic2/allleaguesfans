@@ -89,8 +89,8 @@ describe('fetchLeagueStandings form fallback', () => {
 
     const result = await fetchLeagueStandings('k-league-2', '2025');
 
-    expect(result.find(({ team_id }) => team_id === 10)?.form).toBe('WWDWW');
-    expect(result.find(({ team_id }) => team_id === 20)?.form).toBe('W');
+    expect(result.find(({ team_id }) => team_id === '10')?.form).toBe('WWDWW');
+    expect(result.find(({ team_id }) => team_id === '20')?.form).toBe('W');
   });
 
   it('computes W/D/L for a missing form in newest-first event order', async () => {

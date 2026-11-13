@@ -22,6 +22,11 @@ function StatItem({ label, value, colorClass = "text-white" }: { label: string, 
   );
 }
 
+// 수집하지 않는 항목(0)은 실제 0과 구분되도록 '-' 로 표시
+function orDash(value: number): number | string {
+  return value > 0 ? value : '-';
+}
+
 export default function PlayerPage() {
   const { id = "0" } = useParams<{ id: string }>();
   const playerId = Number(id);
@@ -34,6 +39,7 @@ export default function PlayerPage() {
 
   if (isLoading) return <div className="p-10 text-center text-white">Loading Scout Report...</div>;
   if (!player) return <div className="p-10 text-center text-white">Player not found in database.</div>;
+  const { stats } = player;
 
   return (
     <div className="min-h-screen bg-[#1b1b1b] text-gray-200 font-sans">
@@ -54,7 +60,6 @@ export default function PlayerPage() {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-4xl font-black text-white tracking-tight">{player.name}</h1>
-                <img src="https://flagcdn.com/w40/kr.png" alt="Korea" className="h-5 rounded shadow-sm opacity-80" />
               </div>
               <div className="flex items-center gap-2 text-white/60 text-lg font-medium">
                 <span className="text-yellow-400 font-bold">{player.position}</span>
@@ -66,12 +71,7 @@ export default function PlayerPage() {
               </div>
             </div>
           </div>
-          
-          <div className="text-right">
-             <div className="text-xs text-white/40 uppercase font-bold mb-1">Weekly Wage</div>
-             <div className="text-xl text-white font-mono font-bold">₩ 5,250,000</div>
-             <div className="text-xs text-green-400 mt-1">Expires 2027/12/31</div>
-          </div>
+
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function PlayerPage() {
                 </div>
                 <div className="flex justify-between border-b border-white/5 pb-2">
                   <span className="text-white/40">Age</span>
-                  <span className="text-white font-medium">{player.age} years old ({player.birthDate})</span>
+                  <span className="text-white font-medium">{player.age !== null ? `${player.age} years old (${player.birthDate})` : '-'}</span>
                 </div>
                 <div className="flex justify-between border-b border-white/5 pb-2">
                   <span className="text-white/40">Height</span>
@@ -104,29 +104,6 @@ export default function PlayerPage() {
                   <span className="text-white/40">Weight</span>
                   <span className="text-white font-medium">{player.weight}</span>
                 </div>
-                <div className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/40">Preferred Foot</span>
-                  <span className="text-white font-medium">{player.preferredFoot}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Condition / Fitness */}
-            <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm">
-              <SectionHeader title="Fitness" />
-              <div className="flex justify-around items-center py-4">
-                 <div className="flex flex-col items-center gap-2">
-                   <div className="w-16 h-16 rounded-full border-4 border-emerald-500 flex items-center justify-center text-emerald-400 font-bold text-xl bg-black/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                     97%
-                   </div>
-                   <span className="text-xs text-white/50 uppercase">Condition</span>
-                 </div>
-                 <div className="flex flex-col items-center gap-2">
-                   <div className="w-16 h-16 rounded-full border-4 border-blue-500 flex items-center justify-center text-blue-400 font-bold text-xl bg-black/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                     100%
-                   </div>
-                   <span className="text-xs text-white/50 uppercase">Sharpness</span>
-                 </div>
               </div>
             </div>
           </div>
@@ -134,64 +111,46 @@ export default function PlayerPage() {
           {/* CENTER COLUMN: Real Statistics (6 cols) */}
           <div className="lg:col-span-6">
             <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm h-full">
-              <SectionHeader title="2025 Season Statistics" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                
-                {/* Participation */}
-                <div className="bg-white/5 rounded p-3">
-                  <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
-                    <Clock className="w-3 h-3" /> Participation
-                  </h3>
-                  <div className="space-y-1">
-                    <StatItem label="Appearances" value={player.stats.appearances} />
-                    <StatItem label="Minutes Played" value={player.stats.minutesPlayed} />
-                    <StatItem label="Avg Rating" value={player.stats.rating.toFixed(2)} colorClass="text-yellow-400" />
+              <SectionHeader title={stats ? `${stats.season} Season Statistics` : 'Season Statistics'} />
+              {stats ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                  {/* Participation */}
+                  <div className="bg-white/5 rounded p-3">
+                    <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
+                      <Clock className="w-3 h-3" /> Participation
+                    </h3>
+                    <div className="space-y-1">
+                      <StatItem label="Appearances" value={orDash(stats.appearances)} />
+                      <StatItem label="Minutes Played" value={orDash(stats.minutesPlayed)} />
+                    </div>
+                  </div>
+
+                  {/* Attack */}
+                  <div className="bg-white/5 rounded p-3">
+                    <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
+                      <Zap className="w-3 h-3" /> Attack
+                    </h3>
+                    <div className="space-y-1">
+                      <StatItem label="Goals" value={stats.goals} colorClass="text-emerald-400" />
+                      <StatItem label="Assists" value={stats.assists} colorClass="text-blue-400" />
+                      <StatItem label="Penalties Scored" value={`${stats.penaltiesScored} / ${stats.penaltiesScored + stats.penaltiesMissed}`} />
+                    </div>
+                  </div>
+
+                  {/* Discipline */}
+                  <div className="bg-white/5 rounded p-3">
+                    <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-3 h-3" /> Discipline
+                    </h3>
+                    <div className="space-y-1">
+                      <StatItem label="Yellow Cards" value={stats.yellowCards} colorClass="text-yellow-500" />
+                      <StatItem label="Red Cards" value={stats.redCards} colorClass="text-red-500" />
+                    </div>
                   </div>
                 </div>
-
-                {/* Attack */}
-                <div className="bg-white/5 rounded p-3">
-                  <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
-                    <Zap className="w-3 h-3" /> Attack
-                  </h3>
-                  <div className="space-y-1">
-                    <StatItem label="Goals" value={player.stats.goals} colorClass="text-emerald-400" />
-                    <StatItem label="Assists" value={player.stats.assists} colorClass="text-blue-400" />
-                    <StatItem label="Penalties Scored" value={`${player.stats.penaltiesScored} / ${player.stats.penaltiesScored + player.stats.penaltiesMissed}`} />
-                  </div>
-                </div>
-
-                {/* Discipline */}
-                <div className="bg-white/5 rounded p-3">
-                  <h3 className="text-xs font-bold text-white/50 uppercase mb-3 flex items-center gap-2">
-                    <AlertCircle className="w-3 h-3" /> Discipline
-                  </h3>
-                  <div className="space-y-1">
-                    <StatItem label="Yellow Cards" value={player.stats.yellowCards} colorClass="text-yellow-500" />
-                    <StatItem label="Red Cards" value={player.stats.redCards} colorClass="text-red-500" />
-                    <StatItem label="Own Goals" value={player.stats.ownGoals} colorClass="text-red-400" />
-                  </div>
-                </div>
-
-                {/* Summary / Form */}
-                <div className="bg-white/5 rounded p-3 flex flex-col items-center justify-center">
-                   <h3 className="text-xs font-bold text-white/50 uppercase mb-2">Form (Last 5)</h3>
-                   <div className="flex gap-1">
-                     {[...Array(5)].map((_, i) => (
-                       <div key={i} className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i < 3 ? 'bg-green-600 text-white' : i === 3 ? 'bg-gray-500 text-white' : 'bg-red-500 text-white'}`}>
-                         {i < 3 ? 'W' : i === 3 ? 'D' : 'L'} {/* Mock Data */}
-                       </div>
-                     ))}
-                   </div>
-                   <div className="mt-4 text-center">
-                     <span className="text-xs text-white/40">Goals / 90min</span>
-                     <div className="text-xl font-mono font-bold text-white">
-                       {player.stats.minutesPlayed > 0 ? (player.stats.goals / (player.stats.minutesPlayed / 90)).toFixed(2) : '0.00'}
-                     </div>
-                   </div>
-                </div>
-
-              </div>
+              ) : (
+                <p className="text-sm text-white/50 mt-4">아직 이 선수의 시즌 기록이 없습니다.</p>
+              )}
             </div>
           </div>
 
@@ -223,47 +182,31 @@ export default function PlayerPage() {
             </div>
 
             {/* Quick Stats Summary */}
+            {stats && (
             <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm">
               <SectionHeader title="Quick Summary" />
               <div className="space-y-3">
                  <div className="flex items-center justify-between">
                    <span className="text-white/60 text-sm">Goals</span>
                    <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
-                     <div className="h-full bg-emerald-500" style={{ width: `${Math.min(player.stats.goals * 5, 100)}%` }}></div>
+                     <div className="h-full bg-emerald-500" style={{ width: `${Math.min(stats.goals * 5, 100)}%` }}></div>
                    </div>
-                   <span className="text-white font-bold font-mono">{player.stats.goals}</span>
+                   <span className="text-white font-bold font-mono">{stats.goals}</span>
                  </div>
                  <div className="flex items-center justify-between">
                    <span className="text-white/60 text-sm">Assists</span>
                    <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
-                     <div className="h-full bg-blue-500" style={{ width: `${Math.min(player.stats.assists * 10, 100)}%` }}></div>
+                     <div className="h-full bg-blue-500" style={{ width: `${Math.min(stats.assists * 10, 100)}%` }}></div>
                    </div>
-                   <span className="text-white font-bold font-mono">{player.stats.assists}</span>
-                 </div>
-                 <div className="flex items-center justify-between">
-                   <span className="text-white/60 text-sm">Apps</span>
-                   <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
-                     <div className="h-full bg-purple-500" style={{ width: `${Math.min(player.stats.appearances * 2, 100)}%` }}></div>
-                   </div>
-                   <span className="text-white font-bold font-mono">{player.stats.appearances}</span>
+                   <span className="text-white font-bold font-mono">{stats.assists}</span>
                  </div>
               </div>
             </div>
+            )}
           </div>
           
         </div>
 
-        {/* --- BOTTOM SECTION: BIOGRAPHY --- */}
-        <div className="mt-4 bg-[#242424] rounded border border-white/5 p-6 shadow-sm">
-          <SectionHeader title="Scout Report" />
-          <p className="text-gray-400 text-sm leading-relaxed">
-            <span className="text-white font-bold">{player.name}</span> is a {player.age}-year-old professional footballer from South Korea who currently plays as a <span className="text-white">{player.position}</span> for <span className="text-white">{player.teamName}</span>. 
-            
-            {player.stats.goals > 5 ? ` He has been in fine form this season, finding the net ${player.stats.goals} times.` : ` He is a hardworking player looking to make his mark on the first team.`}
-            
-            With {player.stats.appearances} appearances this season, he is {player.stats.appearances > 20 ? 'a key member of the squad' : 'fighting for his place in the team'}.
-          </p>
-        </div>
       </div>
     </div>
   );

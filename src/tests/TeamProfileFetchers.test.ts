@@ -145,7 +145,7 @@ describe('team profile fetchers', () => {
       expect(query.eq).toHaveBeenNthCalledWith(2, 'season', '2025');
       expect(result).toEqual([
         {
-          team_id: 101,
+          team_id: '101',
           team_name: 'Team 1',
           short_name: null,
           crest_url: 'https://example.com/1.png',
@@ -161,6 +161,21 @@ describe('team profile fetchers', () => {
           form: null,
         },
       ]);
+    });
+
+    it('preserves a non-numeric teamId when mapping nearby standings', async () => {
+      const historicalTeam = {
+        ...standing(1),
+        teamId: 'hist_hallelujah',
+        teamName: 'Hallelujah FC',
+      };
+      const query = createMockSupabaseChain({ data: [historicalTeam], error: null });
+      (supabase.from as any).mockReturnValueOnce(query);
+
+      const result = await fetchNearbyStandings('4328', '2025', 'hist_hallelujah');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].team_id).toBe('hist_hallelujah');
     });
 
     it('returns the full list when the team is not present', async () => {
