@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { searchByName } from "@/lib/api";
 
 /**
@@ -12,7 +13,7 @@ type GSRow = {
   name: string;
   // 선택 필드(존재하면 사용)
   slug?: string;
-  team_id?: number;
+  team_id?: string;
   crest_url?: string | null;
   short_name?: string | null;
   team_name?: string | null;
@@ -23,6 +24,7 @@ export default function GlobalSearch() {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const dq = useDebounced(q, 200);
 
@@ -38,14 +40,16 @@ export default function GlobalSearch() {
   // ❗ 빈 배열 기본값에 명시 타입 부여(never[] 방지)
   const results: GSRow[] = useMemo(() => data ?? ([] as GSRow[]), [data]);
 
+  // 결과가 바뀌면 선택 위치를 처음으로 (이전 결과보다 짧아지면 Enter 가 없는 항목을 가리키던 문제)
+  useEffect(() => setActive(0), [results]);
+
   const handleSelect = useCallback((item: GSRow) => {
     setOpen(false);
-    let href = "#";
-    if (item.type === "team") href = `/teams/${item.team_id ?? item.entity_id}`;
-    else if (item.type === "league") href = `/leagues/${item.slug ?? ""}`;
-    else if (item.type === "player") href = `/players/${item.entity_id}`;
-    window.location.assign(href);
-  }, []);
+    setQ("");
+    if (item.type === "team") navigate(`/teams/${item.team_id ?? item.entity_id}`);
+    else if (item.type === "league" && item.slug) navigate(`/leagues/${item.slug}`);
+    else if (item.type === "player") navigate(`/players/${item.entity_id}`);
+  }, [navigate]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -57,8 +61,10 @@ export default function GlobalSearch() {
         e.preventDefault();
         setActive((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter") {
+        const item = results[active];
+        if (!item) return;
         e.preventDefault();
-        handleSelect(results[active]!);
+        handleSelect(item);
       } else if (e.key === "Escape") {
         setOpen(false);
       }

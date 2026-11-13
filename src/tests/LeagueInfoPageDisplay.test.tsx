@@ -28,7 +28,7 @@ describe("League Information Page Display Verification", () => {
 
   const mockStandings = [
     {
-      team_id: 1,
+      team_id: "1",
       team_name: "Ulsan Hyundai FC",
       rank: 1,
       points: 30,

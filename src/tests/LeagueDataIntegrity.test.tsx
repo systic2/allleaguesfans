@@ -108,7 +108,7 @@ describe("League Data Integrity Verification", () => {
 
     it("TeamStanding 타입이 올바른 구조를 가진다", () => {
       const sampleStanding: TeamStanding = {
-        team_id: 1,
+        team_id: "hist_hallelujah",
         team_name: "Ulsan Hyundai FC",
         short_name: "ULS",
         crest_url: "https://example.com/logo.png",
@@ -125,7 +125,7 @@ describe("League Data Integrity Verification", () => {
       };
 
       // Verify all required fields are present
-      expect(typeof sampleStanding.team_id).toBe('number');
+      expect(typeof sampleStanding.team_id).toBe('string');
       expect(typeof sampleStanding.team_name).toBe('string');
       expect(sampleStanding.short_name === null || typeof sampleStanding.short_name === 'string').toBe(true);
       expect(sampleStanding.crest_url === null || typeof sampleStanding.crest_url === 'string').toBe(true);
@@ -206,9 +206,9 @@ describe("League Data Integrity Verification", () => {
 
     it("팀 ID 매핑이 올바르게 작동한다", () => {
       // Test team ID structure
-      const sampleTeamId = 1;
-      expect(typeof sampleTeamId).toBe('number');
-      expect(sampleTeamId).toBeGreaterThan(0);
+      const sampleTeamId = "hist_hallelujah";
+      expect(typeof sampleTeamId).toBe('string');
+      expect(sampleTeamId).not.toHaveLength(0);
     });
   });
 

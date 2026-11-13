@@ -1,5 +1,5 @@
 // src/app/layout/RootLayout.tsx
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import GlobalSearch from "../components/GlobalSearch";
 import { Component, ErrorInfo, ReactNode, useState } from "react";
@@ -27,6 +27,8 @@ class Boundary extends Component<{ children: ReactNode }, { err?: Error }> {
 
 export default function RootLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // 페이지를 옮기면 오류 화면을 풀도록 경로마다 Boundary 를 새로 만든다
+  const { pathname } = useLocation();
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[20rem_1fr]">
@@ -77,7 +79,7 @@ export default function RootLayout() {
         </header>
 
         <section className="rounded-3xl border border-white/10 bg-white/5 dark:bg-black/20 shadow-xl p-3 sm:p-5 overflow-x-hidden">
-          <Boundary>
+          <Boundary key={pathname}>
             <Outlet />
           </Boundary>
         </section>
