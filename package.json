@@ -12,12 +12,6 @@
     "lint:unused": "eslint . --fix",
     "analyze:bundle": "ANALYZE=1 vite build",
     "sync:full": "tsx scripts/sync/orchestrator.ts",
-    "sync:daily": "tsx scripts/sync/orchestrator.ts",
-    "sync:weekly": "tsx scripts/sync/orchestrator.ts",
-    "git:cleanup": "tsx scripts/git-branch-cleanup.ts",
-    "git:cleanup:execute": "tsx scripts/git-branch-cleanup.ts --no-dry-run",
-    "git:cleanup:manual": "bash scripts/git-manual-cleanup.sh",
-    "sync:check": "tsx scripts/final-verification.ts",
     "test:integration": "tsx tests/integration/data-integrity.test.ts"
   },
   "dependencies": {

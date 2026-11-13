@@ -11,11 +11,8 @@
 *   `orchestrator.ts`: 메인 동기화 스크립트입니다 (`pnpm sync:full`, GitHub Actions `data-sync.yml`). 리그 순위·팀·경기(`standings_v2`, `teams_v2`, `events_v2`)와 선수 통계(`player_statistics`)를 동기화합니다.
     *   `lib/kleague-player-stats.ts`: K리그 1·2 득점/도움 순위 (K리그 공식 사이트 `/record/rankSort.do`).
     *   `lib/europe-player-stats.ts`: 유럽 5대 리그 선수 통계 (TheSportsDB v2 경기 타임라인, `event_timelines` 캐시).
-*   `sync-highlightly-correct.ts`: Highlightly API로부터 데이터를 가져와 처리하는 스크립트 (추정).
-*   `02-thesportsdb-api-integration.ts`, `03-highlightly-api-sync.ts`, `3api-data-import.ts`: API 통합 및 데이터 임포트 관련 스크립트.
-*   `import-historical-standings.ts`, `import-team-players.ts`: 과거 데이터 및 팀/선수 데이터 임포트 관련 스크립트.
-*   `cron-sync.sh`: 동기화 스크립트들을 주기적으로 실행하기 위한 쉘 스크립트.
-*   `lib/`: 동기화 스크립트들에서 공유하는 라이브러리 및 유틸리티 코드.
+*   `import-historical-standings.ts`, `import-historical-champions-euro.ts`, `import-team-players.ts`: 과거 순위·우승팀, 팀 선수단을 한 번에 채우는 수동 임포트 스크립트.
+*   `lib/`: 동기화 스크립트들에서 공유하는 라이브러리 (`supabase.ts`, 선수 통계 동기화 모듈).
 
 ### 실행 방법 (예시):
 ```bash
