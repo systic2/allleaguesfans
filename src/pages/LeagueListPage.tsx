@@ -171,7 +171,6 @@ export default function LeagueListPage() {
             title="🗓️ Upcoming Matches"
             limit={20}
             className="bg-slate-800"
-            useTheSportsDB={true}
           />
         </div>
       </div>
