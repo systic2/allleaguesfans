@@ -43,7 +43,6 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         
         # Try both common secret names. One of these MUST be set in Repo Settings > Secrets.
-        VITE_SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE }} 
         SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE }}
         
         # API Keys

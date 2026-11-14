@@ -6,9 +6,8 @@ dotenv.config();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 // Try to find the Service Role Key (Admin) - Prioritizing user's specific key
-let supabaseKey = process.env.VITE_SUPABASE_SERVICE_ROLE || 
+let supabaseKey = process.env.SUPABASE_SERVICE_ROLE || 
                   process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 
                   process.env.SERVICE_ROLE_KEY || 
                   process.env.SUPABASE_SERVICE_KEY;
 
