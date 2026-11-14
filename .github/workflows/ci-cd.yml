@@ -38,9 +38,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: TypeScript Type Checking
+        id: typecheck
         run: pnpm typecheck
 
       - name: Run Tests
+        id: test
         run: pnpm test
         env:
           VITE_SUPABASE_URL: http://localhost:54321
@@ -49,6 +51,7 @@ jobs:
           VITE_HIGHLIGHTLY_API_KEY: test-api-key
 
       - name: Build Application
+        id: build
         run: pnpm build
 
       - name: Upload Build Artifact (CI Verification)
@@ -62,12 +65,29 @@ jobs:
 
       - name: Build Summary
         if: always()
+        env:
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          TESTS: ${{ steps.test.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          JOB_STATUS: ${{ job.status }}
+          EVENT: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
         run: |
-          echo "## 🎉 Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **TypeCheck**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tests**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          icon() {
+            case "$1" in
+              success) echo "✅ $1" ;;
+              skipped) echo "⏭️ $1" ;;
+              *) echo "❌ $1" ;;
+            esac
+          }
+          {
+            echo "## Build Summary: $(icon "$JOB_STATUS")"
+            echo ""
+            echo "- **Event**: $EVENT"
+            echo "- **Branch**: $BRANCH"
+            echo "- **Commit**: $COMMIT"
+            echo "- **TypeCheck**: $(icon "$TYPECHECK")"
+            echo "- **Tests**: $(icon "$TESTS")"
+            echo "- **Build**: $(icon "$BUILD")"
+          } >> "$GITHUB_STEP_SUMMARY"
