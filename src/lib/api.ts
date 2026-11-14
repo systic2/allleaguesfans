@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { SearchRow, TeamFromDB, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
+import { findTeamIdsByAlias } from "@/lib/team-aliases";
 
 const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
 
@@ -358,10 +359,17 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   if (!qq) return [];
   // PostgREST or() 필터 문법을 깨는 문자는 공백으로 바꾼다
   const pattern = `%${qq.replace(/[,()*%\\]/g, ' ')}%`;
+  // 화면의 팀 데이터(teams_v2)에서 영문·한글 이름으로 찾는다.
+  // 한글 이름은 띄어쓰기를 무시하고('전북현대' → '전북 현대 모터스'), 줄임말('맨유')은 별칭 목록으로 찾는다
+  const teamFilters = [`name.ilike.${pattern}`, `nameKorean.ilike.${pattern}`];
+  const letters = Array.from(qq).filter(ch => /[\p{L}\p{N}]/u.test(ch));
+  // 팀 이름보다 긴 입력은 정규식·요청 주소만 키우므로 건너뛴다
+  if (letters.length > 1 && letters.length <= 30) teamFilters.push(`nameKorean.imatch."${letters.join(' *')}"`);
+  const aliasIds = findTeamIdsByAlias(qq);
+  if (aliasIds.length > 0) teamFilters.push(`id.in.(${aliasIds.map(id => `"${id}"`).join(',')})`);
   const [leagues, teams, players] = await Promise.all([
     supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").ilike("strLeague", pattern).limit(10),
-    // 화면의 팀 데이터(teams_v2)에서 영문·한글 이름으로 찾는다
-    supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(`name.ilike.${pattern},nameKorean.ilike.${pattern}`).limit(10),
+    supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(teamFilters.join(',')).limit(10),
     supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb").ilike("strPlayer", pattern).limit(10)
   ]);
   const rows: SearchRow[] = [];

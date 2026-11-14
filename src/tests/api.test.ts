@@ -307,7 +307,7 @@ describe('API Functions', () => {
 
       expect(supabase.from).toHaveBeenNthCalledWith(2, 'teams_v2');
       expect(teamChain.select).toHaveBeenCalledWith('id, name, nameKorean, badgeUrl');
-      expect(teamChain.or).toHaveBeenCalledWith('name.ilike.%Busan%,nameKorean.ilike.%Busan%');
+      expect(teamChain.or).toHaveBeenCalledWith('name.ilike.%Busan%,nameKorean.ilike.%Busan%,nameKorean.imatch."B *u *s *a *n"');
       expect(result).toEqual(expect.arrayContaining([
         expect.objectContaining({ type: 'team', entity_id: 138106, team_id: '138106', name: '부산 아이파크', crest_url: 'busan.png' }),
         expect.objectContaining({ type: 'team', entity_id: 0, team_id: 'hist_hallelujah', name: 'Hallelujah FC' }),
@@ -329,8 +329,100 @@ describe('API Functions', () => {
 
       const pattern = '%foo  bar    baz%';
       expect(leagueChain.ilike).toHaveBeenCalledWith('strLeague', pattern);
-      expect(teamChain.or).toHaveBeenCalledWith(`name.ilike.${pattern},nameKorean.ilike.${pattern}`);
+      expect(teamChain.or).toHaveBeenCalledWith(
+        `name.ilike.${pattern},nameKorean.ilike.${pattern},nameKorean.imatch."f *o *o *b *a *r *b *a *z"`,
+      );
       expect(playerChain.ilike).toHaveBeenCalledWith('strPlayer', pattern);
+    });
+
+    it('adds a space-insensitive Korean-name filter', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      await searchByName('전북현대');
+
+      expect(teamChain.or).toHaveBeenCalledWith(
+        'name.ilike.%전북현대%,nameKorean.ilike.%전북현대%,nameKorean.imatch."전 *북 *현 *대"',
+      );
+    });
+
+    it('adds matching team alias IDs to the team filter', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      await searchByName('맨유');
+
+      expect(teamChain.or).toHaveBeenCalledWith(
+        'name.ilike.%맨유%,nameKorean.ilike.%맨유%,nameKorean.imatch."맨 *유",id.in.("133612")',
+      );
+    });
+
+    it('does not add an imatch filter for a one-letter query', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      await searchByName('x');
+
+      expect(teamChain.or).toHaveBeenCalledWith('name.ilike.%x%,nameKorean.ilike.%x%');
+    });
+
+    it('uses only Unicode letters and digits in the imatch value', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      await expect(searchByName('a.b(c)*')).resolves.toEqual([]);
+
+      expect(teamChain.or).toHaveBeenCalledWith(
+        'name.ilike.%a.b c  %,nameKorean.ilike.%a.b c  %,nameKorean.imatch."a *b *c"',
+      );
+    });
+
+    it('adds an imatch filter for at most 30 letters', async () => {
+      const query31 = 'a'.repeat(31);
+      const query30 = 'a'.repeat(30);
+      const leagueChain31 = createMockSupabaseChain([]);
+      const teamChain31 = createMockSupabaseChain([]);
+      const playerChain31 = createMockSupabaseChain([]);
+      const leagueChain30 = createMockSupabaseChain([]);
+      const teamChain30 = createMockSupabaseChain([]);
+      const playerChain30 = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain31)
+        .mockReturnValueOnce(teamChain31)
+        .mockReturnValueOnce(playerChain31)
+        .mockReturnValueOnce(leagueChain30)
+        .mockReturnValueOnce(teamChain30)
+        .mockReturnValueOnce(playerChain30);
+
+      await searchByName(query31);
+      await searchByName(query30);
+
+      expect(teamChain31.or).toHaveBeenCalledWith(
+        `name.ilike.%${query31}%,nameKorean.ilike.%${query31}%`,
+      );
+      expect(teamChain30.or).toHaveBeenCalledWith(
+        `name.ilike.%${query30}%,nameKorean.ilike.%${query30}%,nameKorean.imatch."${Array.from(query30).join(' *')}"`,
+      );
     });
 
     it('includes the player team ID in search results', async () => {
