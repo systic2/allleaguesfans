@@ -1,10 +1,17 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Trophy } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Shield, Trophy, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchLeagues } from "@/lib/api";
 import { compareLeagueSlugs } from "@/lib/leagues";
 
-// 팀·선수·경기·즐겨찾기 메뉴는 해당 목록 페이지가 생길 때 추가한다 (docs/prd.md 5장)
+// 즐겨찾기 메뉴는 즐겨찾기 페이지가 생길 때 추가한다 (docs/prd.md 5장)
+const MAIN_MENU = [
+  { to: "/", label: "홈", icon: LayoutDashboard, end: true },
+  { to: "/matches", label: "경기", icon: CalendarDays, end: false },
+  { to: "/teams", label: "팀", icon: Shield, end: false },
+  { to: "/players", label: "선수", icon: User, end: false },
+];
+
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const item = "flex min-h-11 items-center gap-3 px-3 rounded-md text-ink/70 hover:bg-raised hover:text-ink transition-colors";
   const active = "bg-raised text-ink font-medium";
@@ -23,15 +30,18 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-3 pt-1 pr-12 lg:pr-3 text-lg font-bold text-accent">AllLeaguesFans</div>
 
       <nav aria-label="주 메뉴" className="text-sm space-y-1">
-        <NavLink
-          to="/"
-          end
-          onClick={onNavigate}
-          className={({ isActive }) => `${item} ${isActive ? active : ""}`}
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          홈
-        </NavLink>
+        {MAIN_MENU.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            onClick={onNavigate}
+            className={({ isActive }) => `${item} ${isActive ? active : ""}`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </NavLink>
+        ))}
 
         <NavLink
           to="/leagues"

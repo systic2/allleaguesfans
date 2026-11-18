@@ -5,7 +5,10 @@ import type { SearchRow, TeamFromDB, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 import { findTeamIdsByAlias } from "@/lib/team-aliases";
-import { LEAGUE_SLUGS, leagueIdsByKoreanName, leagueNameKo, leagueSlugFor } from "@/lib/leagues";
+import { LEAGUE_SLUGS, leagueIdsByKoreanName, leagueNameKo, leagueSlugFor, supportedLeagueIds } from "@/lib/leagues";
+import { POSITION_GROUPS, STAFF_POSITIONS, type PositionGroup } from "@/lib/positions";
+import { statusesOf, type MatchPhase } from "@/lib/match-status";
+import { kstDate, kstDayRange } from "@/lib/dates";
 
 const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
 
@@ -650,4 +653,94 @@ export async function fetchPlayerStatistics(idLeague: string, season: string): P
   const { data, error } = await supabase.from('player_statistics').select('*').eq('idLeague', idLeague).eq('strSeason', normalized).order('goals', { ascending: false });
   if (error) { console.error('Error fetching player statistics:', error); return []; }
   return data || [];
+}
+// ---------- 목록 페이지 (/teams, /players, /matches) ----------
+
+export type TeamListRow = { team_id: string; team_name: string; crest_url: string | null; league_id: string; season: string; rank: number };
+
+/** 지원 리그별 가장 최근 시즌의 참가 팀 (standings_v2 기준, 리그 메뉴 순서 → 순위 순) */
+export async function fetchTeamsList(): Promise<TeamListRow[]> {
+  const leagueIds = supportedLeagueIds();
+  // 최근 두 시즌만 받아 리그마다 가장 최근 시즌을 고른다 (새 시즌 순위가 아직 없을 때를 위해)
+  const minSeason = String(new Date().getFullYear() - 1);
+  const { data, error } = await supabase.from('standings_v2').select('leagueId, season, teamId, teamName, teamBadgeUrl, rank')
+    .in('leagueId', leagueIds).gte('season', minSeason);
+  if (error) throw error;
+  const latest = new Map<string, string>();
+  for (const row of data ?? []) if (!latest.has(row.leagueId) || row.season > latest.get(row.leagueId)!) latest.set(row.leagueId, row.season);
+  return (data ?? [])
+    .filter(row => row.season === latest.get(row.leagueId))
+    .map(row => ({ team_id: String(row.teamId), team_name: String(row.teamName), crest_url: row.teamBadgeUrl ?? null, league_id: String(row.leagueId), season: String(row.season), rank: Number(row.rank) }))
+    .sort((a, b) => leagueIds.indexOf(a.league_id) - leagueIds.indexOf(b.league_id) || a.rank - b.rank);
+}
+
+export type PlayerListRow = {
+  id: string; name: string; team_id: string | null; team_name: string | null; position: string | null;
+  number: string | null; nationality: string | null; birth_date: string | null; photo_url: string | null;
+};
+export type PlayerSort = 'name' | 'young' | 'old';
+export const PLAYER_PAGE_SIZE = 25;
+
+/** 현재 선수단(players_v2)에서 걸러 한 페이지. 정렬·페이지는 서버에서 한다 */
+export async function fetchPlayersPage(opts: {
+  teamIds?: string[]; position?: PositionGroup | null; q?: string; sort?: PlayerSort; page?: number;
+}): Promise<{ rows: PlayerListRow[]; total: number }> {
+  // 팀이 하나도 없는 조건(순위가 아직 없는 리그 등)은 in.() 을 보내지 않고 빈 결과
+  if (opts.teamIds && opts.teamIds.length === 0) return { rows: [], total: 0 };
+  const page = Math.max(1, opts.page ?? 1);
+  const q = (opts.q ?? '').replace(/[%_*"\\]/g, ' ').trim();
+  const filtered = (head: boolean) => {
+    let query = supabase.from('players_v2')
+      .select('idPlayer, strPlayer, idTeam, strTeam, strPosition, strNumber, strNationality, dateBorn, strThumb', { count: 'exact', head })
+      // 감독·코치는 빼고, 포지션이 비어 있는 선수는 남긴다
+      .or(`strPosition.is.null,strPosition.not.in.(${STAFF_POSITIONS.map(p => `"${p}"`).join(',')})`);
+    if (opts.teamIds) query = query.in('idTeam', opts.teamIds);
+    if (opts.position) query = query.in('strPosition', POSITION_GROUPS.find(g => g.key === opts.position)!.positions);
+    if (q) query = query.ilike('strPlayer', `%${q}%`);
+    return query;
+  };
+  let query = filtered(false);
+  if (opts.sort === 'young') query = query.order('dateBorn', { ascending: false, nullsFirst: false });
+  else if (opts.sort === 'old') query = query.order('dateBorn', { ascending: true, nullsFirst: false });
+  // 같은 값이면 이름·ID 순으로 고정해 페이지 사이에 행이 겹치거나 빠지지 않게 한다
+  query = query.order('strPlayer', { ascending: true }).order('idPlayer', { ascending: true });
+  const from = (page - 1) * PLAYER_PAGE_SIZE;
+  const { data, error, count } = await query.range(from, from + PLAYER_PAGE_SIZE - 1);
+  // 마지막 페이지를 넘은 offset 은 PostgREST 가 416(PGRST103)으로 거절한다 — 빈 페이지와 전체 수를 돌려준다
+  if (error?.code === 'PGRST103') {
+    const { count: total, error: countError } = await filtered(true);
+    if (countError) throw countError;
+    return { rows: [], total: total ?? 0 };
+  }
+  if (error) throw error;
+  return {
+    total: count ?? 0,
+    rows: (data ?? []).map(p => ({
+      id: String(p.idPlayer), name: String(p.strPlayer), team_id: p.idTeam ? String(p.idTeam) : null, team_name: p.strTeam ?? null,
+      position: p.strPosition ?? null, number: p.strNumber ?? null, nationality: p.strNationality ?? null, birth_date: p.dateBorn ?? null, photo_url: p.strThumb ?? null,
+    })),
+  };
+}
+
+const MATCH_SELECT = `*, homeTeam:teams_v2!homeTeamId(id, name, badgeUrl), awayTeam:teams_v2!awayTeamId(id, name, badgeUrl)`;
+
+/** 한국 날짜 하루의 경기 (킥오프 순). leagueId·phase 로 거른다 */
+export async function fetchMatchesOnDate(date: string, opts: { leagueId?: string | null; phase?: MatchPhase | null } = {}): Promise<MatchWithTeams[]> {
+  const { from, to } = kstDayRange(date);
+  let query = supabase.from('events_v2').select(MATCH_SELECT).gte('date', from).lt('date', to);
+  query = opts.leagueId ? query.eq('leagueId', opts.leagueId) : query.in('leagueId', supportedLeagueIds());
+  if (opts.phase) query = query.in('status', statusesOf(opts.phase));
+  const { data, error } = await query.order('date', { ascending: true }).order('id', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as MatchWithTeams[];
+}
+
+/** 주어진 한국 날짜 다음으로 경기가 있는 가장 가까운 날짜 (없으면 null) */
+export async function fetchNextMatchDate(date: string, leagueId?: string | null, phase?: MatchPhase | null): Promise<string | null> {
+  let query = supabase.from('events_v2').select('date').gte('date', kstDayRange(date).to);
+  query = leagueId ? query.eq('leagueId', leagueId) : query.in('leagueId', supportedLeagueIds());
+  if (phase) query = query.in('status', statusesOf(phase));
+  const { data, error } = await query.order('date', { ascending: true }).limit(1);
+  if (error) throw error;
+  return data?.[0]?.date ? kstDate(new Date(data[0].date)) : null;
 }

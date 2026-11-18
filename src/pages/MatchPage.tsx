@@ -5,31 +5,8 @@ import { fetchMatchDetails, type MatchDetails } from "@/lib/thesportsdb-api";
 import { fetchNearbyStandings, type TeamStanding } from "@/lib/api";
 import CrestImg from "@/app/components/CrestImg";
 import NotFound from "@/app/components/NotFound";
+import { matchPhase, statusLabel } from "@/lib/match-status";
 import { useTeamName } from "@/hooks/useTeamName";
-
-const FINISHED_STATUSES = ['FINISHED', 'FT', 'AET', 'PEN'];
-const LIVE_STATUSES = ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P'];
-const POSTPONED_STATUSES = ['POSTPONED', 'SUSP', 'INT'];
-
-const STATUS_LABELS: Record<string, string> = {
-  FINISHED: '경기 종료',
-  FT: '경기 종료',
-  AET: '연장 종료',
-  PEN: '승부차기 종료',
-  SCHEDULED: '경기 예정',
-  POSTPONED: '연기됨',
-  SUSP: '중단',
-  INT: '중단',
-  IN_PLAY: 'LIVE',
-  LIVE: 'LIVE',
-  '1H': '전반',
-  '2H': '후반',
-  HT: '하프타임',
-  ET: '연장',
-  BT: '연장 휴식',
-  P: '승부차기',
-  CANCELED: '취소',
-};
 
 function LoadingSpinner() {
   return (
@@ -64,17 +41,20 @@ export default function MatchPage() {
   });
 
   const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    new Date(dateStr).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', timeZone: 'Asia/Seoul' });
   const formatTime = (dateStr: string) =>
-    new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' });
 
   if (isLoading) return <LoadingSpinner />;
 
   if (error || !match) return <NotFound message="경기를 찾을 수 없습니다." />;
 
-  const isFinished = FINISHED_STATUSES.includes(match.status);
-  const isLive = LIVE_STATUSES.includes(match.status);
-  const isPostponed = POSTPONED_STATUSES.includes(match.status);
+  const phase = matchPhase(match.status);
+  // UNKNOWN(시간 미정)은 매퍼가 임시 시각을 채워 두므로 시각 대신 '시간 미정'
+  const kickoffTime = match.status === 'UNKNOWN' ? '시간 미정' : formatTime(match.date);
+  const isFinished = phase === 'finished';
+  const isLive = phase === 'live';
+  const isPostponed = phase === 'postponed' || phase === 'suspended';
   const hasScore = (isFinished || isLive) && match.homeScore != null && match.awayScore != null;
 
   // fetchNearbyStandings falls back to the full table when the team isn't found in it
@@ -114,7 +94,7 @@ export default function MatchPage() {
               : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
           }`}
         >
-          {STATUS_LABELS[match.status] || match.status}
+          {statusLabel(match.status)}
         </span>
       </div>
 
@@ -136,13 +116,13 @@ export default function MatchPage() {
               {match.homeScore} - {match.awayScore}
             </span>
           ) : isPostponed ? (
-            <span className="text-lg font-bold text-yellow-500">연기됨</span>
+            <span className="text-lg font-bold text-yellow-500">{phase === 'suspended' ? '중단' : '연기됨'}</span>
           ) : match.status === 'CANCELED' ? (
             <span className="text-lg font-bold text-red-400">취소됨</span>
           ) : (
             <span className="text-2xl font-bold text-white/30">VS</span>
           )}
-          <span className="text-xs text-white/40">{formatTime(match.date)}</span>
+          <span className="text-xs text-white/40">{kickoffTime}</span>
         </div>
 
         <Link to={`/teams/${match.awayTeamId}`} className="flex flex-col items-center gap-3 flex-1 group">
@@ -163,7 +143,7 @@ export default function MatchPage() {
           <div>
             <p className="text-xs text-white/40">일시</p>
             <p className="text-sm font-medium">
-              {formatDate(match.date)} {formatTime(match.date)}
+              {formatDate(match.date)} {kickoffTime}
             </p>
           </div>
         </div>

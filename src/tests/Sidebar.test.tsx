@@ -49,6 +49,9 @@ describe('Sidebar', () => {
     const links = within(nav).getAllByRole('link');
     expect(links.map((link) => link.textContent?.trim())).toEqual([
       '홈',
+      '경기',
+      '팀',
+      '선수',
       '리그 전체',
       'K리그1',
       'K리그2',
