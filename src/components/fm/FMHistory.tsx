@@ -9,9 +9,9 @@ export default function FMHistory({ history }: { history: HistoricalChampion[] }
 
   return (
     <table className="w-full text-[11px] text-gray-300">
-      <tbody className="divide-y divide-[#333]">
+      <tbody className="divide-y divide-line">
         {history.map((record) => (
-          <tr key={`${record.season_year}-${record.champion_name}`} className="hover:bg-[#383838] transition-colors">
+          <tr key={`${record.season_year}-${record.champion_name}`} className="hover:bg-raised transition-colors">
             <td className="px-3 py-1.5 flex items-center gap-2">
               <span className="w-4 h-4 flex items-center justify-center bg-yellow-600/20 rounded-full text-yellow-500 text-xs">★</span>
               <span className="text-white font-medium">{teamName(record.champion_team_id, record.champion_name)}</span>

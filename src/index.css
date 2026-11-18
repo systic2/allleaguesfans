@@ -1,9 +1,20 @@
 @import "tailwindcss";
 
-/* 프로젝트 공통 유틸 (옵션) */
-/* html, body 기본 색상, 폰트 등 커스터마이징이 필요하면 여기에 */
+/* 디자인 토큰 (docs/prd.md 6.2). bg-panel, border-line, text-ink 같은 유틸리티로 쓴다.
+   값은 출발점이며 대비 검증 후 조정한다. */
+@theme {
+  --color-bg: #10151f;
+  --color-sunken: #141b27; /* 표 머리·탭 바처럼 패널보다 한 단계 깊은 면 */
+  --color-panel: #192231;
+  --color-raised: #223047; /* 행 강조·hover */
+  --color-line: #2a3447;
+  --color-ink: #e7edf5;
+  --color-accent: #5cd6b3;
+  --color-win: #10b981;
+  --color-draw: #f59e0b;
+  --color-loss: #ef4444;
+}
 
-/* 기본 폰트 & 다크 톤 배경 */
 html,
 body,
 #root {
@@ -13,33 +24,24 @@ body {
   font-family: Pretendard, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", sans-serif;
-  background: radial-gradient(
-      1200px 600px at 20% -10%,
-      rgba(59, 130, 246, 0.2),
-      transparent
-    ),
-    radial-gradient(
-      1000px 500px at 100% 0%,
-      rgba(147, 51, 234, 0.14),
-      transparent
-    ),
-    linear-gradient(180deg, #0b0d12 0%, #0b0d12 100%);
-  color: rgb(243 244 246);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  /* 표의 숫자 자릿수를 맞춘다 */
+  font-variant-numeric: tabular-nums;
 }
 
-/* 깔끔한 스크롤바 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3b82f6 #0f172a;
+  scrollbar-color: var(--color-line) var(--color-sunken);
 }
 *::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: var(--color-line);
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--color-sunken);
 }

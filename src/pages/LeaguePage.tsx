@@ -14,6 +14,7 @@ import {
   getAllRounds 
 } from "@/lib/api";
 import FMBox from "@/components/fm/FMBox";
+import NotFound from "@/app/components/NotFound";
 import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
 import FMHistory from "@/components/fm/FMHistory";
@@ -150,20 +151,20 @@ export default function LeaguePage() {
     }
   };
 
-  if (leagueLoading || isLoadingAllRounds) return <div className="p-8 text-white">Loading League...</div>;
-  if (!league) return <div className="p-8 text-white">League not found.</div>;
-  if (currentRound === undefined) return <div className="p-8 text-white">Loading Round Data...</div>;
+  if (leagueLoading || isLoadingAllRounds) return <div className="p-8 text-ink/70">로딩중…</div>;
+  if (!league) return <NotFound message="리그를 찾을 수 없습니다." />;
+  if (currentRound === undefined) return <div className="p-8 text-ink/70">로딩중…</div>;
 
   return (
-    <div className="flex flex-col h-full bg-[#1b1b1b] text-gray-200 font-sans min-h-screen">
+    <div className="flex flex-col h-full bg-sunken text-gray-200 font-sans min-h-screen">
       {/* Top Header Bar */}
-      <div className="bg-gradient-to-r from-[#2c3e50] to-[#1a1a1a] p-4 border-b border-[#444] shadow-md flex items-center gap-4 sm:gap-6 flex-wrap">
+      <div className="bg-gradient-to-r from-raised to-sunken p-4 border-b border-line shadow-md flex items-center gap-4 sm:gap-6 flex-wrap">
         {league.logo_url && (
           <img src={league.logo_url} alt={league.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg flex-shrink-0" />
         )}
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words">{league.name}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words">{league.name_korean ?? league.name}</h1>
             <span className="bg-white/10 text-xs px-2 py-0.5 rounded text-gray-300 border border-white/10 whitespace-nowrap">
               {league.current_season || new Date().getFullYear()}
             </span>
@@ -194,13 +195,13 @@ export default function LeaguePage() {
               action={
                 <div className="flex items-center gap-1">
                   <button
-                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-xs hover:bg-[#333] rounded"
+                    className="px-2 py-0.5 bg-sunken border border-line text-xs hover:bg-raised rounded"
                     onClick={handlePreviousRound}
                     disabled={currentRound === allRounds[0]}
                   >{'<'}</button>
                   <span className="text-gray-300 text-xs font-medium whitespace-nowrap">Round {currentRound}</span>
                   <button
-                    className="px-2 py-0.5 bg-[#1a1a1a] border border-[#333] text-xs hover:bg-[#333] rounded"
+                    className="px-2 py-0.5 bg-sunken border border-line text-xs hover:bg-raised rounded"
                     onClick={handleNextRound}
                     disabled={currentRound === allRounds[allRounds.length - 1]}
                   >{'>'}</button>

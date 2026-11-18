@@ -111,7 +111,12 @@ describe('LeaguePage initial round priority (Live > Upcoming > Completed > Fallb
     // allRounds has settled, but the three priority queries are still in flight.
     // The component must not prematurely lock onto the last-round fallback.
     await waitFor(() => {
-      expect(screen.getByText('Loading Round Data...')).toBeInTheDocument();
+      expect(resolveLive).toBeTypeOf('function');
+      expect(resolveUpcoming).toBeTypeOf('function');
+      expect(resolveCompleted).toBeTypeOf('function');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('로딩중…')).toBeInTheDocument();
     });
     expect(screen.queryByText('Round 34')).not.toBeInTheDocument();
 

@@ -156,7 +156,7 @@ describe("League Information Page Display Verification", () => {
       renderLeaguePage("invalid-league");
 
       await waitFor(() => {
-        expect(screen.getByText("League not found.")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "리그를 찾을 수 없습니다." })).toBeInTheDocument();
       });
     });
   });

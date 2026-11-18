@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@/app/layout/RootLayout";
+import NotFound from "@/app/components/NotFound";
 
 const LeagueListPage = lazy(() => import("@/pages/LeagueListPage"));
 const LeaguePage = lazy(() => import("@/pages/LeaguePage"));
@@ -9,18 +10,11 @@ const PlayerPage = lazy(() => import("@/pages/PlayerPage"));
 const MatchPage = lazy(() => import("@/pages/MatchPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 
-function Fallback() {
-  return <div className="p-6 text-white/70">로딩중…</div>;
-}
-
 const router = createBrowserRouter([
   {
     path: "/",
-    element: (
-      <Suspense fallback={<Fallback />}>
-        <RootLayout />
-      </Suspense>
-    ),
+    // 지연 로딩 중에도 사이드바·상단 바가 남도록 Suspense 는 RootLayout 안(Outlet 주변)에 둔다
+    element: <RootLayout />,
     children: [
       { index: true, element: <LeagueListPage /> },
 
@@ -37,9 +31,11 @@ const router = createBrowserRouter([
 
       // 검색
       { path: "search", element: <SearchPage /> },
+
+      // 없는 주소도 사이드바·검색이 있는 레이아웃 안에서 보여준다
+      { path: "*", element: <NotFound /> },
     ],
   },
-  { path: "*", element: <div className="p-6">페이지를 찾을 수 없습니다.</div> },
 ]);
 
 export default router;

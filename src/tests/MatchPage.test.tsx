@@ -118,7 +118,9 @@ describe('MatchPage', () => {
     renderMatchPage();
 
     expect(await screen.findByText('경기를 찾을 수 없습니다.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '뒤로 가기' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '리그 목록' })).toHaveAttribute('href', '/leagues');
+    expect(screen.queryByRole('button', { name: '뒤로 가기' })).not.toBeInTheDocument();
   });
 
   it('shows the same safe state when loading match details fails', async () => {

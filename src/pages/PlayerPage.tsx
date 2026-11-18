@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchPlayerDetail, type PlayerDetail } from "@/lib/api";
 import { Users, Zap, Clock, AlertCircle } from "lucide-react";
 import CrestImg from "@/app/components/CrestImg";
-import FMSubNav from "@/components/FMSubNav";
+import NotFound from "@/app/components/NotFound";
 import { useTeamName } from "@/hooks/useTeamName";
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="bg-[#2a2a2a] text-white px-3 py-1 text-xs font-bold uppercase tracking-wider border-l-4 border-purple-500 mb-2">
+    <div className="bg-panel text-white px-3 py-1 text-xs font-bold uppercase tracking-wider border-l-4 border-purple-500 mb-2">
       {title}
     </div>
   );
@@ -43,17 +43,17 @@ export default function PlayerPage() {
     enabled: Number.isFinite(playerId) && playerId > 0,
   });
 
-  if (isLoading) return <div className="p-10 text-center text-white">Loading Scout Report...</div>;
-  if (!player) return <div className="p-10 text-center text-white">Player not found in database.</div>;
+  if (isLoading) return <div className="p-10 text-center text-ink/70">로딩중…</div>;
+  if (!player) return <NotFound message="선수를 찾을 수 없습니다." />;
   const { stats } = player;
 
   return (
-    <div className="min-h-screen bg-[#1b1b1b] text-gray-200 font-sans">
+    <div className="min-h-screen bg-sunken text-gray-200 font-sans">
       {/* --- HEADER --- */}
       <div className="p-6 pb-0">
-        <div className="bg-[#242424] rounded-t-lg border-b-4 border-purple-600 p-6 flex justify-between items-end shadow-lg">
-          <div className="flex gap-6 items-center">
-            <div className="w-24 h-24 bg-[#333] rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden relative">
+        <div className="bg-panel rounded-t-lg border-b-4 border-purple-600 p-4 sm:p-6 flex flex-wrap gap-4 justify-between items-end shadow-lg">
+          <div className="flex gap-4 sm:gap-6 items-center min-w-0">
+            <div className="w-24 h-24 shrink-0 bg-raised rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden relative">
                {player.photoUrl ? (
                  <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
                ) : (
@@ -63,11 +63,11 @@ export default function PlayerPage() {
                  {player.jerseyNumber}
                </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-4xl font-black text-white tracking-tight">{player.name}</h1>
+                <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight break-words">{player.name}</h1>
               </div>
-              <div className="flex items-center gap-2 text-white/60 text-lg font-medium">
+              <div className="flex flex-wrap items-center gap-x-2 text-white/60 text-base sm:text-lg font-medium">
                 <span className="text-yellow-400 font-bold">{player.position}</span>
                 <span>•</span>
                 <span className="flex items-center gap-2">
@@ -81,9 +81,6 @@ export default function PlayerPage() {
         </div>
       </div>
 
-      {/* --- SUB NAV --- */}
-      <FMSubNav type="player" basePath={`/players/${playerId}`} />
-
       {/* --- MAIN CONTENT --- */}
       <div className="p-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -91,7 +88,7 @@ export default function PlayerPage() {
           {/* LEFT COLUMN: Profile & Bio (3 cols) */}
           <div className="lg:col-span-3 space-y-4">
             {/* Profile Card */}
-            <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm">
+            <div className="bg-panel rounded border border-white/5 p-4 shadow-sm">
               <SectionHeader title="Profile" />
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between border-b border-white/5 pb-2">
@@ -116,7 +113,7 @@ export default function PlayerPage() {
 
           {/* CENTER COLUMN: Real Statistics (6 cols) */}
           <div className="lg:col-span-6">
-            <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm h-full">
+            <div className="bg-panel rounded border border-white/5 p-4 shadow-sm h-full">
               <SectionHeader title={stats ? `${stats.season} Season Statistics` : 'Season Statistics'} />
               {stats ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
@@ -163,7 +160,7 @@ export default function PlayerPage() {
           {/* RIGHT COLUMN: Position & Stats (3 cols) */}
           <div className="lg:col-span-3 space-y-4">
             {/* Position Map (CSS Mini Pitch) */}
-            <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm">
+            <div className="bg-panel rounded border border-white/5 p-4 shadow-sm">
               <SectionHeader title="Positions" />
               <div className="relative h-48 bg-green-800/80 rounded border border-white/10 m-2 flex items-center justify-center overflow-hidden">
                  {/* Pitch Lines */}
@@ -189,7 +186,7 @@ export default function PlayerPage() {
 
             {/* Quick Stats Summary */}
             {stats && (
-            <div className="bg-[#242424] rounded border border-white/5 p-4 shadow-sm">
+            <div className="bg-panel rounded border border-white/5 p-4 shadow-sm">
               <SectionHeader title="Quick Summary" />
               <div className="space-y-3">
                  <div className="flex items-center justify-between">

@@ -9,9 +9,9 @@ interface FMBoxProps {
 
 export default function FMBox({ title, children, className = "", action }: FMBoxProps) {
   return (
-    <div className={`flex flex-col bg-[#2b2b2b] border border-[#1e1e1e] shadow-sm ${className}`}>
+    <div className={`flex flex-col bg-panel border border-line shadow-sm ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-[#3a3a3a] to-[#2b2b2b] border-b border-[#1e1e1e]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-raised to-panel border-b border-line">
         <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wide">{title}</h3>
         {action && <div>{action}</div>}
       </div>

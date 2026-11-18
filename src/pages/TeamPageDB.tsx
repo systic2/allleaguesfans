@@ -12,12 +12,14 @@ import {
   type TeamPlayer,
   type TeamStanding,
 } from "@/lib/api";
+import { leagueNameKo, leagueSlugFor } from "@/lib/leagues";
 import type { Standing } from "@/types/domain";
 import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api";
 import TeamLineup from "@/components/TeamLineup";
 import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
-import FMSubNav from "@/components/FMSubNav";
+import SubTabs from "@/components/SubTabs";
+import NotFound from "@/app/components/NotFound";
 import { getCurrentSeasonForFormat } from "@/lib/season";
 import { useTeamName } from "@/hooks/useTeamName";
 
@@ -26,15 +28,16 @@ type FormResult = 'W' | 'D' | 'L';
 
 const FALLBACK_SEASON = String(new Date().getFullYear());
 
-const LEAGUE_NAMES: Record<string, string> = {
-  '4689': 'K리그1',
-  '4822': 'K리그2',
-  '4328': 'Premier League',
-  '4335': 'La Liga',
-  '4332': 'Serie A',
-  '4331': 'Bundesliga',
-  '4334': 'Ligue 1',
-};
+const TEAM_TABS = [
+  { key: "overview", label: "개요" },
+  { key: "squad", label: "선수단" },
+  { key: "fixtures", label: "일정" },
+  { key: "stats", label: "통계" },
+];
+
+function leagueLabel(idLeague: string): string {
+  return leagueNameKo(leagueSlugFor(idLeague)) ?? idLeague;
+}
 
 // Helper Components
 function LoadingSpinner() {
@@ -65,7 +68,9 @@ export default function TeamPageDB() {
   const teamName = useTeamName();
   const teamIdParam = id;
   
-  const currentTab = searchParams.get("tab") || "overview";
+  // 알 수 없는 ?tab= 값은 빈 화면 대신 개요를 보여준다
+  const requestedTab = searchParams.get("tab");
+  const currentTab = TEAM_TABS.some(t => t.key === requestedTab) ? requestedTab! : "overview";
 
   // --- Queries ---
   const { data: teamData, isLoading: teamLoading, error: teamError } = useQuery<TeamDetails | null>({
@@ -125,29 +130,24 @@ export default function TeamPageDB() {
 
   // --- State Handling ---
   if (teamLoading) return <LoadingSpinner />;
-  if (teamError || !teamData) return (
-    <div className="flex flex-col items-center justify-center py-20 text-white">
-      <h2 className="text-2xl font-bold mb-4">팀을 찾을 수 없습니다.</h2>
-      <button onClick={() => navigate('/')} className="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700 transition-colors">홈으로</button>
-    </div>
-  );
+  if (teamError || !teamData) return <NotFound message="팀을 찾을 수 없습니다." />;
 
   return (
     <div className="text-white font-sans">
       {/* Header Section */}
-      <div className="flex items-center gap-6 p-6 bg-[#1b1b1b]">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-4 p-4 sm:p-6 bg-sunken">
         <CrestImg
           src={teamData.badgeUrl}
           alt={teamData.name}
           size={80}
           className="rounded-lg shadow-lg drop-shadow-2xl"
         />
-        <div className="flex-1">
+        <div className="flex-1 min-w-48">
           <h1 className="text-3xl font-bold text-white tracking-tight">{teamData.nameKorean || teamData.name}</h1>
           {teamData.nameKorean && <p className="text-white/50 text-sm mb-2">{teamData.name}</p>}
           <div className="flex items-center gap-4 text-white/70 text-sm">
             {teamData.currentLeagueId && (
-              <span className="bg-white/10 px-2 py-0.5 rounded">{LEAGUE_NAMES[teamData.currentLeagueId] || teamData.currentLeagueId}</span>
+              <span className="bg-white/10 px-2 py-0.5 rounded">{leagueLabel(teamData.currentLeagueId)}</span>
             )}
             {standingsData?.rank && (
               <>
@@ -161,7 +161,7 @@ export default function TeamPageDB() {
         </div>
         
         {/* Top Right Stats */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-8 ml-auto">
           {standingsData && (
             <div className="text-right hidden sm:block">
               <div className="text-3xl font-bold text-white leading-none">
@@ -182,11 +182,10 @@ export default function TeamPageDB() {
         </div>
       </div>
 
-      {/* FM Sub Navigation */}
-      <FMSubNav type="team" basePath={`/teams/${teamIdParam}`} />
+      <SubTabs tabs={TEAM_TABS} defaultKey="overview" />
 
       {/* Main Content Area */}
-      <div className="p-6 bg-[#1b1b1b] min-h-screen">
+      <div className="p-6 bg-sunken min-h-screen">
         
         {/* --- OVERVIEW TAB --- */}
         {currentTab === 'overview' && (
@@ -216,7 +215,7 @@ export default function TeamPageDB() {
                 {teamData.currentLeagueId && (
                   <div>
                     <p className="text-white/50 text-xs uppercase">League</p>
-                    <p className="text-white font-medium">{LEAGUE_NAMES[teamData.currentLeagueId] || teamData.currentLeagueId}</p>
+                    <p className="text-white font-medium">{leagueLabel(teamData.currentLeagueId)}</p>
                   </div>
                 )}
                 {standingsData?.rank && (

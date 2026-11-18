@@ -5,6 +5,7 @@ import type { SearchRow, TeamFromDB, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 import { findTeamIdsByAlias } from "@/lib/team-aliases";
+import { LEAGUE_SLUGS, leagueNameKo, leagueSlugFor } from "@/lib/leagues";
 
 const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
 
@@ -67,7 +68,7 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
           x.idLeague === '4334' ? 'ligue-1' : 
           `league-${x.idLeague}`,
     name: String(x.strLeague), 
-    name_korean: null, 
+    name_korean: leagueNameKo(leagueSlugFor(String(x.idLeague))), 
     tier: null, 
     logo_url: x.strBadge, 
     banner_url: null, 
@@ -88,15 +89,8 @@ function toCount(value: unknown): number | null {
   return value === null || value === undefined ? null : Number(value);
 }
 
-// TheSportsDB 리그 ID → 화면 주소(slug)
-const LEAGUE_SLUGS: Record<string, string> = {
-  '4689': 'k-league-1', '4822': 'k-league-2', '4328': 'premier-league', '4335': 'la-liga',
-  '4332': 'serie-a', '4331': 'bundesliga', '4334': 'ligue-1',
-};
-
-export function leagueSlugFor(idLeague: string): string {
-  return LEAGUE_SLUGS[idLeague] ?? `league-${idLeague}`;
-}
+// 리그 slug·한글 이름은 src/lib/leagues.ts. 기존 호출부를 위해 다시 내보낸다
+export { leagueSlugFor } from "@/lib/leagues";
 
 export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | null> {
   const theSportsDBLeagueId = Object.keys(LEAGUE_SLUGS).find(id => LEAGUE_SLUGS[id] === slug) ?? slug.replace('league-', '');
@@ -107,7 +101,7 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
 
   return {
     id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
-    name: String(data.strLeague), name_korean: null, logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason ?? undefined
+    name: String(data.strLeague), name_korean: leagueNameKo(slug), logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason ?? undefined
   };
 }
 
