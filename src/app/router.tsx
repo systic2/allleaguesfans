@@ -12,6 +12,7 @@ const SearchPage = lazy(() => import("@/pages/SearchPage"));
 const TeamsPage = lazy(() => import("@/pages/TeamsPage"));
 const PlayersPage = lazy(() => import("@/pages/PlayersPage"));
 const MatchesPage = lazy(() => import("@/pages/MatchesPage"));
+const FavoritesPage = lazy(() => import("@/pages/FavoritesPage"));
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
 
       // 검색
       { path: "search", element: <SearchPage /> },
+      { path: "favorites", element: <FavoritesPage /> },
 
       // 없는 주소도 사이드바·검색이 있는 레이아웃 안에서 보여준다
       { path: "*", element: <NotFound /> },

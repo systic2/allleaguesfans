@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchPlayerDetail, fetchTeamKoreanNames, type PlayerDetail } from '@/lib/api';
 import PlayerPage from '@/pages/PlayerPage';
+import { getFavorites } from '@/lib/favorites';
 
 vi.mock('@/lib/api', () => ({
   fetchPlayerDetail: vi.fn(),
@@ -97,6 +98,22 @@ describe('PlayerPage', () => {
     ]) {
       expect(document.body).not.toHaveTextContent(fabricatedText);
     }
+  });
+
+  it('favorites the player using the detail id, name, and photo', async () => {
+    mockFetchPlayerDetail.mockResolvedValue({ ...player, photoUrl: '/test-player.png' });
+
+    renderPlayerPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '즐겨찾기' }));
+    expect(getFavorites()).toEqual([
+      expect.objectContaining({
+        type: 'player',
+        id: '1',
+        name: 'Test Striker',
+        image: '/test-player.png',
+      }),
+    ]);
   });
 
   it('shows an empty-state message when no season statistics exist', async () => {

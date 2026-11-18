@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import FMBox from "@/components/fm/FMBox";
 import NotFound from "@/app/components/NotFound";
+import FavoriteButton from "@/components/FavoriteButton";
 import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
 import FMHistory from "@/components/fm/FMHistory";
@@ -168,6 +169,9 @@ export default function LeaguePage() {
             <span className="bg-white/10 text-xs px-2 py-0.5 rounded text-gray-300 border border-white/10 whitespace-nowrap">
               {league.current_season || new Date().getFullYear()}
             </span>
+          </div>
+          <div className="mb-2">
+            <FavoriteButton item={{ type: "league", id: league.slug, name: league.name_korean ?? league.name, image: league.logo_url ?? null }} />
           </div>
           <div className="text-xs text-gray-300 flex gap-4 flex-wrap">
             <span>국가: {league.country}</span>

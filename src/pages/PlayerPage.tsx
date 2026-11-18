@@ -4,6 +4,7 @@ import { fetchPlayerDetail, type PlayerDetail } from "@/lib/api";
 import { Users, Zap, Clock, AlertCircle } from "lucide-react";
 import CrestImg from "@/app/components/CrestImg";
 import NotFound from "@/app/components/NotFound";
+import FavoriteButton from "@/components/FavoriteButton";
 import { useTeamName } from "@/hooks/useTeamName";
 
 function SectionHeader({ title }: { title: string }) {
@@ -74,6 +75,9 @@ export default function PlayerPage() {
                    <CrestImg src={undefined} size={20} alt={teamName(player.teamId, player.teamName)} />
                    {teamName(player.teamId, player.teamName)}
                 </span>
+              </div>
+              <div className="mt-2">
+                <FavoriteButton item={{ type: "player", id: String(player.id), name: player.name, image: player.photoUrl ?? null }} />
               </div>
             </div>
           </div>

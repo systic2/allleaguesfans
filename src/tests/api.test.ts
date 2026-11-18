@@ -146,6 +146,23 @@ describe('API Functions', () => {
       expect(result?.slug).toBe('premier-league');
       expect(result?.name_korean).toBe('프리미어리그');
     });
+
+    it('canonicalizes the returned slug and Korean name for a league-ID route', async () => {
+      const leagueChain = createMockSupabaseChain({
+        idLeague: '4689',
+        strLeague: 'K League 1',
+        strCountry: 'South Korea',
+        strBadge: 'k1.png',
+        strCurrentSeason: '2026',
+      });
+      (supabase.from as any).mockReturnValueOnce(leagueChain);
+
+      const result = await fetchLeagueBySlug('league-4689');
+
+      expect(leagueChain.eq).toHaveBeenCalledWith('idLeague', '4689');
+      expect(result?.slug).toBe('k-league-1');
+      expect(result?.name_korean).toBe('K리그1');
+    });
   });
 
   describe('fetchTeamDetails', () => {

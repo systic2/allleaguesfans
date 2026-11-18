@@ -18,6 +18,7 @@ import {
 } from '@/lib/thesportsdb-api';
 import TeamPageDB from '@/pages/TeamPageDB';
 import type { Standing } from '@/types/domain';
+import { getFavorites } from '@/lib/favorites';
 
 vi.mock('@/lib/api', () => ({
   fetchNearbyStandings: vi.fn(),
@@ -205,6 +206,22 @@ describe('TeamPageDB', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: '서울 테스트 FC' })).toBeInTheDocument();
     expect(screen.getByText('Seoul Test FC')).toBeInTheDocument();
+  });
+
+  it('favorites the team using its id, Korean name, and badge', async () => {
+    mockFetchTeamDetails.mockResolvedValue({ ...team, badgeUrl: '/test-team.png' });
+
+    renderTeamPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '즐겨찾기' }));
+    expect(getFavorites()).toEqual([
+      expect.objectContaining({
+        type: 'team',
+        id: 'team-1',
+        name: '서울 테스트 FC',
+        image: '/test-team.png',
+      }),
+    ]);
   });
 
   it('distinguishes unavailable and zero values in the standings summary and player cards', async () => {

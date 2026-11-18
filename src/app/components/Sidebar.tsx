@@ -1,15 +1,21 @@
 import { NavLink } from "react-router-dom";
-import { CalendarDays, LayoutDashboard, Shield, Trophy, User } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Shield, Star, Trophy, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchLeagues } from "@/lib/api";
 import { compareLeagueSlugs } from "@/lib/leagues";
+import { useFavorites } from "@/hooks/useFavorites";
+import { favoriteHref } from "@/lib/favorites";
+import CrestImg from "@/app/components/CrestImg";
 
-// 즐겨찾기 메뉴는 즐겨찾기 페이지가 생길 때 추가한다 (docs/prd.md 5장)
+// 사이드바에 바로 보여 줄 즐겨찾기 수 (나머지는 /favorites)
+const SIDEBAR_FAVORITES = 10;
+
 const MAIN_MENU = [
   { to: "/", label: "홈", icon: LayoutDashboard, end: true },
   { to: "/matches", label: "경기", icon: CalendarDays, end: false },
   { to: "/teams", label: "팀", icon: Shield, end: false },
   { to: "/players", label: "선수", icon: User, end: false },
+  { to: "/favorites", label: "즐겨찾기", icon: Star, end: false },
 ];
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -23,6 +29,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   const sorted = [...(leagues ?? [])].sort((a, b) => compareLeagueSlugs(a.slug, b.slug));
+  const { favorites } = useFavorites();
 
   return (
     <aside className="h-screen sticky top-0 border-r border-line bg-panel p-3 space-y-5 overflow-y-auto">
@@ -42,6 +49,28 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             {label}
           </NavLink>
         ))}
+
+        {favorites.length > 0 && (
+          <div aria-label="즐겨찾기 바로가기" role="group">
+            <div className="px-3 pb-1 pt-3 text-xs font-bold text-ink/50">즐겨찾기</div>
+            {favorites.slice(0, SIDEBAR_FAVORITES).map((fav) => (
+              <NavLink
+                key={`${fav.type}-${fav.id}`}
+                to={favoriteHref(fav)}
+                onClick={onNavigate}
+                className={({ isActive }) => `${item} ${isActive ? active : ""}`}
+              >
+                <CrestImg src={fav.image} alt="" size={16} className={fav.type === "player" ? "rounded-full" : ""} />
+                <span className="truncate">{fav.name}</span>
+              </NavLink>
+            ))}
+            {favorites.length > SIDEBAR_FAVORITES && (
+              <NavLink to="/favorites" onClick={onNavigate} className="flex min-h-11 items-center px-3 text-xs text-ink/50 hover:text-ink">
+                {favorites.length - SIDEBAR_FAVORITES}개 더 보기
+              </NavLink>
+            )}
+          </div>
+        )}
 
         <NavLink
           to="/leagues"
