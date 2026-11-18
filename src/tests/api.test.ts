@@ -8,6 +8,9 @@ import {
   fetchTeamRecentFixtures,
   fetchTeamFormGuide,
   fetchPlayerDetail,
+  fetchTeamStandingsData,
+  fetchTopAssists,
+  fetchTopScorers,
   fetchTeamKoreanNames,
   fetchLeagueBySlug,
   leagueSlugFor,
@@ -497,7 +500,8 @@ describe('API Functions', () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'FW', strNumber: '10',
-        goals: 0, assists: 0, appearances: 0, yellow_cards: 0, red_cards: 0,
+        // 기록 행이 없으면 0 이 아니라 null (미제공)
+        goals: null, assists: null, appearances: null, yellow_cards: null, red_cards: null,
       });
     });
 
@@ -683,6 +687,45 @@ describe('API Functions', () => {
       expect(result?.stats).toBeNull();
     });
 
+    it('preserves null stat fields separately from genuine zero values', async () => {
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain({
+          idPlayer: '12345',
+          strPlayer: 'Test Player',
+          strTeam: 'Test FC',
+          idTeam: '999',
+          strPosition: 'Forward',
+        }))
+        .mockReturnValueOnce(createMockSupabaseChain([{
+          strSeason: '2026',
+          idTeam: '999',
+          appearances: null,
+          minutes_played: 0,
+          goals: null,
+          assists: 0,
+          yellow_cards: null,
+          red_cards: 0,
+          penalties_scored: null,
+          penalties_missed: 0,
+          own_goals: null,
+        }]));
+
+      const result = await fetchPlayerDetail(12345);
+
+      expect(result?.stats).toEqual({
+        season: '2026',
+        appearances: null,
+        minutesPlayed: 0,
+        goals: null,
+        assists: 0,
+        yellowCards: null,
+        redCards: 0,
+        penaltiesScored: null,
+        penaltiesMissed: 0,
+        ownGoals: null,
+      });
+    });
+
     it('uses the latest-season statistics row for the player current team after a transfer', async () => {
       (supabase.from as any)
         .mockReturnValueOnce(createMockSupabaseChain({
@@ -725,6 +768,65 @@ describe('API Functions', () => {
         nationality: '-',
         position: '-',
       });
+    });
+  });
+
+  describe('nullable standings and leaderboard statistics', () => {
+    it('preserves nullable team standings fields and a missing source update time', async () => {
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain({
+        leagueId: '4689',
+        teamId: 'team-1',
+        season: '2026',
+        rank: 0,
+        teamName: 'Test FC',
+        teamBadgeUrl: null,
+        gamesPlayed: null,
+        wins: 0,
+        draws: null,
+        losses: 0,
+        points: null,
+        goalsFor: 0,
+        goalsAgainst: null,
+        goalDifference: 0,
+        form: null,
+        description: null,
+        lastUpdated: null,
+      }));
+
+      const result = await fetchTeamStandingsData('4689', '2026', 'Test FC');
+
+      expect(result).toMatchObject({
+        rank: 0,
+        gamesPlayed: null,
+        wins: 0,
+        draws: null,
+        losses: 0,
+        points: null,
+        goalsFor: 0,
+        goalsAgainst: null,
+        goalDifference: 0,
+        lastUpdated: null,
+      });
+    });
+
+    it('keeps leaderboard matches null for unknown appearances and 0 for a real zero', async () => {
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain([{
+          idPlayer: '1', strPlayer: 'Scorer', idTeam: '10', strTeam: 'A',
+          goals: 4, assists: 0, appearances: null,
+        }]))
+        .mockReturnValueOnce(createMockSupabaseChain([{
+          idPlayer: '2', strPlayer: 'Creator', idTeam: '20', strTeam: 'B',
+          goals: 0, assists: 3, appearances: 0,
+        }]));
+
+      const [scorers, assisters] = await Promise.all([
+        fetchTopScorers(4328, '2026'),
+        fetchTopAssists(4328, '2026'),
+      ]);
+
+      expect(scorers[0].matches).toBeNull();
+      expect(assisters[0].matches).toBe(0);
     });
   });
 

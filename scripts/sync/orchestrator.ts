@@ -12,6 +12,7 @@ import type { Standing, Match, Team } from '../../src/types/domain';
 import { getCurrentSeasonForFormat } from '../../src/lib/season.js';
 import { syncKLeaguePlayerStats } from './lib/kleague-player-stats.js';
 import { syncEuropePlayerStats } from './lib/europe-player-stats.js';
+import { buildSyncRunRow } from '../../src/lib/mappers/sync-run.js';
 
 // --- Configuration ---
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY;
@@ -19,6 +20,7 @@ if (!THESPORTSDB_API_KEY) throw new Error('THESPORTSDB_API_KEY is not set');
 const STANDINGS_V2_TABLE = 'standings_v2';
 const EVENTS_V2_TABLE = 'events_v2';
 const TEAMS_V2_TABLE = 'teams_v2';
+const SYNC_RUNS_TABLE = 'sync_runs';
 
 // --- TheSportsDB API Client ---
 class TheSportsDBClient {
@@ -129,6 +131,28 @@ async function deleteStaleRows(
   }
   console.log(`[DB] 🧹 Removed ${stale.length} stale ${table} rows for ${label}.`);
   return true;
+}
+
+// 단계 실행 결과를 sync_runs 에 남긴다 (화면의 '마지막 갱신' 기준 시각).
+// 기록 실패는 경고만 하고 단계 결과는 바꾸지 않는다. 단계가 예외를 던져도 다음 단계는 계속 돈다.
+async function runStep(step: string, run: () => Promise<boolean>): Promise<boolean> {
+  const startedAt = new Date().toISOString();
+  let ok = false;
+  let thrown: unknown;
+  try {
+    ok = await run();
+  } catch (error) {
+    thrown = error;
+    console.error(`❌ Sync step ${step} threw:`, error);
+  }
+
+  const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+  const runUrl = GITHUB_RUN_ID ? `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}` : null;
+  const row = buildSyncRunRow(step, startedAt, new Date().toISOString(), ok, thrown, runUrl);
+  const { error: insertError } = await supa.from(SYNC_RUNS_TABLE).insert(row);
+  if (insertError) console.warn(`[DB] ⚠️  Failed to record sync run for ${step}:`, insertError.message);
+
+  return ok;
 }
 
 // --- Main Orchestrator Logic ---
@@ -321,10 +345,10 @@ async function main() {
   
   const orchestrator = new DataOrchestrator();
   
-  const standingsSuccess = await orchestrator.syncStandingsAndTeams();
-  const eventsSuccess = await orchestrator.syncEvents();
-  const playerStatsSuccess = await syncKLeaguePlayerStats(getCurrentSeasonForFormat('single').dbValue);
-  const europePlayerStatsSuccess = await syncEuropePlayerStats(THESPORTSDB_API_KEY!, getCurrentSeasonForFormat('split').dbValue);
+  const standingsSuccess = await runStep('standings', () => orchestrator.syncStandingsAndTeams());
+  const eventsSuccess = await runStep('events', () => orchestrator.syncEvents());
+  const playerStatsSuccess = await runStep('kleague_player_stats', () => syncKLeaguePlayerStats(getCurrentSeasonForFormat('single').dbValue));
+  const europePlayerStatsSuccess = await runStep('europe_player_stats', () => syncEuropePlayerStats(THESPORTSDB_API_KEY!, getCurrentSeasonForFormat('split').dbValue));
   
   if (!standingsSuccess || !eventsSuccess || !playerStatsSuccess || !europePlayerStatsSuccess) {
     console.error('\n❌ Some sync tasks failed. Check logs for details.');

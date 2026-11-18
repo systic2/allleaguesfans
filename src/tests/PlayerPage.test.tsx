@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchPlayerDetail, fetchTeamKoreanNames, type PlayerDetail } from '@/lib/api';
@@ -101,5 +101,53 @@ describe('PlayerPage', () => {
     renderPlayerPage();
 
     expect(await screen.findByText('아직 이 선수의 시즌 기록이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('renders nullable statistics as dashes while preserving genuine zeroes', async () => {
+    mockFetchPlayerDetail.mockResolvedValue({
+      ...player,
+      stats: {
+        ...player.stats!,
+        appearances: null,
+        minutesPlayed: 0,
+        goals: null,
+        assists: 0,
+        yellowCards: null,
+        redCards: 0,
+        penaltiesScored: 0,
+        penaltiesMissed: null,
+      },
+    });
+
+    renderPlayerPage();
+    await screen.findByText('2026 Season Statistics');
+
+    const expectValue = (label: string, value: string) => {
+      const labelNode = screen.getAllByText(label)[0];
+      expect(within(labelNode.parentElement!).getByText(value)).toBeInTheDocument();
+    };
+    expectValue('Appearances', '-');
+    expectValue('Minutes Played', '0');
+    expectValue('Goals', '-');
+    expectValue('Assists', '0');
+    expectValue('Yellow Cards', '-');
+    expectValue('Red Cards', '0');
+    expectValue('Penalties Scored', '-');
+  });
+
+  it('renders zero penalty attempts as 0 / 0', async () => {
+    mockFetchPlayerDetail.mockResolvedValue({
+      ...player,
+      stats: {
+        ...player.stats!,
+        penaltiesScored: 0,
+        penaltiesMissed: 0,
+      },
+    });
+
+    renderPlayerPage();
+
+    const label = await screen.findByText('Penalties Scored');
+    expect(within(label.parentElement!).getByText('0 / 0')).toBeInTheDocument();
   });
 });

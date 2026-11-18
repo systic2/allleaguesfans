@@ -35,32 +35,32 @@ export interface TheSportsDBStanding {
  * @returns A standardized `Standing` object.
  */
 export function mapTheSportsDBStandingToDomain(rawStanding: TheSportsDBStanding): Standing {
-  const safeParseInt = (value: string | undefined | null, defaultValue = 0): number => {
-    if (value === undefined || value === null || value.trim() === '') {
-      return defaultValue;
-    }
+  // 비었거나 숫자가 아닌 값은 0 이 아니라 null (수집되지 않은 값)
+  const parseCount = (value: string | undefined | null): number | null => {
+    if (value === undefined || value === null || value.trim() === '') return null;
     const parsed = parseInt(value, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
+    return isNaN(parsed) ? null : parsed;
   };
 
   return {
     leagueId: rawStanding.idLeague,
     teamId: rawStanding.idTeam,
     season: rawStanding.strSeason || new Date().getFullYear().toString(),
-    rank: safeParseInt(rawStanding.intRank),
+    rank: parseCount(rawStanding.intRank) ?? 0,
     teamName: rawStanding.strTeam,
     teamBadgeUrl: rawStanding.strBadge,
-    gamesPlayed: safeParseInt(rawStanding.intPlayed),
-    wins: safeParseInt(rawStanding.intWin),
-    draws: safeParseInt(rawStanding.intDraw),
-    losses: safeParseInt(rawStanding.intLoss),
-    points: safeParseInt(rawStanding.intPoints),
-    goalsFor: safeParseInt(rawStanding.intGoalsFor),
-    goalsAgainst: safeParseInt(rawStanding.intGoalsAgainst),
-    goalDifference: safeParseInt(rawStanding.intGoalDifference),
+    gamesPlayed: parseCount(rawStanding.intPlayed),
+    wins: parseCount(rawStanding.intWin),
+    draws: parseCount(rawStanding.intDraw),
+    losses: parseCount(rawStanding.intLoss),
+    points: parseCount(rawStanding.intPoints),
+    goalsFor: parseCount(rawStanding.intGoalsFor),
+    goalsAgainst: parseCount(rawStanding.intGoalsAgainst),
+    goalDifference: parseCount(rawStanding.intGoalDifference),
     form: rawStanding.strForm || undefined,
     description: rawStanding.strDescription || undefined,
-    lastUpdated: rawStanding.dateUpdated || new Date().toISOString(),
+    // 원천 갱신 시각만 담는다. 수집 시각은 sync_runs 에 남는다
+    lastUpdated: rawStanding.dateUpdated || null,
   };
 }
 

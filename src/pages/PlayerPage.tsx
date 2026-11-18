@@ -23,9 +23,13 @@ function StatItem({ label, value, colorClass = "text-white" }: { label: string, 
   );
 }
 
-// 수집하지 않는 항목(0)은 실제 0과 구분되도록 '-' 로 표시
-function orDash(value: number): number | string {
-  return value > 0 ? value : '-';
+// 수집하지 않는 항목(null)은 실제 0과 구분되도록 '-' 로 표시
+function orDash(value: number | null): number | string {
+  return value ?? '-';
+}
+
+function penaltiesText(scored: number | null, missed: number | null): string {
+  return scored === null || missed === null ? '-' : `${scored} / ${scored + missed}`;
 }
 
 export default function PlayerPage() {
@@ -133,9 +137,9 @@ export default function PlayerPage() {
                       <Zap className="w-3 h-3" /> Attack
                     </h3>
                     <div className="space-y-1">
-                      <StatItem label="Goals" value={stats.goals} colorClass="text-emerald-400" />
-                      <StatItem label="Assists" value={stats.assists} colorClass="text-blue-400" />
-                      <StatItem label="Penalties Scored" value={`${stats.penaltiesScored} / ${stats.penaltiesScored + stats.penaltiesMissed}`} />
+                      <StatItem label="Goals" value={orDash(stats.goals)} colorClass="text-emerald-400" />
+                      <StatItem label="Assists" value={orDash(stats.assists)} colorClass="text-blue-400" />
+                      <StatItem label="Penalties Scored" value={penaltiesText(stats.penaltiesScored, stats.penaltiesMissed)} />
                     </div>
                   </div>
 
@@ -145,8 +149,8 @@ export default function PlayerPage() {
                       <AlertCircle className="w-3 h-3" /> Discipline
                     </h3>
                     <div className="space-y-1">
-                      <StatItem label="Yellow Cards" value={stats.yellowCards} colorClass="text-yellow-500" />
-                      <StatItem label="Red Cards" value={stats.redCards} colorClass="text-red-500" />
+                      <StatItem label="Yellow Cards" value={orDash(stats.yellowCards)} colorClass="text-yellow-500" />
+                      <StatItem label="Red Cards" value={orDash(stats.redCards)} colorClass="text-red-500" />
                     </div>
                   </div>
                 </div>
@@ -191,16 +195,16 @@ export default function PlayerPage() {
                  <div className="flex items-center justify-between">
                    <span className="text-white/60 text-sm">Goals</span>
                    <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
-                     <div className="h-full bg-emerald-500" style={{ width: `${Math.min(stats.goals * 5, 100)}%` }}></div>
+                     <div className="h-full bg-emerald-500" style={{ width: `${Math.min((stats.goals ?? 0) * 5, 100)}%` }}></div>
                    </div>
-                   <span className="text-white font-bold font-mono">{stats.goals}</span>
+                   <span className="text-white font-bold font-mono">{orDash(stats.goals)}</span>
                  </div>
                  <div className="flex items-center justify-between">
                    <span className="text-white/60 text-sm">Assists</span>
                    <div className="flex-1 mx-3 h-2 bg-white/10 rounded-full overflow-hidden">
-                     <div className="h-full bg-blue-500" style={{ width: `${Math.min(stats.assists * 10, 100)}%` }}></div>
+                     <div className="h-full bg-blue-500" style={{ width: `${Math.min((stats.assists ?? 0) * 10, 100)}%` }}></div>
                    </div>
-                   <span className="text-white font-bold font-mono">{stats.assists}</span>
+                   <span className="text-white font-bold font-mono">{orDash(stats.assists)}</span>
                  </div>
               </div>
             </div>

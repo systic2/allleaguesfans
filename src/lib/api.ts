@@ -80,8 +80,13 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
 }
 
 export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: string; current_season?: string; };
-// teams_v2.id 는 텍스트('hist_…' 포함)라 문자열로 둔다
-export type TeamStanding = { team_id: string; team_name: string; short_name: string | null; crest_url: string | null; rank: number; points: number; played: number; win: number; draw: number; lose: number; goals_for: number; goals_against: number; goals_diff: number; form: string | null; };
+// teams_v2.id 는 텍스트('hist_…' 포함)라 문자열로 둔다. 기록 값이 null 이면 수집되지 않은 값(과거 우승팀 행 등)
+export type TeamStanding = { team_id: string; team_name: string; short_name: string | null; crest_url: string | null; rank: number; points: number | null; played: number | null; win: number | null; draw: number | null; lose: number | null; goals_for: number | null; goals_against: number | null; goals_diff: number | null; form: string | null; };
+
+// DB 의 NULL(수집 안 됨)은 0 으로 바꾸지 않고 null 로 둔다
+function toCount(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
+}
 
 // TheSportsDB 리그 ID → 화면 주소(slug)
 const LEAGUE_SLUGS: Record<string, string> = {
@@ -182,7 +187,7 @@ export async function fetchLeagueStandings(leagueSlug: string, season: string = 
   const fallbackForm = await computeFormFallback(theSportsDBLeagueId, normalized, teamIdsMissingForm);
 
   return rows.map((standing) => ({
-    team_id: String(standing.teamId ?? ''), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form || fallbackForm.get(String(standing.teamId)) || null,
+    team_id: String(standing.teamId ?? ''), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: toCount(standing.points), played: toCount(standing.gamesPlayed), win: toCount(standing.wins), draw: toCount(standing.draws), lose: toCount(standing.losses), goals_for: toCount(standing.goalsFor), goals_against: toCount(standing.goalsAgainst), goals_diff: toCount(standing.goalDifference), form: standing.form || fallbackForm.get(String(standing.teamId)) || null,
   }));
 }
 
@@ -212,22 +217,23 @@ export async function fetchLeagueStats(leagueId: number, season: string = DEFAUL
   return { total_goals: totalGoals, total_matches: totalMatches > 0 ? totalMatches : Math.round(avgMatchesPerTeam * totalTeams / 2), avg_goals_per_match: totalMatches > 0 ? Number((totalGoals / totalMatches).toFixed(2)) : avgMatchesPerTeam > 0 ? Number((totalGoals / (avgMatchesPerTeam * totalTeams / 2)).toFixed(2)) : 0, total_teams: totalTeams };
 }
 
-export type TopScorer = { player_name: string; team_id: string; team_name: string; goals: number; assists: number; matches: number; };
-export type TopAssist = { player_name: string; team_id: string; team_name: string; assists: number; goals: number; matches: number; };
+// 순위 기준 값(득점·도움)은 뷰가 0 보다 큰 행만 주므로 항상 숫자, 나머지 값은 수집되지 않으면 null
+export type TopScorer = { player_name: string; team_id: string; team_name: string; goals: number; assists: number | null; matches: number | null; };
+export type TopAssist = { player_name: string; team_id: string; team_name: string; assists: number; goals: number | null; matches: number | null; };
 export type HistoricalChampion = { season_year: number; champion_team_id: string; champion_name: string; champion_logo: string | null; };
 
 export async function fetchTopScorers(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopScorer[]> {
   const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const stats = await fetchTopScorersStats(theSportsDBLeagueId, normalized, limit);
-  return stats.map(stat => ({ player_name: stat.strPlayer, team_id: String(stat.idTeam ?? ''), team_name: stat.strTeam || '', goals: stat.goals || 0, assists: stat.assists || 0, matches: stat.appearances || 0 }));
+  return stats.map(stat => ({ player_name: stat.strPlayer, team_id: String(stat.idTeam ?? ''), team_name: stat.strTeam || '', goals: stat.goals ?? 0, assists: stat.assists ?? null, matches: stat.appearances ?? null }));
 }
 
 export async function fetchTopAssists(leagueId: number, season: string = DEFAULT_SEASON, limit: number = 10): Promise<TopAssist[]> {
   const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
   const normalized = normalizeSeason(season);
   const stats = await fetchTopAssistersStats(theSportsDBLeagueId, normalized, limit);
-  return stats.map(stat => ({ player_name: stat.strPlayer, team_id: String(stat.idTeam ?? ''), team_name: stat.strTeam || '', assists: stat.assists || 0, goals: stat.goals || 0, matches: stat.appearances || 0 }));
+  return stats.map(stat => ({ player_name: stat.strPlayer, team_id: String(stat.idTeam ?? ''), team_name: stat.strTeam || '', assists: stat.assists ?? 0, goals: stat.goals ?? null, matches: stat.appearances ?? null }));
 }
 
 export async function fetchHistoricalChampions(leagueId: number, currentSeason?: string): Promise<HistoricalChampion[]> {
@@ -394,7 +400,7 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   return rows;
 }
 
-export interface TeamPlayer { idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null; goals?: number; assists?: number; appearances?: number; yellow_cards?: number; red_cards?: number; }
+export interface TeamPlayer { idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null; goals: number | null; assists: number | null; appearances: number | null; yellow_cards: number | null; red_cards: number | null; }
 
 export async function fetchPlayersByTeam(teamId: string, season: string = DEFAULT_SEASON): Promise<TeamPlayer[]> {
   const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
@@ -406,8 +412,9 @@ export async function fetchPlayersByTeam(teamId: string, season: string = DEFAUL
   const playerStatsMap = new Map<string, Partial<PlayerStatistics>>();
   if (statsData) { statsData.forEach(stat => { playerStatsMap.set(stat.idPlayer, stat); }); }
   return playersData.map(player => {
+    // K리그는 득점·도움 상위 선수만 기록이 있어, 기록 행이 없는 선수는 0 이 아니라 null(미제공)
     const stats = playerStatsMap.get(player.idPlayer) || {};
-    return { ...player, goals: stats.goals ?? 0, assists: stats.assists ?? 0, appearances: stats.appearances ?? 0, yellow_cards: stats.yellow_cards ?? 0, red_cards: stats.red_cards ?? 0, };
+    return { ...player, goals: stats.goals ?? null, assists: stats.assists ?? null, appearances: stats.appearances ?? null, yellow_cards: stats.yellow_cards ?? null, red_cards: stats.red_cards ?? null, };
   });
 }
 
@@ -419,8 +426,8 @@ export async function fetchTeamPlayers(idTeam: string): Promise<TeamPlayer[]> {
 export type PlayerDetail = {
   id: string; name: string; teamName: string; teamId: string; position: string; jerseyNumber: string; photoUrl: string | null;
   nationality: string; height: string; weight: string; age: number | null; birthDate: string;
-  // 가장 최근 시즌의 player_statistics 행. 기록이 없으면 null
-  stats: { season: string; appearances: number; minutesPlayed: number; goals: number; assists: number; yellowCards: number; redCards: number; penaltiesScored: number; penaltiesMissed: number; ownGoals: number; } | null;
+  // 가장 최근 시즌의 player_statistics 행. 기록이 없으면 null. 항목별 null 은 수집하지 않는 값
+  stats: { season: string; appearances: number | null; minutesPlayed: number | null; goals: number | null; assists: number | null; yellowCards: number | null; redCards: number | null; penaltiesScored: number | null; penaltiesMissed: number | null; ownGoals: number | null; } | null;
 };
 
 function calculateAge(birthDate?: string): number | null {
@@ -445,7 +452,7 @@ export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail 
   return {
     id: player.idPlayer, name: player.strPlayer, teamName: player.strTeam, teamId: player.idTeam, position: player.strPosition || '-', jerseyNumber: player.strNumber || '-', photoUrl: player.strThumb || null,
     nationality: player.strNationality || '-', height: player.strHeight || '-', weight: player.strWeight || '-', age: calculateAge(player.dateBorn), birthDate: player.dateBorn || '-',
-    stats: stats ? { season: String(stats.strSeason), appearances: stats.appearances || 0, minutesPlayed: stats.minutes_played || 0, goals: stats.goals || 0, assists: stats.assists || 0, yellowCards: stats.yellow_cards || 0, redCards: stats.red_cards || 0, penaltiesScored: stats.penalties_scored || 0, penaltiesMissed: stats.penalties_missed || 0, ownGoals: stats.own_goals || 0 } : null,
+    stats: stats ? { season: String(stats.strSeason), appearances: toCount(stats.appearances), minutesPlayed: toCount(stats.minutes_played), goals: toCount(stats.goals), assists: toCount(stats.assists), yellowCards: toCount(stats.yellow_cards), redCards: toCount(stats.red_cards), penaltiesScored: toCount(stats.penalties_scored), penaltiesMissed: toCount(stats.penalties_missed), ownGoals: toCount(stats.own_goals) } : null,
   };
 }
 
@@ -508,7 +515,7 @@ export async function fetchNearbyStandings(leagueId: string, season: string, tea
   const start = teamIndex === -1 ? 0 : Math.max(0, teamIndex - windowSize);
   const end = teamIndex === -1 ? rows.length : teamIndex + windowSize + 1;
   return rows.slice(start, end).map((standing) => ({
-    team_id: String(standing.teamId ?? ''), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: Number(standing.points || 0), played: Number(standing.gamesPlayed || 0), win: Number(standing.wins || 0), draw: Number(standing.draws || 0), lose: Number(standing.losses || 0), goals_for: Number(standing.goalsFor || 0), goals_against: Number(standing.goalsAgainst || 0), goals_diff: Number(standing.goalDifference || 0), form: standing.form || null,
+    team_id: String(standing.teamId ?? ''), team_name: String(standing.teamName || "Unknown"), short_name: null, crest_url: standing.teamBadgeUrl, rank: Number(standing.rank || 0), points: toCount(standing.points), played: toCount(standing.gamesPlayed), win: toCount(standing.wins), draw: toCount(standing.draws), lose: toCount(standing.losses), goals_for: toCount(standing.goalsFor), goals_against: toCount(standing.goalsAgainst), goals_diff: toCount(standing.goalDifference), form: standing.form || null,
   }));
 }
 
@@ -607,11 +614,11 @@ export async function fetchTeamStandingsData(idLeague: string, season: string, t
   if (error) { console.error('Error fetching team standings from standings_v2:', error); return null; }
   if (!data) return null;
   return {
-    leagueId: data.leagueId, teamId: data.teamId, season: data.season, rank: Number(data.rank || 0), teamName: data.teamName || "Unknown", teamBadgeUrl: data.teamBadgeUrl, gamesPlayed: Number(data.gamesPlayed || 0), wins: Number(data.wins || 0), draws: Number(data.draws || 0), losses: Number(data.losses || 0), points: Number(data.points || 0), goalsFor: Number(data.goalsFor || 0), goalsAgainst: Number(data.goalsAgainst || 0), goalDifference: Number(data.goalDifference || 0), form: data.form, description: data.description, lastUpdated: data.lastUpdated || new Date().toISOString(),
+    leagueId: data.leagueId, teamId: data.teamId, season: data.season, rank: Number(data.rank || 0), teamName: data.teamName || "Unknown", teamBadgeUrl: data.teamBadgeUrl, gamesPlayed: toCount(data.gamesPlayed), wins: toCount(data.wins), draws: toCount(data.draws), losses: toCount(data.losses), points: toCount(data.points), goalsFor: toCount(data.goalsFor), goalsAgainst: toCount(data.goalsAgainst), goalDifference: toCount(data.goalDifference), form: data.form, description: data.description, lastUpdated: data.lastUpdated ?? null,
   };
 }
 
-export interface PlayerStatistics { idPlayer: string; strPlayer: string; idTeam: string; strTeam: string; idLeague: string; strSeason: string; goals: number; assists: number; yellow_cards: number; red_cards: number; appearances: number; own_goals: number; penalties_scored: number; goals_per_game?: number; assists_per_game?: number; }
+export interface PlayerStatistics { idPlayer: string; strPlayer: string; idTeam: string; strTeam: string; idLeague: string; strSeason: string; goals: number | null; assists: number | null; yellow_cards: number | null; red_cards: number | null; appearances: number | null; own_goals: number | null; penalties_scored: number | null; goals_per_game?: number | null; assists_per_game?: number | null; }
 
 export async function fetchTopScorersStats(idLeague: string, season: string, limit: number = 10): Promise<PlayerStatistics[]> {
   const normalized = normalizeSeason(season);
