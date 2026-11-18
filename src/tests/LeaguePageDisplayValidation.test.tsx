@@ -78,7 +78,7 @@ describe('LeaguePage Display Validation', () => {
     renderLeaguePage('league-nonexistent');
 
     // Should show error state for non-existent league
-    const errorMessage = await screen.findByText('League not found.');
+    const errorMessage = await screen.findByRole('heading', { name: '리그를 찾을 수 없습니다.' });
     expect(errorMessage).toBeInTheDocument();
   });
 });

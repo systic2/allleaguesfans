@@ -41,10 +41,6 @@ vi.mock('@/components/TeamRoster', () => ({
   default: () => <div data-testid="team-roster" />,
 }));
 
-vi.mock('@/components/FMSubNav', () => ({
-  default: () => <nav data-testid="fm-sub-nav" />,
-}));
-
 vi.mock('@/app/components/CrestImg', () => ({
   default: () => <span data-testid="crest-img" />,
 }));
@@ -419,6 +415,7 @@ describe('TeamPageDB', () => {
     renderTeamPage();
 
     expect(await screen.findByText('팀을 찾을 수 없습니다.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '홈으로' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '리그 목록' })).toHaveAttribute('href', '/leagues');
   });
 });

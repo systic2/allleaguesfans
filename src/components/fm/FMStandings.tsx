@@ -36,7 +36,7 @@ export default function FMStandings({ standings }: { standings: TeamStanding[] }
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs text-gray-300 min-w-[600px]">
-        <thead className="bg-[#232323] text-gray-400 sticky top-0 font-bold uppercase tracking-wider">
+        <thead className="bg-panel text-gray-400 sticky top-0 font-bold uppercase tracking-wider">
           <tr className="text-center">
             <th className="px-2 py-2 text-left whitespace-nowrap w-10">순위</th>
             <th className="px-2 py-2 text-left whitespace-nowrap">구단</th>
@@ -51,9 +51,9 @@ export default function FMStandings({ standings }: { standings: TeamStanding[] }
             <th className="px-2 py-2 text-center whitespace-nowrap w-32">최근 5경기</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#333]">
+        <tbody className="divide-y divide-line">
           {standings.map((team) => (
-            <tr key={team.team_id} className="hover:bg-[#383838] transition-colors h-8">
+            <tr key={team.team_id} className="hover:bg-raised transition-colors h-8">
               <td className={`px-2 py-1 text-center font-mono ${team.rank <= 4 ? 'text-green-400 font-bold' : ''}`}>
                 {team.rank}
               </td>
@@ -74,7 +74,7 @@ export default function FMStandings({ standings }: { standings: TeamStanding[] }
               <td className={`px-1 py-1 text-center ${(team.goals_diff ?? 0) > 0 ? 'text-green-400' : (team.goals_diff ?? 0) < 0 ? 'text-red-400' : ''}`}>
                 {team.goals_diff === null ? '-' : team.goals_diff > 0 ? `+${team.goals_diff}` : team.goals_diff}
               </td>
-              <td className="px-2 py-1 text-center font-bold text-white bg-[#2a2a2a] border-x border-[#333]">
+              <td className="px-2 py-1 text-center font-bold text-white bg-panel border-x border-line">
                 {team.points ?? '-'}
               </td>
               <td className="px-2 py-1">

@@ -50,3 +50,6 @@ src/pages/TeamPageOld.tsx
 supabase/.temp/
 .playwright-mcp/
 .omc/
+
+# Claude Code 개인 설정 (권한 규칙 등). 저장소에 올리지 않는다
+.claude/settings.local.json

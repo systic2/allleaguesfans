@@ -9,10 +9,10 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#232323] overflow-hidden">
+    <div className="flex flex-col h-full bg-panel overflow-hidden">
       <div className="overflow-y-auto h-full custom-scrollbar">
         <table className="w-full text-xs text-gray-300">
-          <tbody className="divide-y divide-[#333]">
+          <tbody className="divide-y divide-line">
             {fixtures.map((match) => {
               const date = new Date(match.date);
               const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
@@ -23,15 +23,15 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
               const isPostponed = ['POSTPONED', 'SUSP', 'INT'].includes(match.status);
 
               return (
-                <tr key={match.id} className="hover:bg-[#383838] transition-colors">
-                  <td className="px-2 py-2 text-gray-500 whitespace-nowrap w-20 text-right pr-4 border-r border-[#333]">
+                <tr key={match.id} className="hover:bg-raised transition-colors">
+                  <td className="px-2 py-2 text-gray-500 whitespace-nowrap w-20 text-right pr-4 border-r border-line">
                     <div>{dateStr}</div>
                     <div className="text-xs opacity-70">{timeStr}</div>
                   </td>
                   <td className="px-3 py-2 w-full">
                     <div className="flex items-center justify-between">
                       {/* Home Team */}
-                      <Link to={`/teams/${match.homeTeamId}`} className="flex-1 flex items-center justify-end gap-2 text-right hover:text-white group">
+                      <Link to={`/teams/${match.homeTeamId}`} className="flex-1 min-w-0 flex items-center justify-end gap-2 text-right hover:text-white group">
                         <span className="truncate">{teamName(match.homeTeamId, match.homeTeam?.name || `Team ${match.homeTeamId}`)}</span>
                         {match.homeTeam?.badgeUrl && (
                           <img src={match.homeTeam.badgeUrl} alt="" className="w-5 h-5 object-contain opacity-80 group-hover:opacity-100" />
@@ -45,7 +45,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                         className={`px-2 text-center min-w-[60px] font-bold mx-3 py-1 rounded border hover:brightness-125 transition-[filter] ${
                           isLive
                             ? 'bg-red-900/30 text-red-400 border-red-800 animate-pulse'
-                            : 'bg-[#1a1a1a] text-white border-[#333]'
+                            : 'bg-sunken text-white border-line'
                         }`}
                       >
                         {(isFinished || isLive) && match.homeScore != null && match.awayScore != null ? (
@@ -60,7 +60,7 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
                       </Link>
 
                       {/* Away Team */}
-                      <Link to={`/teams/${match.awayTeamId}`} className="flex-1 flex items-center justify-start gap-2 text-left hover:text-white group">
+                      <Link to={`/teams/${match.awayTeamId}`} className="flex-1 min-w-0 flex items-center justify-start gap-2 text-left hover:text-white group">
                         {match.awayTeam?.badgeUrl && (
                           <img src={match.awayTeam.badgeUrl} alt="" className="w-5 h-5 object-contain opacity-80 group-hover:opacity-100" />
                         )}

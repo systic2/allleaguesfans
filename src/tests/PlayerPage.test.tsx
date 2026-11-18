@@ -10,10 +10,6 @@ vi.mock('@/lib/api', () => ({
   fetchTeamKoreanNames: vi.fn(),
 }));
 
-vi.mock('@/components/FMSubNav', () => ({
-  default: () => <nav data-testid="fm-sub-nav" />,
-}));
-
 vi.mock('@/app/components/CrestImg', () => ({
   default: ({ alt }: { alt: string }) => <span data-testid="crest-img">{alt}</span>,
 }));
@@ -71,6 +67,14 @@ describe('PlayerPage', () => {
     mockFetchTeamKoreanNames.mockResolvedValue({});
   });
 
+  it('shows a loading message while the player request is pending', () => {
+    mockFetchPlayerDetail.mockImplementation(() => new Promise(() => {}));
+
+    renderPlayerPage();
+
+    expect(screen.getByText('로딩중…')).toBeInTheDocument();
+  });
+
   it('shows real season statistics without fabricated player details', async () => {
     mockFetchPlayerDetail.mockResolvedValue(player);
 
@@ -101,6 +105,16 @@ describe('PlayerPage', () => {
     renderPlayerPage();
 
     expect(await screen.findByText('아직 이 선수의 시즌 기록이 없습니다.')).toBeInTheDocument();
+  });
+
+  it('shows the shared not-found links when the player does not exist', async () => {
+    mockFetchPlayerDetail.mockResolvedValue(null);
+
+    renderPlayerPage();
+
+    expect(await screen.findByRole('heading', { name: '선수를 찾을 수 없습니다.' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '리그 목록' })).toHaveAttribute('href', '/leagues');
   });
 
   it('renders nullable statistics as dashes while preserving genuine zeroes', async () => {

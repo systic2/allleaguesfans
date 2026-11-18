@@ -91,6 +91,9 @@ describe('API Functions', () => {
       
       const k1 = result.find(l => l.name === 'K League 1');
       expect(k1?.slug).toBe('k-league-1');
+      expect(k1?.name_korean).toBe('K리그1');
+      expect(epl?.name_korean).toBe('프리미어리그');
+      expect(laLiga?.name_korean).toBe('라리가');
 
       expect(supabase.from).toHaveBeenCalledWith('leagues');
     });
@@ -141,6 +144,7 @@ describe('API Functions', () => {
 
       expect(leagueChain.eq).toHaveBeenCalledWith('idLeague', '4328');
       expect(result?.slug).toBe('premier-league');
+      expect(result?.name_korean).toBe('프리미어리그');
     });
   });
 

@@ -1,0 +1,31 @@
+// src/lib/leagues.ts
+// 지원 리그의 주소(slug)·한글 이름·표시 순서. DB 조회가 없는 순수 상수라 api.ts 와 분리한다.
+
+// TheSportsDB 리그 ID → 화면 주소(slug)
+export const LEAGUE_SLUGS: Record<string, string> = {
+  '4689': 'k-league-1', '4822': 'k-league-2', '4328': 'premier-league', '4335': 'la-liga',
+  '4332': 'serie-a', '4331': 'bundesliga', '4334': 'ligue-1',
+};
+
+export function leagueSlugFor(idLeague: string): string {
+  return LEAGUE_SLUGS[idLeague] ?? `league-${idLeague}`;
+}
+
+// 리그 한글 이름. 순서는 메뉴·목록 순서 (K리그 우선)
+const LEAGUE_NAMES_KO: [slug: string, name: string][] = [
+  ['k-league-1', 'K리그1'], ['k-league-2', 'K리그2'], ['premier-league', '프리미어리그'], ['la-liga', '라리가'],
+  ['serie-a', '세리에 A'], ['bundesliga', '분데스리가'], ['ligue-1', '리그 1'],
+];
+
+export function leagueNameKo(slug: string): string | null {
+  return LEAGUE_NAMES_KO.find(([s]) => s === slug)?.[1] ?? null;
+}
+
+// 목록에 없는 리그는 뒤로 보낸다
+export function compareLeagueSlugs(a: string, b: string): number {
+  const rank = (slug: string) => {
+    const i = LEAGUE_NAMES_KO.findIndex(([s]) => s === slug);
+    return i === -1 ? LEAGUE_NAMES_KO.length : i;
+  };
+  return rank(a) - rank(b);
+}

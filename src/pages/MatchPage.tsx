@@ -4,6 +4,7 @@ import { Calendar, ChevronLeft, MapPin, Trophy } from "lucide-react";
 import { fetchMatchDetails, type MatchDetails } from "@/lib/thesportsdb-api";
 import { fetchNearbyStandings, type TeamStanding } from "@/lib/api";
 import CrestImg from "@/app/components/CrestImg";
+import NotFound from "@/app/components/NotFound";
 import { useTeamName } from "@/hooks/useTeamName";
 
 const FINISHED_STATUSES = ['FINISHED', 'FT', 'AET', 'PEN'];
@@ -69,16 +70,7 @@ export default function MatchPage() {
 
   if (isLoading) return <LoadingSpinner />;
 
-  if (error || !match) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-white">
-        <h2 className="text-2xl font-bold mb-4">경기를 찾을 수 없습니다.</h2>
-        <button onClick={() => navigate(-1)} className="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700 transition-colors">
-          뒤로 가기
-        </button>
-      </div>
-    );
-  }
+  if (error || !match) return <NotFound message="경기를 찾을 수 없습니다." />;
 
   const isFinished = FINISHED_STATUSES.includes(match.status);
   const isLive = LIVE_STATUSES.includes(match.status);

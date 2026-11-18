@@ -178,8 +178,8 @@ function FixtureCard({ fixture }: FixtureCardProps) {
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 flex-1">
-          <Link to={`/teams/${homeTeam?.id || fixture.homeTeamId}`} className="flex items-center space-x-2 group">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <Link to={`/teams/${homeTeam?.id || fixture.homeTeamId}`} className="flex items-center space-x-2 group min-w-0">
             {homeTeam?.badgeUrl && (
               <img 
                 src={homeTeam.badgeUrl} 
@@ -187,7 +187,7 @@ function FixtureCard({ fixture }: FixtureCardProps) {
                 className="w-6 h-6 object-contain"
               />
             )}
-            <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
+            <span className="font-medium text-white group-hover:text-blue-400 transition-colors truncate">
               {teamName(fixture.homeTeamId, homeTeam?.name || `Team ${fixture.homeTeamId}`)}
             </span>
           </Link>
@@ -205,9 +205,9 @@ function FixtureCard({ fixture }: FixtureCardProps) {
           )}
         </div>
         
-        <div className="flex items-center space-x-3 flex-1 justify-end">
-          <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group">
-            <span className="font-medium text-white group-hover:text-blue-400 transition-colors">
+        <div className="flex items-center space-x-3 flex-1 min-w-0 justify-end">
+          <Link to={`/teams/${awayTeam?.id || fixture.awayTeamId}`} className="flex items-center space-x-2 group min-w-0">
+            <span className="font-medium text-white group-hover:text-blue-400 transition-colors truncate">
               {teamName(fixture.awayTeamId, awayTeam?.name || `Team ${fixture.awayTeamId}`)}
             </span>
             {awayTeam?.badgeUrl && (

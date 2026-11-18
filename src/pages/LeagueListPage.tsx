@@ -1,6 +1,7 @@
 // src/pages/LeagueListPage.tsx
 import { useQuery } from "@tanstack/react-query";
 import { fetchLeagues, type LeagueLite } from "@/lib/api";
+import { compareLeagueSlugs } from "@/lib/leagues";
 import { Link } from "react-router-dom";
 import UpcomingFixtures from "@/components/UpcomingFixtures";
 
@@ -75,11 +76,11 @@ function LeagueCard({ league }: { league: LeagueLite }) {
             
             <div className="flex-1 min-w-0"> {/* Ensure flex-1 gives it space, min-w-0 allows shrinking */}
               <h3 className="text-white text-xl font-bold group-hover:text-blue-400 transition-colors leading-tight mb-1 truncate">
-                {league.name}
+                {league.name_korean ?? league.name}
               </h3>
               {league.name_korean && league.name_korean !== league.name && (
                 <p className="text-slate-300 text-sm truncate">
-                  {league.name_korean}
+                  {league.name}
                 </p>
               )}
               <div className="flex items-center space-x-3 mt-3 text-slate-400 text-sm flex-wrap gap-y-1">
@@ -131,16 +132,14 @@ export default function LeagueListPage() {
     return <ErrorState message="리그 목록을 불러오지 못했습니다." />;
   }
 
-  const leagues = (data ?? []).sort((a, b) =>
-    a.name.localeCompare(b.name, "en")
-  );
+  const leagues = [...(data ?? [])].sort((a, b) => compareLeagueSlugs(a.slug, b.slug));
 
   return (
     <div className="p-6 bg-slate-900 min-h-screen">
       <div className="max-w-6xl mx-auto">
         {/* 헤더 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">All Competitions</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">전체 리그</h1>
           <p className="text-slate-400">
             전 세계 다양한 축구 리그의 순위와 일정을 확인하세요.
           </p>
@@ -168,7 +167,7 @@ export default function LeagueListPage() {
         {/* 예정된 경기 */}
         <div className="mt-8">
           <UpcomingFixtures
-            title="🗓️ Upcoming Matches"
+            title="다가오는 경기"
             limit={20}
             className="bg-slate-800"
           />
