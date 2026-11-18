@@ -165,4 +165,57 @@ describe('fetchLeagueStandings form fallback', () => {
 
     expect(result.form).toBeNull();
   });
+
+  it('preserves DB null statistics separately from genuine zero values', async () => {
+    const unavailable = {
+      ...standing(20, 'W'),
+      rank: null,
+      points: null,
+      gamesPlayed: null,
+      wins: null,
+      draws: null,
+      losses: null,
+      goalsFor: null,
+      goalsAgainst: null,
+      goalDifference: null,
+    };
+    const zero = {
+      ...standing(21, 'D'),
+      rank: 0,
+      points: 0,
+      gamesPlayed: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDifference: 0,
+    };
+    (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain([unavailable, zero]));
+
+    const result = await fetchLeagueStandings('k-league-2', '2025');
+
+    expect(result[0]).toMatchObject({
+      rank: 0,
+      points: null,
+      played: null,
+      win: null,
+      draw: null,
+      lose: null,
+      goals_for: null,
+      goals_against: null,
+      goals_diff: null,
+    });
+    expect(result[1]).toMatchObject({
+      rank: 0,
+      points: 0,
+      played: 0,
+      win: 0,
+      draw: 0,
+      lose: 0,
+      goals_for: 0,
+      goals_against: 0,
+      goals_diff: 0,
+    });
+  });
 });

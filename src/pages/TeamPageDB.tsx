@@ -165,10 +165,10 @@ export default function TeamPageDB() {
           {standingsData && (
             <div className="text-right hidden sm:block">
               <div className="text-3xl font-bold text-white leading-none">
-                {standingsData.points}<span className="text-sm font-normal text-white/50 ml-1">pts</span>
+                {standingsData.points ?? '-'}<span className="text-sm font-normal text-white/50 ml-1">pts</span>
               </div>
               <div className="text-white/50 text-xs mt-1">
-                {standingsData.wins}승 {standingsData.draws}무 {standingsData.losses}패
+                {standingsData.wins ?? '-'}승 {standingsData.draws ?? '-'}무 {standingsData.losses ?? '-'}패
               </div>
             </div>
           )}
@@ -319,7 +319,7 @@ export default function TeamPageDB() {
                     <span className="font-bold text-sm truncate w-full text-white">{player.strPlayer}</span>
                     <span className="text-xs text-white/50 mt-0.5">{player.strPosition}</span>
                     <div className="mt-3 text-[10px] font-mono bg-black/40 px-2 py-1 rounded text-purple-300 w-full">
-                      {player.goals ? `${player.goals} Goals` : 'No Stats'}
+                      {player.goals === null ? 'No Stats' : `${player.goals} Goals`}
                     </div>
                   </div>
                 ))}
@@ -404,7 +404,7 @@ export default function TeamPageDB() {
                           {teamName(row.team_id, row.team_name)}
                         </span>
                       </div>
-                      <span className="text-white/60 font-mono text-xs shrink-0">{row.points}pts</span>
+                      <span className="text-white/60 font-mono text-xs shrink-0">{row.points ?? '-'}pts</span>
                     </div>
                   ))}
                 </div>
@@ -534,19 +534,19 @@ export default function TeamPageDB() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
                   <span className="text-white/40 text-xs uppercase font-bold">Games</span>
-                  <div className="text-3xl font-bold mt-1 text-white">{standingsData.gamesPlayed}</div>
+                  <div className="text-3xl font-bold mt-1 text-white">{standingsData.gamesPlayed ?? '-'}</div>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
                   <span className="text-white/40 text-xs uppercase font-bold">Wins</span>
-                  <div className="text-3xl font-bold mt-1 text-green-400">{standingsData.wins}</div>
+                  <div className="text-3xl font-bold mt-1 text-green-400">{standingsData.wins ?? '-'}</div>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
                   <span className="text-white/40 text-xs uppercase font-bold">Goals</span>
-                  <div className="text-3xl font-bold mt-1 text-blue-400">{standingsData.goalsFor}</div>
+                  <div className="text-3xl font-bold mt-1 text-blue-400">{standingsData.goalsFor ?? '-'}</div>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
                   <span className="text-white/40 text-xs uppercase font-bold">Diff</span>
-                  <div className="text-3xl font-bold mt-1 text-purple-400">{standingsData.goalDifference}</div>
+                  <div className="text-3xl font-bold mt-1 text-purple-400">{standingsData.goalDifference ?? '-'}</div>
                 </div>
               </div>
               

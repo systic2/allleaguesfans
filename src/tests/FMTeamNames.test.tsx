@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -54,6 +54,32 @@ describe('FM team-name displays', () => {
 
     expect(await screen.findByText('울산 HD')).toBeInTheDocument();
     expect(screen.queryByText('Ulsan HD FC')).not.toBeInTheDocument();
+  });
+
+  it('FMStandings renders null statistics as dashes and genuine zeroes as zeroes', async () => {
+    const standings: TeamStanding[] = [
+      {
+        team_id: 'null-team', team_name: 'Null FC', short_name: null, crest_url: null, rank: 1,
+        points: null, played: null, win: null, draw: null, lose: null,
+        goals_for: null, goals_against: null, goals_diff: null, form: null,
+      },
+      {
+        team_id: 'zero-team', team_name: 'Zero FC', short_name: null, crest_url: null, rank: 2,
+        points: 0, played: 0, win: 0, draw: 0, lose: 0,
+        goals_for: 0, goals_against: 0, goals_diff: 0, form: null,
+      },
+    ];
+
+    render(<FMStandings standings={standings} />, { wrapper: TestProviders });
+
+    const nullRow = (await screen.findByRole('link', { name: 'Null FC' })).closest('tr')!;
+    const zeroRow = screen.getByRole('link', { name: 'Zero FC' }).closest('tr')!;
+    expect(within(nullRow).getAllByRole('cell').slice(2, 10).map(cell => cell.textContent)).toEqual(
+      Array(8).fill('-'),
+    );
+    expect(within(zeroRow).getAllByRole('cell').slice(2, 10).map(cell => cell.textContent)).toEqual(
+      Array(8).fill('0'),
+    );
   });
 
   it('FMHistory renders the Korean name matching champion_team_id', async () => {

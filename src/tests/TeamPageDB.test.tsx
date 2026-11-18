@@ -17,6 +17,7 @@ import {
   type MatchWithTeams,
 } from '@/lib/thesportsdb-api';
 import TeamPageDB from '@/pages/TeamPageDB';
+import type { Standing } from '@/types/domain';
 
 vi.mock('@/lib/api', () => ({
   fetchNearbyStandings: vi.fn(),
@@ -64,6 +65,25 @@ const team: TeamDetails = {
   badgeUrl: null,
   currentLeagueId: '4689',
   currentSeason: '2025',
+};
+
+const standing: Standing = {
+  leagueId: '4689',
+  teamId: 'team-1',
+  season: '2025',
+  rank: 1,
+  teamName: 'Seoul Test FC',
+  teamBadgeUrl: undefined,
+  gamesPlayed: 10,
+  wins: 5,
+  draws: 3,
+  losses: 2,
+  points: 18,
+  goalsFor: 15,
+  goalsAgainst: 9,
+  goalDifference: 6,
+  form: 'WDLDW',
+  lastUpdated: null,
 };
 
 const baseMatch = {
@@ -189,6 +209,60 @@ describe('TeamPageDB', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: '서울 테스트 FC' })).toBeInTheDocument();
     expect(screen.getByText('Seoul Test FC')).toBeInTheDocument();
+  });
+
+  it('distinguishes unavailable and zero values in the standings summary and player cards', async () => {
+    mockFetchTeamDetails.mockResolvedValue(team);
+    mockFetchTeamStandingsData.mockResolvedValue({
+      ...standing,
+      points: null,
+      wins: 0,
+      draws: null,
+      losses: 0,
+    });
+    mockFetchPlayersByTeam.mockResolvedValue([
+      {
+        idPlayer: 'null-player', strPlayer: 'Unknown Stats', strTeam: team.name, idTeam: team.id,
+        strPosition: 'FW', strNumber: '9', goals: null, assists: null, appearances: null,
+        yellow_cards: null, red_cards: null,
+      },
+      {
+        idPlayer: 'zero-player', strPlayer: 'Zero Stats', strTeam: team.name, idTeam: team.id,
+        strPosition: 'MF', strNumber: '8', goals: 0, assists: 0, appearances: 0,
+        yellow_cards: 0, red_cards: 0,
+      },
+    ]);
+
+    renderTeamPage();
+
+    await screen.findByRole('heading', { level: 1, name: '서울 테스트 FC' });
+    await screen.findByText('No Stats');
+    expect(document.body).toHaveTextContent('-pts');
+    expect(document.body).toHaveTextContent('0승 -무 0패');
+    expect(screen.getByText('0 Goals')).toBeInTheDocument();
+  });
+
+  it('renders null as a dash and zero as zero in the Stats tab', async () => {
+    mockFetchTeamDetails.mockResolvedValue(team);
+    mockFetchTeamStandingsData.mockResolvedValue({
+      ...standing,
+      gamesPlayed: null,
+      wins: 0,
+      goalsFor: null,
+      goalDifference: 0,
+    });
+
+    renderTeamPage('/teams/team-1?tab=stats');
+
+    await screen.findByText('Season Statistics');
+    const expectValue = (label: string, value: string) => {
+      const labelNode = screen.getByText(label);
+      expect(within(labelNode.parentElement!).getByText(value)).toBeInTheDocument();
+    };
+    expectValue('Games', '-');
+    expectValue('Wins', '0');
+    expectValue('Goals', '-');
+    expectValue('Diff', '0');
   });
 
   it('uses the English name as the header when nameKorean is null', async () => {

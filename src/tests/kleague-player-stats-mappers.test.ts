@@ -125,6 +125,39 @@ describe('mergeRankings', () => {
     ]);
   });
 
+  it('keeps nullable ranking fields null only when neither list supplies a value', () => {
+    const goalRanking = rankRow({
+      gameQty: null,
+      warnQty: null,
+      exitQty: null,
+    });
+    const assistRanking = rankRow({
+      gameQty: 0,
+      warnQty: 2,
+      exitQty: null,
+    });
+
+    const [result] = mergeRankings([[goalRanking], [assistRanking]], 'league-1', '2026');
+
+    expect(result).toMatchObject({
+      appearances: 0,
+      yellow_cards: 2,
+      red_cards: null,
+    });
+  });
+
+  it('maps nullable ranking fields to null for a player seen in only one list', () => {
+    const [result] = mergeRankings([[
+      rankRow({ gameQty: null, warnQty: null, exitQty: null }),
+    ]], 'league-1', '2026');
+
+    expect(result).toMatchObject({
+      appearances: null,
+      yellow_cards: null,
+      red_cards: null,
+    });
+  });
+
   it('throws for an unmapped team code', () => {
     expect(() => mergeRankings([[rankRow({ teamId: 'UNKNOWN' })]], 'league-1', '2026')).toThrow(
       /Unmapped K League team code UNKNOWN/,

@@ -134,7 +134,7 @@ export default function MatchPage() {
             {teamName(match.homeTeamId, match.homeTeam?.name || `Team ${match.homeTeamId}`)}
           </span>
           {homeRank && (
-            <span className="text-xs text-white/40">{homeRank.rank}위 · {homeRank.points}점</span>
+            <span className="text-xs text-white/40">{homeRank.rank}위 · {homeRank.points ?? '-'}점</span>
           )}
         </Link>
 
@@ -159,7 +159,7 @@ export default function MatchPage() {
             {teamName(match.awayTeamId, match.awayTeam?.name || `Team ${match.awayTeamId}`)}
           </span>
           {awayRank && (
-            <span className="text-xs text-white/40">{awayRank.rank}위 · {awayRank.points}점</span>
+            <span className="text-xs text-white/40">{awayRank.rank}위 · {awayRank.points ?? '-'}점</span>
           )}
         </Link>
       </div>

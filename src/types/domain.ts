@@ -48,20 +48,21 @@ export interface Standing {
   teamName: string; // Denormalized for convenience
   teamBadgeUrl?: string; // Denormalized for convenience
   
-  gamesPlayed: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  
-  points: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-  
+  // null = 수집되지 않은 값 (0 과 구분)
+  gamesPlayed: number | null;
+  wins: number | null;
+  draws: number | null;
+  losses: number | null;
+
+  points: number | null;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+  goalDifference: number | null;
+
   form?: string; // e.g., "WWL-D"
   description?: string;
-  
-  lastUpdated: string; // ISO 8601 date string
+
+  lastUpdated: string | null; // 원천 갱신 시각 (ISO 8601), 없으면 null
 }
 
 /**

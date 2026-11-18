@@ -58,10 +58,18 @@ export interface KLeaguePlayerStatisticsRow {
   strSeason: string;
   goals: number;
   assists: number;
-  appearances: number;
-  yellow_cards: number;
-  red_cards: number;
+  // 응답에 값이 없으면 null (0 으로 채우지 않는다)
+  appearances: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
   last_updated: string;
+}
+
+// 두 순위 목록에 같은 선수가 있으면 큰 값을 쓰되, 양쪽 모두 값이 없으면 null
+function maxKnown(a: number | null | undefined, b: number | null | undefined): number | null {
+  if (a == null) return b ?? null;
+  if (b == null) return a;
+  return Math.max(a, b);
 }
 
 /**
@@ -116,9 +124,9 @@ export function mergeRankings(
       strSeason: season,
       goals: Math.max(previous?.goals ?? 0, row.goalQty ?? 0),
       assists: Math.max(previous?.assists ?? 0, row.assistQty ?? 0),
-      appearances: Math.max(previous?.appearances ?? 0, row.gameQty ?? 0),
-      yellow_cards: Math.max(previous?.yellow_cards ?? 0, row.warnQty ?? 0),
-      red_cards: Math.max(previous?.red_cards ?? 0, row.exitQty ?? 0),
+      appearances: maxKnown(previous?.appearances, row.gameQty),
+      yellow_cards: maxKnown(previous?.yellow_cards, row.warnQty),
+      red_cards: maxKnown(previous?.red_cards, row.exitQty),
       last_updated: now,
     });
   }

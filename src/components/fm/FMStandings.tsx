@@ -65,17 +65,17 @@ export default function FMStandings({ standings }: { standings: TeamStanding[] }
                   <span className="truncate">{teamName(team.team_id, team.team_name)}</span>
                 </Link>
               </td>
-              <td className="px-1 py-1 text-center">{team.played}</td>
-              <td className="px-1 py-1 text-center text-gray-400">{team.win}</td>
-              <td className="px-1 py-1 text-center text-gray-400">{team.draw}</td>
-              <td className="px-1 py-1 text-center text-gray-400">{team.lose}</td>
-              <td className="px-1 py-1 text-center">{team.goals_for}</td>
-              <td className="px-1 py-1 text-center text-gray-400">{team.goals_against}</td>
-              <td className={`px-1 py-1 text-center ${team.goals_diff > 0 ? 'text-green-400' : team.goals_diff < 0 ? 'text-red-400' : ''}`}>
-                {team.goals_diff > 0 ? `+${team.goals_diff}` : team.goals_diff}
+              <td className="px-1 py-1 text-center">{team.played ?? '-'}</td>
+              <td className="px-1 py-1 text-center text-gray-400">{team.win ?? '-'}</td>
+              <td className="px-1 py-1 text-center text-gray-400">{team.draw ?? '-'}</td>
+              <td className="px-1 py-1 text-center text-gray-400">{team.lose ?? '-'}</td>
+              <td className="px-1 py-1 text-center">{team.goals_for ?? '-'}</td>
+              <td className="px-1 py-1 text-center text-gray-400">{team.goals_against ?? '-'}</td>
+              <td className={`px-1 py-1 text-center ${(team.goals_diff ?? 0) > 0 ? 'text-green-400' : (team.goals_diff ?? 0) < 0 ? 'text-red-400' : ''}`}>
+                {team.goals_diff === null ? '-' : team.goals_diff > 0 ? `+${team.goals_diff}` : team.goals_diff}
               </td>
               <td className="px-2 py-1 text-center font-bold text-white bg-[#2a2a2a] border-x border-[#333]">
-                {team.points}
+                {team.points ?? '-'}
               </td>
               <td className="px-2 py-1">
                 <div className="flex justify-center gap-1">

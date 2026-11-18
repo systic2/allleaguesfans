@@ -14,14 +14,14 @@ type StandingRow = {
   teamName: string;
   teamBadgeUrl: string;
   rank: number;
-  points: number;
-  gamesPlayed: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
+  points: number | null;
+  gamesPlayed: number | null;
+  wins: number | null;
+  draws: number | null;
+  losses: number | null;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+  goalDifference: number | null;
   form: string | null;
 };
 
@@ -186,6 +186,56 @@ describe('team profile fetchers', () => {
       const result = await fetchNearbyStandings('4328', '2025', '999', 2);
 
       expect(result.map(({ rank }) => rank)).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('preserves null statistics separately from genuine zero values', async () => {
+      const unavailable = {
+        ...standing(1),
+        points: null,
+        gamesPlayed: null,
+        wins: null,
+        draws: null,
+        losses: null,
+        goalsFor: null,
+        goalsAgainst: null,
+        goalDifference: null,
+      };
+      const zero = {
+        ...standing(2),
+        points: 0,
+        gamesPlayed: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDifference: 0,
+      };
+      const query = createMockSupabaseChain({ data: [unavailable, zero], error: null });
+      (supabase.from as any).mockReturnValueOnce(query);
+
+      const result = await fetchNearbyStandings('4328', '2025', '101');
+
+      expect(result[0]).toMatchObject({
+        points: null,
+        played: null,
+        win: null,
+        draw: null,
+        lose: null,
+        goals_for: null,
+        goals_against: null,
+        goals_diff: null,
+      });
+      expect(result[1]).toMatchObject({
+        points: 0,
+        played: 0,
+        win: 0,
+        draw: 0,
+        lose: 0,
+        goals_for: 0,
+        goals_against: 0,
+        goals_diff: 0,
+      });
     });
   });
 });
