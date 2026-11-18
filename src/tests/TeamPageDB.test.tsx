@@ -34,14 +34,6 @@ vi.mock('@/lib/thesportsdb-api', () => ({
   fetchTeamFixtures: vi.fn(),
 }));
 
-vi.mock('@/components/TeamLineup', () => ({
-  default: () => <div data-testid="team-lineup" />,
-}));
-
-vi.mock('@/components/TeamRoster', () => ({
-  default: () => <div data-testid="team-roster" />,
-}));
-
 vi.mock('@/app/components/CrestImg', () => ({
   default: () => <span data-testid="crest-img" />,
 }));
@@ -224,7 +216,7 @@ describe('TeamPageDB', () => {
     ]);
   });
 
-  it('distinguishes unavailable and zero values in the standings summary and player cards', async () => {
+  it('distinguishes unavailable and zero standings values and lists only real scorers', async () => {
     mockFetchTeamDetails.mockResolvedValue(team);
     mockFetchTeamStandingsData.mockResolvedValue({
       ...standing,
@@ -236,23 +228,60 @@ describe('TeamPageDB', () => {
     mockFetchPlayersByTeam.mockResolvedValue([
       {
         idPlayer: 'null-player', strPlayer: 'Unknown Stats', strTeam: team.name, idTeam: team.id,
-        strPosition: 'FW', strNumber: '9', goals: null, assists: null, appearances: null,
+        strPosition: 'Forward', strNumber: '9', strNationality: null, dateBorn: null, updatedAt: null,
+        goals: null, assists: null, appearances: null,
         yellow_cards: null, red_cards: null,
       },
       {
         idPlayer: 'zero-player', strPlayer: 'Zero Stats', strTeam: team.name, idTeam: team.id,
-        strPosition: 'MF', strNumber: '8', goals: 0, assists: 0, appearances: 0,
+        strPosition: 'Midfielder', strNumber: '8', strNationality: null, dateBorn: null, updatedAt: null,
+        goals: 0, assists: 0, appearances: 0,
         yellow_cards: 0, red_cards: 0,
+      },
+      {
+        idPlayer: 'scorer', strPlayer: 'Real Scorer', strTeam: team.name, idTeam: team.id,
+        strPosition: 'Forward', strNumber: '10', strNationality: 'South Korea', dateBorn: '2000-01-01', updatedAt: null,
+        goals: 2, assists: null, appearances: null, yellow_cards: null, red_cards: null,
       },
     ]);
 
     renderTeamPage();
 
     await screen.findByRole('heading', { level: 1, name: '서울 테스트 FC' });
-    await screen.findByText('No Stats');
-    expect(document.body).toHaveTextContent('-pts');
+    const scorer = await screen.findByRole('link', { name: 'Real Scorer' });
+    expect(scorer).toHaveAttribute('href', '/players/scorer');
+    expect(within(scorer.parentElement!).getByText('2골')).toBeInTheDocument();
+    expect(document.body).toHaveTextContent('-점');
     expect(document.body).toHaveTextContent('0승 -무 0패');
-    expect(screen.getByText('0 Goals')).toBeInTheDocument();
+    expect(screen.queryByText('No Stats')).not.toBeInTheDocument();
+    expect(screen.queryByText('0 Goals')).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('4-2-3-1');
+    expect(document.body).not.toHaveTextContent('Key Players');
+  });
+
+  it('does not list a stale-snapshot player in team scoring', async () => {
+    mockFetchTeamDetails.mockResolvedValue(team);
+    mockFetchPlayersByTeam.mockResolvedValue([
+      {
+        idPlayer: 'current-scorer', strPlayer: 'Current Scorer', strTeam: team.name, idTeam: team.id,
+        strPosition: 'Forward', strNumber: '9', strNationality: null, dateBorn: null,
+        updatedAt: '2026-11-18T12:00:00.000Z', goals: 2, assists: null, appearances: null,
+        yellow_cards: null, red_cards: null,
+      },
+      {
+        idPlayer: 'stale-scorer', strPlayer: 'Stale Scorer', strTeam: team.name, idTeam: team.id,
+        strPosition: 'Forward', strNumber: '10', strNationality: null, dateBorn: null,
+        updatedAt: '2026-11-18T11:58:59.999Z', goals: 99, assists: null, appearances: null,
+        yellow_cards: null, red_cards: null,
+      },
+    ]);
+
+    renderTeamPage();
+
+    const scoringCard = (await screen.findByRole('heading', { level: 3, name: '팀 내 득점' })).parentElement!;
+    expect(await within(scoringCard).findByRole('link', { name: 'Current Scorer' })).toBeInTheDocument();
+    expect(within(scoringCard).queryByRole('link', { name: 'Stale Scorer' })).not.toBeInTheDocument();
+    expect(within(scoringCard).queryByText('99골')).not.toBeInTheDocument();
   });
 
   it('renders null as a dash and zero as zero in the Stats tab', async () => {
@@ -267,15 +296,16 @@ describe('TeamPageDB', () => {
 
     renderTeamPage('/teams/team-1?tab=stats');
 
-    await screen.findByText('Season Statistics');
+    await screen.findByText('시즌 기록');
     const expectValue = (label: string, value: string) => {
       const labelNode = screen.getByText(label);
       expect(within(labelNode.parentElement!).getByText(value)).toBeInTheDocument();
     };
-    expectValue('Games', '-');
-    expectValue('Wins', '0');
-    expectValue('Goals', '-');
-    expectValue('Diff', '0');
+    expectValue('경기', '-');
+    expectValue('승', '0');
+    expectValue('득점', '-');
+    expectValue('득실차', '0');
+    expect(document.body).not.toHaveTextContent('Advanced performance metrics');
   });
 
   it('uses the English name as the header when nameKorean is null', async () => {

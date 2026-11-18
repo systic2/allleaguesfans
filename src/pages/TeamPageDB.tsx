@@ -1,4 +1,4 @@
-import { useSearchParams, useParams, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LayoutDashboard, Users, Calendar, BarChart3, Trophy, MapPin } from "lucide-react";
 import {
@@ -12,11 +12,11 @@ import {
   type TeamPlayer,
   type TeamStanding,
 } from "@/lib/api";
-import { leagueNameKo, leagueSlugFor } from "@/lib/leagues";
+import { leagueNameKo, leagueSlugFor, seasonLabel } from "@/lib/leagues";
 import type { Standing } from "@/types/domain";
 import { MatchWithTeams, fetchTeamFixtures as fetchTeamFixturesTSDB } from "@/lib/thesportsdb-api";
-import TeamLineup from "@/components/TeamLineup";
-import TeamRoster from "@/components/TeamRoster";
+import SquadTable from "@/components/SquadTable";
+import { squadPlayers } from "@/lib/squad";
 import CrestImg from "@/app/components/CrestImg";
 import SubTabs from "@/components/SubTabs";
 import NotFound from "@/app/components/NotFound";
@@ -42,11 +42,7 @@ function leagueLabel(idLeague: string): string {
 
 // Helper Components
 function LoadingSpinner() {
-  return (
-    <div className="flex items-center justify-center h-full min-h-[400px]">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-    </div>
-  );
+  return <div className="p-10 text-center text-ink/70">로딩중…</div>;
 }
 
 function ResultBadge({ result }: { result: FormResult }) {
@@ -129,6 +125,11 @@ export default function TeamPageDB() {
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 
+  const topScorers = squadPlayers(players ?? [])
+    .filter((p) => p.goals !== null && p.goals > 0)
+    .sort((a, b) => b.goals! - a.goals! || a.strPlayer.localeCompare(b.strPlayer, 'ko'))
+    .slice(0, 5);
+
   // --- State Handling ---
   if (teamLoading) return <LoadingSpinner />;
   if (teamError || !teamData) return <NotFound message="팀을 찾을 수 없습니다." />;
@@ -169,7 +170,7 @@ export default function TeamPageDB() {
           {standingsData && (
             <div className="text-right hidden sm:block">
               <div className="text-3xl font-bold text-white leading-none">
-                {standingsData.points ?? '-'}<span className="text-sm font-normal text-white/50 ml-1">pts</span>
+                {standingsData.points ?? '-'}<span className="text-sm font-normal text-white/50 ml-1">점</span>
               </div>
               <div className="text-white/50 text-xs mt-1">
                 {standingsData.wins ?? '-'}승 {standingsData.draws ?? '-'}무 {standingsData.losses ?? '-'}패
@@ -178,9 +179,9 @@ export default function TeamPageDB() {
           )}
           
           <div className="flex flex-col items-end">
-            <span className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-1">Recent Form</span>
+            <span className="text-white/40 text-[10px] font-bold tracking-wider mb-1">최근 5경기</span>
             <div className="flex gap-1">
-              {formGuide?.map((res, i) => <ResultBadge key={i} result={res} />) || <span className="text-slate-600 text-xs">No Data</span>}
+              {formGuide?.map((res, i) => <ResultBadge key={i} result={res} />) || <span className="text-white/40 text-xs">기록 없음</span>}
             </div>
           </div>
         </div>
@@ -197,41 +198,41 @@ export default function TeamPageDB() {
             {/* Club Profile Card */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <LayoutDashboard className="w-3 h-3" /> Club Profile
+                <LayoutDashboard className="w-3 h-3" /> 구단 정보
               </h3>
               <div className="space-y-3">
                 <div>
-                  <p className="text-white/50 text-xs uppercase">Full Name</p>
+                  <p className="text-white/50 text-xs ">이름</p>
                   <p className="text-white font-medium">{teamData.nameKorean || teamData.name}</p>
                 </div>
                 {teamData.strStadium && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Stadium</p>
+                    <p className="text-white/50 text-xs ">홈구장</p>
                     <p className="text-white font-medium">{teamData.strStadium}</p>
                   </div>
                 )}
                 {teamData.intFormedYear && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Founded</p>
+                    <p className="text-white/50 text-xs ">창단</p>
                     <p className="text-white font-medium">{teamData.intFormedYear}</p>
                   </div>
                 )}
                 {teamData.currentLeagueId && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">League</p>
+                    <p className="text-white/50 text-xs ">리그</p>
                     <p className="text-white font-medium">{leagueLabel(teamData.currentLeagueId)}</p>
                   </div>
                 )}
                 {standingsData?.rank && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Current Position</p>
+                    <p className="text-white/50 text-xs ">현재 순위</p>
                     <p className="text-white font-medium">{standingsData.rank}위</p>
                   </div>
                 )}
                 {!!trophyCount && trophyCount > 0 && (
                   <div>
                     <p className="text-white/50 text-xs uppercase flex items-center gap-1">
-                      <Trophy className="w-3 h-3 text-yellow-500" /> League Titles
+                      <Trophy className="w-3 h-3 text-yellow-500" /> 리그 우승
                     </p>
                     <p className="text-yellow-400 font-bold">{trophyCount}회</p>
                   </div>
@@ -242,7 +243,7 @@ export default function TeamPageDB() {
             {/* Next Match Card */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <Calendar className="w-3 h-3" /> Next Match
+                <Calendar className="w-3 h-3" /> 다음 경기
               </h3>
               {teamFixtures?.upcoming[0] ? (
                 <div className="flex flex-col items-center justify-center space-y-4">
@@ -277,7 +278,7 @@ export default function TeamPageDB() {
             {/* Recent Results Summary */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <BarChart3 className="w-3 h-3" /> Recent Results
+                <BarChart3 className="w-3 h-3" /> 최근 경기
               </h3>
               <div className="space-y-2">
                 {teamFixtures?.recent.slice(0, 5).map(match => { // Changed to slice(0, 5)
@@ -308,41 +309,29 @@ export default function TeamPageDB() {
               </div>
             </div>
 
-            {/* Squad Snapshot */}
+            {/* 팀 내 득점 (기록이 연결된 선수만) */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
-              <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <Users className="w-3 h-3" /> Key Players
+              <h3 className="text-white/40 text-xs font-bold mb-4 tracking-wider flex items-center gap-2">
+                <Users className="w-3 h-3" /> 팀 내 득점
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {players?.slice(0, 4).map(player => (
-                  <div key={player.idPlayer} className="bg-white/5 border border-white/5 p-4 rounded-lg flex flex-col items-center text-center hover:bg-white/10 transition-colors">
-                    <div className="w-12 h-12 bg-white/10 rounded-full mb-3 flex items-center justify-center text-white/50">
-                      <Users className="w-6 h-6" />
-                    </div>
-                    <span className="font-bold text-sm truncate w-full text-white">{player.strPlayer}</span>
-                    <span className="text-xs text-white/50 mt-0.5">{player.strPosition}</span>
-                    <div className="mt-3 text-[10px] font-mono bg-black/40 px-2 py-1 rounded text-purple-300 w-full">
-                      {player.goals === null ? 'No Stats' : `${player.goals} Goals`}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {topScorers.length > 0 ? (
+                <ol className="space-y-2">
+                  {topScorers.map((player) => (
+                    <li key={player.idPlayer} className="flex items-center justify-between gap-2 text-sm">
+                      <Link to={`/players/${player.idPlayer}`} className="truncate text-white/90 hover:text-accent hover:underline">{player.strPlayer}</Link>
+                      <span className="shrink-0 font-mono text-white">{player.goals}골</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-white/30 py-4 text-center text-sm">이 명단과 연결된 득점 기록이 없습니다.</p>
+              )}
             </div>
-
-            {/* Compact Team Lineup */}
-            {players && players.length > 0 && (
-              <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
-                <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                  <LayoutDashboard className="w-3 h-3" /> Formation
-                </h3>
-                <TeamLineup players={players || []} compact={true} />
-              </div>
-            )}
 
             {/* Club Info Card */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <MapPin className="w-3 h-3" /> Club Info
+                <MapPin className="w-3 h-3" /> 구단 소개
               </h3>
               {teamData.strEquipment && (
                 <img src={teamData.strEquipment} alt={`${teamData.name} kit`} className="h-20 mx-auto mb-4 object-contain" />
@@ -350,19 +339,19 @@ export default function TeamPageDB() {
               <div className="space-y-3">
                 {teamData.strLocation && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Location</p>
+                    <p className="text-white/50 text-xs ">연고지</p>
                     <p className="text-white font-medium">{teamData.strLocation}</p>
                   </div>
                 )}
                 {!!teamData.intStadiumCapacity && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Stadium Capacity</p>
+                    <p className="text-white/50 text-xs ">수용 인원</p>
                     <p className="text-white font-medium">{teamData.intStadiumCapacity.toLocaleString()}명</p>
                   </div>
                 )}
                 {teamData.strWebsite && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">Website</p>
+                    <p className="text-white/50 text-xs ">웹사이트</p>
                     <a
                       href={teamData.strWebsite.startsWith('http') ? teamData.strWebsite : `https://${teamData.strWebsite}`}
                       target="_blank"
@@ -375,7 +364,7 @@ export default function TeamPageDB() {
                 )}
                 {teamData.strDescriptionEN && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase">About</p>
+                    <p className="text-white/50 text-xs ">소개 (영문)</p>
                     <p className="text-white/70 text-xs leading-relaxed line-clamp-4">{teamData.strDescriptionEN}</p>
                   </div>
                 )}
@@ -388,10 +377,10 @@ export default function TeamPageDB() {
             {/* Mini League Table Card */}
             <div className="bg-black/20 rounded-xl border border-white/5 p-6 shadow-sm col-span-1">
               <h3 className="text-white/40 text-xs font-bold uppercase mb-4 tracking-wider flex items-center gap-2">
-                <BarChart3 className="w-3 h-3" /> League Standing
+                <BarChart3 className="w-3 h-3" /> 주변 순위
               </h3>
               {isLoadingNearbyStandings ? (
-                <p className="text-white/30 py-8 text-center text-sm">불러오는 중...</p>
+                <p className="text-white/30 py-8 text-center text-sm">로딩중…</p>
               ) : nearbyStandings && nearbyStandings.length > 0 ? (
                 <div className="space-y-1">
                   {nearbyStandings.map((row) => (
@@ -407,7 +396,7 @@ export default function TeamPageDB() {
                           {teamName(row.team_id, row.team_name)}
                         </span>
                       </div>
-                      <span className="text-white/60 font-mono text-xs shrink-0">{row.points ?? '-'}pts</span>
+                      <span className="text-white/60 font-mono text-xs shrink-0">{row.points ?? '-'}점</span>
                     </div>
                   ))}
                 </div>
@@ -420,22 +409,10 @@ export default function TeamPageDB() {
 
         {/* --- SQUAD TAB --- */}
         {currentTab === 'squad' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            {/* Team Lineup */}
-            <div className="bg-black/20 rounded-xl border border-white/5 p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Users className="text-purple-500 w-5 h-5" /> Formation
-                </h3>
-                <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/70 font-medium">
-                  {players?.length || 0} Players
-                </span>
-              </div>
-              <TeamLineup players={players || []} />
-            </div>
-            
-            {/* Full Roster List */}
-            <TeamRoster idTeam={teamIdParam} />
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {players === undefined
+              ? <p className="p-10 text-center text-ink/70">로딩중…</p>
+              : <SquadTable players={players} leagueId={teamData.currentLeagueId} seasonLabel={teamData.currentLeagueId ? seasonLabel(teamData.currentLeagueId, currentSeason) : currentSeason} />}
           </div>
         )}
 
@@ -444,16 +421,16 @@ export default function TeamPageDB() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
               <div className="p-4 bg-white/5 border-b border-white/5 font-bold flex items-center gap-2 text-white">
-                <Calendar className="text-purple-500 w-5 h-5" /> Match Schedule
+                <Calendar className="text-purple-500 w-5 h-5" /> 경기 일정
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left whitespace-nowrap">
                   <thead className="text-xs text-white/40 uppercase bg-black/20">
                     <tr>
-                      <th className="px-6 py-3 font-bold tracking-wider">Date</th>
-                      <th className="px-6 py-3 font-bold tracking-wider">Opponent</th>
-                      <th className="px-6 py-3 font-bold tracking-wider text-center">Result/Time</th>
-                      <th className="px-6 py-3 font-bold tracking-wider">Venue</th>
+                      <th className="px-6 py-3 font-bold tracking-wider">날짜</th>
+                      <th className="px-6 py-3 font-bold tracking-wider">상대</th>
+                      <th className="px-6 py-3 font-bold tracking-wider text-center">결과·시간</th>
+                      <th className="px-6 py-3 font-bold tracking-wider">경기장</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -532,35 +509,27 @@ export default function TeamPageDB() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="bg-black/20 rounded-xl border border-white/5 p-6">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white">
-                <BarChart3 className="text-purple-500" /> Season Statistics
+                <BarChart3 className="text-purple-500" /> 시즌 기록
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
-                  <span className="text-white/40 text-xs uppercase font-bold">Games</span>
+                  <span className="text-white/40 text-xs font-bold">경기</span>
                   <div className="text-3xl font-bold mt-1 text-white">{standingsData.gamesPlayed ?? '-'}</div>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
-                  <span className="text-white/40 text-xs uppercase font-bold">Wins</span>
+                  <span className="text-white/40 text-xs font-bold">승</span>
                   <div className="text-3xl font-bold mt-1 text-green-400">{standingsData.wins ?? '-'}</div>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
-                  <span className="text-white/40 text-xs uppercase font-bold">Goals</span>
+                  <span className="text-white/40 text-xs font-bold">득점</span>
                   <div className="text-3xl font-bold mt-1 text-blue-400">{standingsData.goalsFor ?? '-'}</div>
                 </div>
                 <div className="bg-white/5 p-4 rounded-lg border border-white/5">
-                  <span className="text-white/40 text-xs uppercase font-bold">Diff</span>
+                  <span className="text-white/40 text-xs font-bold">득실차</span>
                   <div className="text-3xl font-bold mt-1 text-purple-400">{standingsData.goalDifference ?? '-'}</div>
                 </div>
               </div>
               
-              {/* Detailed Table Placeholder */}
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <h4 className="text-white/40 text-sm font-bold mb-4 uppercase">Detailed Breakdown</h4>
-                <div className="bg-black/40 rounded-lg p-8 text-center border border-white/5 border-dashed">
-                  <BarChart3 className="w-12 h-12 text-white/10 mx-auto mb-3" />
-                  <p className="text-white/30 text-sm">Advanced performance metrics will be available soon.</p>
-                </div>
-              </div>
             </div>
           </div>
         )}

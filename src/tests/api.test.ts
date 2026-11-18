@@ -576,8 +576,16 @@ describe('API Functions', () => {
   describe('fetchPlayersByTeam', () => {
     it('should fetch players with their statistics', async () => {
       const mockPlayersData = [
-        { idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'FW', strNumber: '10' },
-        { idPlayer: 'p2', strPlayer: 'Player Two', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'MF', strNumber: '8' },
+        {
+          idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId,
+          strPosition: 'Forward', strNumber: '10', strNationality: 'South Korea',
+          dateBorn: '2000-01-01', updated_at: '2026-11-17T16:00:00Z',
+        },
+        {
+          idPlayer: 'p2', strPlayer: 'Player Two', strTeam: 'Busan', idTeam: mockTeamId,
+          strPosition: 'Midfielder', strNumber: '8', strNationality: null,
+          dateBorn: null, updated_at: null,
+        },
       ];
       const mockStatsData = [
         { idPlayer: 'p1', goals: 5, assists: 3, appearances: 10, yellow_cards: 1, red_cards: 0 },
@@ -591,15 +599,22 @@ describe('API Functions', () => {
 
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
-        idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'FW', strNumber: '10',
+        idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'Forward', strNumber: '10',
+        strNationality: 'South Korea', dateBorn: '2000-01-01', updatedAt: '2026-11-17T16:00:00Z',
         goals: 5, assists: 3, appearances: 10, yellow_cards: 1, red_cards: 0,
       });
       expect(result[1]).toEqual({
-        idPlayer: 'p2', strPlayer: 'Player Two', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'MF', strNumber: '8',
+        idPlayer: 'p2', strPlayer: 'Player Two', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'Midfielder', strNumber: '8',
+        strNationality: null, dateBorn: null, updatedAt: null,
         goals: 2, assists: 7, appearances: 12, yellow_cards: 2, red_cards: 0,
       });
+      expect(result[0]).not.toHaveProperty('updated_at');
       expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
+      const playersChain = (supabase.from as any).mock.results[0].value;
+      expect(playersChain.select).toHaveBeenCalledWith(
+        'idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber, strNationality, dateBorn, updated_at',
+      );
     });
 
     it('should return players without stats if stats not found', async () => {
@@ -615,6 +630,7 @@ describe('API Functions', () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         idPlayer: 'p1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId, strPosition: 'FW', strNumber: '10',
+        strNationality: null, dateBorn: null, updatedAt: null,
         // 기록 행이 없으면 0 이 아니라 null (미제공)
         goals: null, assists: null, appearances: null, yellow_cards: null, red_cards: null,
       });
@@ -757,13 +773,12 @@ describe('API Functions', () => {
       expect(result?.weight).toBe('80 kg');
       expect(result?.birthDate).toBe('2000-01-01');
       expect(result?.photoUrl).toBe('http://example.com/photo.jpg');
-      // Age calculation roughly (current year - 2000)
-      const expectedAge = new Date().getFullYear() - 2000;
-      expect(result?.age).toBeGreaterThanOrEqual(expectedAge - 1);
-      
-      // Verify Real Stats
-      expect(result?.stats).toMatchObject({
+      expect(result).not.toHaveProperty('age');
+
+      // Verify every real statistics row is retained.
+      expect(result?.seasons[0]).toMatchObject({
         season: '2026',
+        teamId: '999',
         goals: 10,
         minutesPlayed: 1800,
       });
@@ -773,10 +788,39 @@ describe('API Functions', () => {
       expect(statsChain.eq).not.toHaveBeenCalledWith('strSeason', expect.anything());
       expect(statsChain.order).toHaveBeenCalledWith('strSeason', { ascending: false });
       expect(statsChain.order).toHaveBeenCalledWith('last_updated', { ascending: false });
-      expect(statsChain.limit).toHaveBeenCalledWith(10);
+      expect(statsChain.limit).not.toHaveBeenCalled();
       
       expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
+    });
+
+    it('returns the current team league from its latest supported standing', async () => {
+      const playerChain = createMockSupabaseChain({
+        idPlayer: '12345',
+        strPlayer: 'Test Player',
+        strTeam: 'Test FC',
+        idTeam: '999',
+        strPosition: 'Forward',
+      });
+      const statsChain = createMockSupabaseChain([]);
+      const standingChain = createMockSupabaseChain({ leagueId: 4328 });
+      (supabase.from as any)
+        .mockReturnValueOnce(playerChain)
+        .mockReturnValueOnce(statsChain)
+        .mockReturnValueOnce(standingChain);
+
+      const result = await fetchPlayerDetail(12345);
+
+      expect(result?.teamLeagueId).toBe('4328');
+      expect(supabase.from).toHaveBeenNthCalledWith(3, 'standings_v2');
+      expect(standingChain.select).toHaveBeenCalledWith('leagueId');
+      expect(standingChain.eq).toHaveBeenCalledWith('teamId', '999');
+      expect(standingChain.in).toHaveBeenCalledWith('leagueId', [
+        '4689', '4822', '4328', '4335', '4332', '4331', '4334',
+      ]);
+      expect(standingChain.order).toHaveBeenCalledWith('season', { ascending: false });
+      expect(standingChain.limit).toHaveBeenCalledWith(1);
+      expect(standingChain.maybeSingle).toHaveBeenCalledOnce();
     });
 
     it('should return null if player not found', async () => {
@@ -786,7 +830,7 @@ describe('API Functions', () => {
       expect(result).toBeNull();
     });
 
-    it('returns stats=null when the player has no statistics row', async () => {
+    it('returns an empty seasons array when the player has no statistics row', async () => {
       (supabase.from as any)
         .mockReturnValueOnce(createMockSupabaseChain({
           idPlayer: '12345',
@@ -799,7 +843,7 @@ describe('API Functions', () => {
 
       const result = await fetchPlayerDetail(12345);
 
-      expect(result?.stats).toBeNull();
+      expect(result?.seasons).toEqual([]);
     });
 
     it('preserves null stat fields separately from genuine zero values', async () => {
@@ -827,8 +871,11 @@ describe('API Functions', () => {
 
       const result = await fetchPlayerDetail(12345);
 
-      expect(result?.stats).toEqual({
+      expect(result?.seasons[0]).toEqual({
         season: '2026',
+        leagueId: '',
+        teamId: '999',
+        teamName: '',
         appearances: null,
         minutesPlayed: 0,
         goals: null,
@@ -841,7 +888,7 @@ describe('API Functions', () => {
       });
     });
 
-    it('uses the latest-season statistics row for the player current team after a transfer', async () => {
+    it('keeps transfer rows and puts the current team first within the same season', async () => {
       (supabase.from as any)
         .mockReturnValueOnce(createMockSupabaseChain({
           idPlayer: '12345',
@@ -851,38 +898,53 @@ describe('API Functions', () => {
           strPosition: 'Forward',
         }))
         .mockReturnValueOnce(createMockSupabaseChain([
-          { strSeason: '2026', idTeam: 'former-team', goals: 3, appearances: 8 },
-          { strSeason: '2026', idTeam: 'current-team', goals: 7, appearances: 12 },
-          { strSeason: '2025', idTeam: 'current-team', goals: 20, appearances: 30 },
+          { strSeason: '2026', idLeague: '4328', idTeam: 'former-team', strTeam: 'Former FC', goals: 3, appearances: 8 },
+          { strSeason: '2026', idLeague: '4328', idTeam: 'current-team', strTeam: 'Current FC', goals: 7, appearances: 12 },
+          { strSeason: '2025', idLeague: '4328', idTeam: 'current-team', strTeam: 'Current FC', goals: 20, appearances: 30 },
         ]));
 
       const result = await fetchPlayerDetail(12345);
 
-      expect(result?.stats).toMatchObject({
-        season: '2026',
-        goals: 7,
-        appearances: 12,
-      });
+      expect(result?.seasons).toHaveLength(3);
+      expect(result?.seasons.map((row) => [row.season, row.teamId, row.goals, row.appearances])).toEqual([
+        ['2026', 'current-team', 7, 12],
+        ['2026', 'former-team', 3, 8],
+        ['2025', 'current-team', 20, 30],
+      ]);
     });
 
-    it('returns null age and dash fallbacks when player bio fields are missing', async () => {
+    it('normalizes missing and whitespace-only profile fields to null without fallbacks', async () => {
       (supabase.from as any)
         .mockReturnValueOnce(createMockSupabaseChain({
           idPlayer: '12345',
           strPlayer: 'Test Player',
-          strTeam: 'Test FC',
-          idTeam: '999',
+          strTeam: '   ',
+          idTeam: '',
+          strPosition: ' ',
+          strNumber: '',
+          strNationality: '  ',
+          strHeight: '',
+          strWeight: ' ',
+          dateBorn: '',
+          strThumb: ' ',
         }))
         .mockReturnValueOnce(createMockSupabaseChain([]));
 
       const result = await fetchPlayerDetail(12345);
 
       expect(result).toMatchObject({
-        age: null,
-        birthDate: '-',
-        nationality: '-',
-        position: '-',
+        teamName: null,
+        teamId: null,
+        position: null,
+        jerseyNumber: null,
+        photoUrl: null,
+        birthDate: null,
+        nationality: null,
+        height: null,
+        weight: null,
+        seasons: [],
       });
+      expect(result).not.toHaveProperty('age');
     });
   });
 
