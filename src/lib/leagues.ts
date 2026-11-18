@@ -29,3 +29,11 @@ export function compareLeagueSlugs(a: string, b: string): number {
   };
   return rank(a) - rank(b);
 }
+
+/** 검색어가 한글 리그 이름에 들어 있는 리그의 TheSportsDB ID (띄어쓰기 무시) */
+export function leagueIdsByKoreanName(query: string): string[] {
+  const q = query.toLowerCase().replace(/\s+/g, '');
+  if (!q) return [];
+  const slugs = LEAGUE_NAMES_KO.filter(([, name]) => name.toLowerCase().replace(/\s+/g, '').includes(q)).map(([slug]) => slug);
+  return Object.keys(LEAGUE_SLUGS).filter(id => slugs.includes(LEAGUE_SLUGS[id]));
+}

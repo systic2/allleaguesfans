@@ -314,12 +314,16 @@ describe('API Functions', () => {
 
       expect(supabase.from).toHaveBeenNthCalledWith(2, 'teams_v2');
       expect(teamChain.select).toHaveBeenCalledWith('id, name, nameKorean, badgeUrl');
-      expect(teamChain.or).toHaveBeenCalledWith('name.ilike.%Busan%,nameKorean.ilike.%Busan%,nameKorean.imatch."B *u *s *a *n"');
+      expect(teamChain.or).toHaveBeenCalledWith('name.ilike."%Busan%",nameKorean.ilike."%Busan%",nameKorean.imatch."B *u *s *a *n"');
+      expect(leagueChain.or).toHaveBeenCalledWith('strLeague.ilike."%Busan%"');
+      expect(leagueChain.limit).toHaveBeenCalledWith(30);
+      expect(teamChain.limit).toHaveBeenCalledWith(30);
+      expect(playerChain.limit).toHaveBeenCalledWith(30);
       expect(result).toEqual(expect.arrayContaining([
-        expect.objectContaining({ type: 'team', entity_id: 138106, team_id: '138106', name: '부산 아이파크', crest_url: 'busan.png' }),
-        expect.objectContaining({ type: 'team', entity_id: 0, team_id: 'hist_hallelujah', name: 'Hallelujah FC' }),
-        expect.objectContaining({ type: 'league', slug: 'premier-league' }),
-        expect.objectContaining({ type: 'league', slug: 'league-9999' }),
+        expect.objectContaining({ type: 'team', entity_id: 138106, team_id: '138106', name: '부산 아이파크', name_en: 'Busan IPark', crest_url: 'busan.png' }),
+        expect.objectContaining({ type: 'team', entity_id: 0, team_id: 'hist_hallelujah', name: 'Hallelujah FC', name_en: null }),
+        expect.objectContaining({ type: 'league', slug: 'premier-league', name: '프리미어리그', name_en: 'English Premier League', country: 'England' }),
+        expect.objectContaining({ type: 'league', slug: 'league-9999', name_en: null }),
       ]));
     });
 
@@ -334,12 +338,89 @@ describe('API Functions', () => {
 
       await searchByName('foo,(bar)*%\\baz');
 
-      const pattern = '%foo  bar    baz%';
-      expect(leagueChain.ilike).toHaveBeenCalledWith('strLeague', pattern);
+      const pattern = '%foo,(bar)   baz%';
+      expect(leagueChain.or).toHaveBeenCalledWith(`strLeague.ilike."${pattern}"`);
       expect(teamChain.or).toHaveBeenCalledWith(
-        `name.ilike.${pattern},nameKorean.ilike.${pattern},nameKorean.imatch."f *o *o *b *a *r *b *a *z"`,
+        `name.ilike."${pattern}",nameKorean.ilike."${pattern}",nameKorean.imatch."f *o *o *b *a *r *b *a *z"`,
       );
       expect(playerChain.ilike).toHaveBeenCalledWith('strPlayer', pattern);
+    });
+
+    it('returns early when wildcard, quote, and backslash sanitization leaves an empty query', async () => {
+      await expect(searchByName('  % _ * " \\  ')).resolves.toEqual([]);
+
+      expect(supabase.from).not.toHaveBeenCalled();
+    });
+
+    it('runs exact team and player queries, puts exact rows first, and removes duplicate IDs', async () => {
+      const leagueChain = createMockSupabaseChain([]);
+      const teamChain = createMockSupabaseChain([
+        { id: '2', name: 'Query Town', nameKorean: null, badgeUrl: null },
+        { id: '1', name: 'Query FC duplicate', nameKorean: null, badgeUrl: null },
+      ]);
+      const playerChain = createMockSupabaseChain([
+        { idPlayer: '20', strPlayer: 'Query Junior', idTeam: null, strTeam: null, strThumb: null },
+        { idPlayer: '10', strPlayer: 'Query duplicate', idTeam: null, strTeam: null, strThumb: null },
+      ]);
+      const exactTeamChain = createMockSupabaseChain([
+        { id: '1', name: 'Query', nameKorean: null, badgeUrl: 'exact.png' },
+      ]);
+      const exactPlayerChain = createMockSupabaseChain([
+        { idPlayer: '10', strPlayer: 'Query', idTeam: null, strTeam: null, strThumb: 'exact-player.png' },
+      ]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain)
+        .mockReturnValueOnce(exactTeamChain)
+        .mockReturnValueOnce(exactPlayerChain);
+
+      const result = await searchByName('Query');
+
+      expect(supabase.from).toHaveBeenNthCalledWith(4, 'teams_v2');
+      expect(supabase.from).toHaveBeenNthCalledWith(5, 'players_v2');
+      expect(exactTeamChain.or).toHaveBeenCalledWith('name.ilike."Query",nameKorean.ilike."Query"');
+      expect(exactTeamChain.limit).toHaveBeenCalledWith(10);
+      expect(exactPlayerChain.ilike).toHaveBeenCalledWith('strPlayer', 'Query');
+      expect(exactPlayerChain.limit).toHaveBeenCalledWith(10);
+      expect(result.filter((row) => row.type === 'team').map((row) => row.entity_id)).toEqual([1, 2]);
+      expect(result.filter((row) => row.type === 'player').map((row) => row.entity_id)).toEqual([10, 20]);
+    });
+
+    it.each([0, 1, 2, 3, 4])('throws when search query %i fails', async (failedIndex) => {
+      const error = { message: `query ${failedIndex} failed` };
+      const chains = Array.from({ length: 5 }, (_, index) => createMockSupabaseChain([], index === failedIndex ? error : null));
+      for (const chain of chains) (supabase.from as any).mockReturnValueOnce(chain);
+
+      await expect(searchByName('failure')).rejects.toBe(error);
+    });
+
+    it('adds Korean league-name IDs to the league filter and uses Korean display metadata', async () => {
+      const leagueChain = createMockSupabaseChain([
+        { idLeague: '4328', strLeague: 'English Premier League', strCountry: 'England', highlightly_id: 39 },
+      ]);
+      const teamChain = createMockSupabaseChain([]);
+      const playerChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(leagueChain)
+        .mockReturnValueOnce(teamChain)
+        .mockReturnValueOnce(playerChain);
+
+      const result = await searchByName('프리미어');
+
+      expect(leagueChain.select).toHaveBeenCalledWith('idLeague, strLeague, strCountry, highlightly_id');
+      expect(leagueChain.or).toHaveBeenCalledWith(
+        'strLeague.ilike."%프리미어%",idLeague.in.("4328")',
+      );
+      expect(leagueChain.limit).toHaveBeenCalledWith(30);
+      expect(result).toContainEqual({
+        type: 'league',
+        entity_id: 39,
+        name: '프리미어리그',
+        name_en: 'English Premier League',
+        slug: 'premier-league',
+        country: 'England',
+      });
     });
 
     it('adds a space-insensitive Korean-name filter', async () => {
@@ -354,7 +435,7 @@ describe('API Functions', () => {
       await searchByName('전북현대');
 
       expect(teamChain.or).toHaveBeenCalledWith(
-        'name.ilike.%전북현대%,nameKorean.ilike.%전북현대%,nameKorean.imatch."전 *북 *현 *대"',
+        'name.ilike."%전북현대%",nameKorean.ilike."%전북현대%",nameKorean.imatch."전 *북 *현 *대"',
       );
     });
 
@@ -370,7 +451,7 @@ describe('API Functions', () => {
       await searchByName('맨유');
 
       expect(teamChain.or).toHaveBeenCalledWith(
-        'name.ilike.%맨유%,nameKorean.ilike.%맨유%,nameKorean.imatch."맨 *유",id.in.("133612")',
+        'name.ilike."%맨유%",nameKorean.ilike."%맨유%",nameKorean.imatch."맨 *유",id.in.("133612")',
       );
     });
 
@@ -385,7 +466,7 @@ describe('API Functions', () => {
 
       await searchByName('x');
 
-      expect(teamChain.or).toHaveBeenCalledWith('name.ilike.%x%,nameKorean.ilike.%x%');
+      expect(teamChain.or).toHaveBeenCalledWith('name.ilike."%x%",nameKorean.ilike."%x%"');
     });
 
     it('uses only Unicode letters and digits in the imatch value', async () => {
@@ -400,7 +481,7 @@ describe('API Functions', () => {
       await expect(searchByName('a.b(c)*')).resolves.toEqual([]);
 
       expect(teamChain.or).toHaveBeenCalledWith(
-        'name.ilike.%a.b c  %,nameKorean.ilike.%a.b c  %,nameKorean.imatch."a *b *c"',
+        'name.ilike."%a.b(c)%",nameKorean.ilike."%a.b(c)%",nameKorean.imatch."a *b *c"',
       );
     });
 
@@ -413,22 +494,30 @@ describe('API Functions', () => {
       const leagueChain30 = createMockSupabaseChain([]);
       const teamChain30 = createMockSupabaseChain([]);
       const playerChain30 = createMockSupabaseChain([]);
+      const exactTeamChain31 = createMockSupabaseChain([]);
+      const exactPlayerChain31 = createMockSupabaseChain([]);
+      const exactTeamChain30 = createMockSupabaseChain([]);
+      const exactPlayerChain30 = createMockSupabaseChain([]);
       (supabase.from as any)
         .mockReturnValueOnce(leagueChain31)
         .mockReturnValueOnce(teamChain31)
         .mockReturnValueOnce(playerChain31)
+        .mockReturnValueOnce(exactTeamChain31)
+        .mockReturnValueOnce(exactPlayerChain31)
         .mockReturnValueOnce(leagueChain30)
         .mockReturnValueOnce(teamChain30)
-        .mockReturnValueOnce(playerChain30);
+        .mockReturnValueOnce(playerChain30)
+        .mockReturnValueOnce(exactTeamChain30)
+        .mockReturnValueOnce(exactPlayerChain30);
 
       await searchByName(query31);
       await searchByName(query30);
 
       expect(teamChain31.or).toHaveBeenCalledWith(
-        `name.ilike.%${query31}%,nameKorean.ilike.%${query31}%`,
+        `name.ilike."%${query31}%",nameKorean.ilike."%${query31}%"`,
       );
       expect(teamChain30.or).toHaveBeenCalledWith(
-        `name.ilike.%${query30}%,nameKorean.ilike.%${query30}%,nameKorean.imatch."${Array.from(query30).join(' *')}"`,
+        `name.ilike."%${query30}%",nameKorean.ilike."%${query30}%",nameKorean.imatch."${Array.from(query30).join(' *')}"`,
       );
     });
 
@@ -442,6 +531,8 @@ describe('API Functions', () => {
           idTeam: '138001',
           strTeam: 'Ulsan HD FC',
           strThumb: 'lee.png',
+          strNationality: 'South Korea',
+          dateBorn: '1997-09-20',
         },
       ]);
       (supabase.from as any)
@@ -451,13 +542,16 @@ describe('API Functions', () => {
 
       const result = await searchByName('Lee');
 
-      expect(playerChain.select).toHaveBeenCalledWith('idPlayer, strPlayer, idTeam, strTeam, strThumb');
+      expect(playerChain.select).toHaveBeenCalledWith('idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn');
+      expect(playerChain.limit).toHaveBeenCalledWith(30);
       expect(result).toContainEqual(expect.objectContaining({
         type: 'player',
         entity_id: 34145937,
         name: 'Lee Dong-gyeong',
         team_id: '138001',
         team_name: 'Ulsan HD FC',
+        nationality: 'South Korea',
+        birth_date: '1997-09-20',
       }));
     });
   });
