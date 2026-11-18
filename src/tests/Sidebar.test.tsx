@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchLeagues } from '@/lib/api';
 import Sidebar from '@/app/components/Sidebar';
+import { setFavorites, type Favorite } from '@/lib/favorites';
 
 vi.mock('@/lib/api', () => ({
   fetchLeagues: vi.fn(),
@@ -52,6 +53,7 @@ describe('Sidebar', () => {
       '경기',
       '팀',
       '선수',
+      '즐겨찾기',
       '리그 전체',
       'K리그1',
       'K리그2',
@@ -70,5 +72,31 @@ describe('Sidebar', () => {
 
     expect(screen.getByText('로딩중…')).toBeInTheDocument();
     expect(screen.queryByText('Loading leagues...')).not.toBeInTheDocument();
+  });
+
+  it('shows up to ten favorite shortcuts and links to the rest', async () => {
+    mockFetchLeagues.mockResolvedValue([]);
+    const favorites: Favorite[] = Array.from({ length: 12 }, (_, index) => ({
+      type: index % 3 === 0 ? 'league' : index % 3 === 1 ? 'team' : 'player',
+      id: `favorite-${index + 1}`,
+      name: `즐겨찾기 ${index + 1}`,
+      image: null,
+      addedAt: `2026-11-18T00:00:${String(index).padStart(2, '0')}.000Z`,
+    }));
+    setFavorites(favorites);
+
+    renderSidebar();
+
+    const shortcuts = screen.getByRole('group', { name: '즐겨찾기 바로가기' });
+    expect(within(shortcuts).getByRole('link', { name: '즐겨찾기 1' })).toHaveAttribute(
+      'href',
+      '/leagues/favorite-1',
+    );
+    expect(within(shortcuts).getByRole('link', { name: '즐겨찾기 10' })).toHaveAttribute(
+      'href',
+      '/leagues/favorite-10',
+    );
+    expect(within(shortcuts).queryByRole('link', { name: '즐겨찾기 11' })).not.toBeInTheDocument();
+    expect(within(shortcuts).getByRole('link', { name: '2개 더 보기' })).toHaveAttribute('href', '/favorites');
   });
 });

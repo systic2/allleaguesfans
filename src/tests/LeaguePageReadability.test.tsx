@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/lib/api';
 import LeaguePage from '@/pages/LeaguePage';
+import { getFavorites } from '@/lib/favorites';
 
 vi.mock('@/lib/api');
 
@@ -151,5 +152,21 @@ describe('LeaguePage readability', () => {
     expect(screen.getByText('리그 순위 >')).toBeInTheDocument();
     expect(screen.getByText('경기/결과 >')).toBeInTheDocument();
     expect(screen.getByText('지난 우승팀 >')).toBeInTheDocument();
+  });
+
+  it('favorites the league using its slug, Korean name, and logo', async () => {
+    (api.fetchLeagueBySlug as any).mockResolvedValue({ ...mockLeague, name_korean: 'K리그1' });
+
+    renderLeaguePage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '즐겨찾기' }));
+    expect(getFavorites()).toEqual([
+      expect.objectContaining({
+        type: 'league',
+        id: 'k-league-1',
+        name: 'K리그1',
+        image: 'https://example.com/k1-logo.png',
+      }),
+    ]);
   });
 });

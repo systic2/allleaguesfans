@@ -20,6 +20,7 @@ import TeamRoster from "@/components/TeamRoster";
 import CrestImg from "@/app/components/CrestImg";
 import SubTabs from "@/components/SubTabs";
 import NotFound from "@/app/components/NotFound";
+import FavoriteButton from "@/components/FavoriteButton";
 import { getCurrentSeasonForFormat } from "@/lib/season";
 import { useTeamName } from "@/hooks/useTeamName";
 
@@ -145,6 +146,9 @@ export default function TeamPageDB() {
         <div className="flex-1 min-w-48">
           <h1 className="text-3xl font-bold text-white tracking-tight">{teamData.nameKorean || teamData.name}</h1>
           {teamData.nameKorean && <p className="text-white/50 text-sm mb-2">{teamData.name}</p>}
+          <div className="mb-2">
+            <FavoriteButton item={{ type: "team", id: String(teamData.id), name: teamData.nameKorean || teamData.name, image: teamData.badgeUrl ?? null }} />
+          </div>
           <div className="flex items-center gap-4 text-white/70 text-sm">
             {teamData.currentLeagueId && (
               <span className="bg-white/10 px-2 py-0.5 rounded">{leagueLabel(teamData.currentLeagueId)}</span>

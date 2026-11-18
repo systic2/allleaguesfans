@@ -104,7 +104,7 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
 
   return {
     id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
-    name: String(data.strLeague), name_korean: leagueNameKo(slug), logo_url: data.strBadge, banner_url: null, slug: slug, country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason ?? undefined
+    name: String(data.strLeague), name_korean: leagueNameKo(leagueSlugFor(String(data.idLeague))), logo_url: data.strBadge, banner_url: null, slug: leagueSlugFor(String(data.idLeague)), country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: DEFAULT_SEASON, current_season: data.strCurrentSeason ?? undefined
   };
 }
 

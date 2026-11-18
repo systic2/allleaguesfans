@@ -1,6 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { vi, afterEach } from "vitest";
+import { vi, afterEach, beforeEach } from "vitest";
 import { cleanup } from "@testing-library/react";
+import { resetFavoritesCache } from "../lib/favorites";
+
+beforeEach(() => {
+  localStorage.clear();
+  resetFavoritesCache();
+});
 
 // Cleanup DOM after each test to prevent element duplication
 afterEach(() => {
