@@ -47,6 +47,10 @@ async function fetchTeamPlayers(teamId: string): Promise<TheSportsDBPlayer[]> {
   }
 }
 
+// 이번 실행에서 받은 선수 행에 같은 시각을 찍는다. 화면은 팀의 최신 시각과 함께 받은 행만 '현재 선수단'으로 본다
+// (응답에서 빠진 선수는 지우지 않으므로, 이 시각으로 이전 명단에만 있던 선수를 가린다)
+const RUN_STARTED_AT = new Date().toISOString();
+
 async function importTeamPlayers(teamId: string, teamName: string): Promise<number> {
   if (!/^\d+$/.test(teamId)) {
     console.log(`Skipping non-numeric ID: ${teamId} (${teamName})`);
@@ -77,7 +81,8 @@ async function importTeamPlayers(teamId: string, teamName: string): Promise<numb
     strWeight: p.strWeight || null,
     dateBorn: p.dateBorn || null,
     strThumb: p.strThumb || null,
-    strBirthLocation: p.strBirthLocation || null
+    strBirthLocation: p.strBirthLocation || null,
+    updated_at: RUN_STARTED_AT,
   }));
 
   // Upsert into players_v2

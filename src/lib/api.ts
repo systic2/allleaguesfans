@@ -49,7 +49,6 @@ export type LeagueLite = {
   current_season?: string; // Added field for dynamic season display
 };
 export type TeamLite = { id: number; name: string; name_korean?: string | null; short_name: string | null; crest_url: string | null; logo_url?: string | null; badge_url?: string | null; banner_url?: string | null; primary_source?: string; };
-export type PlayerLite = { id: number; name: string; position: string | null; photo_url: string | null; team_id: number | null; jersey_number?: number; nationality?: string | null; height?: string | null; primary_source?: string; };
 
 // ---------- API ----------
 export async function fetchLeagues(): Promise<LeagueLite[]> {
@@ -414,10 +413,16 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   return rows;
 }
 
-export interface TeamPlayer { idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null; goals: number | null; assists: number | null; appearances: number | null; yellow_cards: number | null; red_cards: number | null; }
+export interface TeamPlayer {
+  idPlayer: string; strPlayer: string; strTeam: string; idTeam: string; strPosition: string | null; strNumber: string | null;
+  strNationality: string | null; dateBorn: string | null;
+  /** players_v2 행을 마지막으로 수집한 시각 (선수단 기준일) */
+  updatedAt: string | null;
+  goals: number | null; assists: number | null; appearances: number | null; yellow_cards: number | null; red_cards: number | null;
+}
 
 export async function fetchPlayersByTeam(teamId: string, season: string = DEFAULT_SEASON): Promise<TeamPlayer[]> {
-  const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
+  const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber, strNationality, dateBorn, updated_at').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
   if (playersError) { console.error('Error fetching players:', playersError); return []; }
   if (!playersData || playersData.length === 0) return [];
   const normalized = normalizeSeason(season);
@@ -425,55 +430,64 @@ export async function fetchPlayersByTeam(teamId: string, season: string = DEFAUL
   if (statsError) { console.warn('Error fetching player statistics:', statsError); }
   const playerStatsMap = new Map<string, Partial<PlayerStatistics>>();
   if (statsData) { statsData.forEach(stat => { playerStatsMap.set(stat.idPlayer, stat); }); }
-  return playersData.map(player => {
+  return playersData.map(({ updated_at, ...player }) => {
     // K리그는 득점·도움 상위 선수만 기록이 있어, 기록 행이 없는 선수는 0 이 아니라 null(미제공)
     const stats = playerStatsMap.get(player.idPlayer) || {};
-    return { ...player, goals: stats.goals ?? null, assists: stats.assists ?? null, appearances: stats.appearances ?? null, yellow_cards: stats.yellow_cards ?? null, red_cards: stats.red_cards ?? null, };
+    return {
+      ...player, strNationality: player.strNationality ?? null, dateBorn: player.dateBorn ?? null, updatedAt: updated_at ?? null,
+      goals: stats.goals ?? null, assists: stats.assists ?? null, appearances: stats.appearances ?? null, yellow_cards: stats.yellow_cards ?? null, red_cards: stats.red_cards ?? null,
+    };
   });
 }
 
-// Wrapper for TeamRoster component
-export async function fetchTeamPlayers(idTeam: string): Promise<TeamPlayer[]> {
-  return fetchPlayersByTeam(idTeam);
-}
-
-export type PlayerDetail = {
-  id: string; name: string; teamName: string; teamId: string; position: string; jerseyNumber: string; photoUrl: string | null;
-  nationality: string; height: string; weight: string; age: number | null; birthDate: string;
-  // 가장 최근 시즌의 player_statistics 행. 기록이 없으면 null. 항목별 null 은 수집하지 않는 값
-  stats: { season: string; appearances: number | null; minutesPlayed: number | null; goals: number | null; assists: number | null; yellowCards: number | null; redCards: number | null; penaltiesScored: number | null; penaltiesMissed: number | null; ownGoals: number | null; } | null;
+/**
+ * player_statistics 한 행 = 한 리그·한 시즌 기록 (고유키 idPlayer·idLeague·strSeason).
+ * 다른 리그로 옮기면 행이 나뉘지만, 같은 리그 안에서 시즌 중 이적하면 한 행으로 합쳐지고 팀은 마지막으로 기록이 잡힌 소속이다.
+ * 항목별 null 은 수집하지 않는 값
+ */
+export type PlayerSeasonStats = {
+  season: string; leagueId: string; teamId: string; teamName: string;
+  appearances: number | null; minutesPlayed: number | null; goals: number | null; assists: number | null;
+  yellowCards: number | null; redCards: number | null; penaltiesScored: number | null; penaltiesMissed: number | null; ownGoals: number | null;
 };
 
-function calculateAge(birthDate?: string): number | null {
-  if (!birthDate) return null;
-  const birth = new Date(birthDate);
-  if (Number.isNaN(birth.getTime())) return null;
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) { age--; }
-  return age;
+export type PlayerDetail = {
+  id: string; name: string; teamName: string | null; teamId: string | null; position: string | null; jerseyNumber: string | null; photoUrl: string | null;
+  // 수집되지 않은 프로필 항목은 null (화면에서 '미제공')
+  nationality: string | null; height: string | null; weight: string | null; birthDate: string | null;
+  /** 최근 시즌부터. 같은 시즌 안에서는 현재 소속팀 기록이 먼저 */
+  seasons: PlayerSeasonStats[];
+  /** 현재 소속팀이 순위표에 있는 가장 최근 리그 (기록이 없을 때 기록 범위 안내용) */
+  teamLeagueId: string | null;
+};
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
 }
 
 export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
   const { data: player, error } = await supabase.from('players_v2').select('*').eq('idPlayer', String(playerId)).maybeSingle();
   if (error || !player) { console.error("Player not found:", error); return null; }
-  // 리그마다 시즌 표기가 달라(K리그 2026, 유럽 2026-27 → 2026) 선수의 가장 최근 시즌 기록을 쓴다.
-  // 같은 시즌에 리그가 둘이면(이적) 현재 소속팀 기록, 없으면 최근 갱신된 기록을 고른다.
-  const { data: statRows } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).order('strSeason', { ascending: false }).order('last_updated', { ascending: false }).limit(10);
-  const latest = (statRows ?? []).filter(row => row.strSeason === statRows?.[0]?.strSeason);
-  const stats = latest.find(row => row.idTeam === player.idTeam) ?? latest[0] ?? null;
+  const { data: statRows, error: statsError } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).order('strSeason', { ascending: false }).order('last_updated', { ascending: false });
+  if (statsError) console.warn('Error fetching player statistics:', statsError);
+  // 시즌 내림차순, 같은 시즌이면 현재 소속팀 먼저, 나머지는 DB 순서(최근 갱신순) 유지
+  const seasons = (statRows ?? [])
+    .map((row): PlayerSeasonStats => ({
+      season: String(row.strSeason), leagueId: String(row.idLeague ?? ''), teamId: String(row.idTeam ?? ''), teamName: String(row.strTeam ?? ''),
+      appearances: toCount(row.appearances), minutesPlayed: toCount(row.minutes_played), goals: toCount(row.goals), assists: toCount(row.assists),
+      yellowCards: toCount(row.yellow_cards), redCards: toCount(row.red_cards), penaltiesScored: toCount(row.penalties_scored), penaltiesMissed: toCount(row.penalties_missed), ownGoals: toCount(row.own_goals),
+    }))
+    .sort((a, b) => b.season.localeCompare(a.season) || Number(b.teamId === player.idTeam) - Number(a.teamId === player.idTeam));
+  let teamLeagueId: string | null = null;
+  if (textOrNull(player.idTeam)) {
+    const { data: standing } = await supabase.from('standings_v2').select('leagueId').eq('teamId', player.idTeam).in('leagueId', supportedLeagueIds()).order('season', { ascending: false }).limit(1).maybeSingle();
+    teamLeagueId = standing?.leagueId ? String(standing.leagueId) : null;
+  }
   return {
-    id: player.idPlayer, name: player.strPlayer, teamName: player.strTeam, teamId: player.idTeam, position: player.strPosition || '-', jerseyNumber: player.strNumber || '-', photoUrl: player.strThumb || null,
-    nationality: player.strNationality || '-', height: player.strHeight || '-', weight: player.strWeight || '-', age: calculateAge(player.dateBorn), birthDate: player.dateBorn || '-',
-    stats: stats ? { season: String(stats.strSeason), appearances: toCount(stats.appearances), minutesPlayed: toCount(stats.minutes_played), goals: toCount(stats.goals), assists: toCount(stats.assists), yellowCards: toCount(stats.yellow_cards), redCards: toCount(stats.red_cards), penaltiesScored: toCount(stats.penalties_scored), penaltiesMissed: toCount(stats.penalties_missed), ownGoals: toCount(stats.own_goals) } : null,
+    id: player.idPlayer, name: player.strPlayer, teamName: textOrNull(player.strTeam), teamId: textOrNull(player.idTeam), position: textOrNull(player.strPosition), jerseyNumber: textOrNull(player.strNumber), photoUrl: textOrNull(player.strThumb),
+    nationality: textOrNull(player.strNationality), height: textOrNull(player.strHeight), weight: textOrNull(player.strWeight), birthDate: textOrNull(player.dateBorn),
+    seasons, teamLeagueId,
   };
-}
-
-export async function fetchPlayer(id: number): Promise<PlayerLite | null> {
-  const detail = await fetchPlayerDetail(id);
-  if (!detail) return null;
-  return { id: Number(detail.id), name: detail.name, position: detail.position, photo_url: detail.photoUrl, team_id: Number(detail.teamId), jersey_number: Number(detail.jerseyNumber), primary_source: 'db' };
 }
 
 export async function fetchTeamFromDB(idTeam: string): Promise<TeamFromDB | null> {
