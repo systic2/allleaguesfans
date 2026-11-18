@@ -5,7 +5,7 @@ import type { SearchRow, TeamFromDB, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 import { findTeamIdsByAlias } from "@/lib/team-aliases";
-import { LEAGUE_SLUGS, leagueNameKo, leagueSlugFor } from "@/lib/leagues";
+import { LEAGUE_SLUGS, leagueIdsByKoreanName, leagueNameKo, leagueSlugFor } from "@/lib/leagues";
 
 const DEFAULT_SEASON = String(import.meta.env.VITE_SEASON_YEAR || new Date().getFullYear());
 
@@ -355,32 +355,47 @@ export async function fetchTeamKoreanNames(): Promise<Record<string, string>> {
 }
 
 export async function searchByName(q: string): Promise<SearchRow[]> {
-  const qq = q.trim();
+  // LIKE 와일드카드(% _ *)와 따옴표·백슬래시는 공백으로 바꾼다. 나머지(. : , 괄호)는 값 전체를 따옴표로 감싸 그대로 찾는다
+  const qq = q.trim().replace(/[%_*"\\]/g, ' ').trim();
   if (!qq) return [];
-  // PostgREST or() 필터 문법을 깨는 문자는 공백으로 바꾼다
-  const pattern = `%${qq.replace(/[,()*%\\]/g, ' ')}%`;
+  const pattern = `%${qq}%`;
+  const quoted = (value: string) => `"${value}"`;
   // 화면의 팀 데이터(teams_v2)에서 영문·한글 이름으로 찾는다.
   // 한글 이름은 띄어쓰기를 무시하고('전북현대' → '전북 현대 모터스'), 줄임말('맨유')은 별칭 목록으로 찾는다
-  const teamFilters = [`name.ilike.${pattern}`, `nameKorean.ilike.${pattern}`];
+  const teamFilters = [`name.ilike.${quoted(pattern)}`, `nameKorean.ilike.${quoted(pattern)}`];
   const letters = Array.from(qq).filter(ch => /[\p{L}\p{N}]/u.test(ch));
   // 팀 이름보다 긴 입력은 정규식·요청 주소만 키우므로 건너뛴다
   if (letters.length > 1 && letters.length <= 30) teamFilters.push(`nameKorean.imatch."${letters.join(' *')}"`);
   const aliasIds = findTeamIdsByAlias(qq);
-  if (aliasIds.length > 0) teamFilters.push(`id.in.(${aliasIds.map(id => `"${id}"`).join(',')})`);
-  const [leagues, teams, players] = await Promise.all([
-    supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").ilike("strLeague", pattern).limit(10),
-    supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(teamFilters.join(',')).limit(10),
-    supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb").ilike("strPlayer", pattern).limit(10)
+  if (aliasIds.length > 0) teamFilters.push(`id.in.(${aliasIds.map(quoted).join(',')})`);
+  // 리그는 영문 이름과 한글 이름('프리미어리그') 모두로 찾는다
+  const leagueFilters = [`strLeague.ilike.${quoted(pattern)}`];
+  const koreanLeagueIds = leagueIdsByKoreanName(qq);
+  if (koreanLeagueIds.length > 0) leagueFilters.push(`idLeague.in.(${koreanLeagueIds.map(quoted).join(',')})`);
+  // 포함 검색은 순서 없이 30건만 오므로, 이름이 정확히 같은 팀·선수는 따로 받아 앞에 둔다 (src/lib/search.ts 가 정렬)
+  const [leagues, teams, players, exactTeams, exactPlayers] = await Promise.all([
+    supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").or(leagueFilters.join(',')).limit(30),
+    supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(teamFilters.join(',')).limit(30),
+    supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn").ilike("strPlayer", pattern).limit(30),
+    supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(`name.ilike.${quoted(qq)},nameKorean.ilike.${quoted(qq)}`).limit(10),
+    supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn").ilike("strPlayer", qq).limit(10),
   ]);
+  // 조회 오류를 '결과 없음'으로 보이지 않게 던진다
+  const failed = [leagues, teams, players, exactTeams, exactPlayers].find(result => result.error);
+  if (failed?.error) throw failed.error;
+
+  const uniqueBy = <T,>(items: T[], key: (item: T) => string) => [...new Map(items.map(item => [key(item), item])).values()];
   const rows: SearchRow[] = [];
   for (const x of leagues.data ?? []) {
-    rows.push({ type: "league", entity_id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0, name: String(x.strLeague), slug: leagueSlugFor(String(x.idLeague)) } as SearchRow);
+    const slug = leagueSlugFor(String(x.idLeague));
+    const nameKo = leagueNameKo(slug);
+    rows.push({ type: "league", entity_id: x.highlightly_id || parseInt(x.idLeague.replace(/[^0-9]/g, '')) || 0, name: nameKo ?? String(x.strLeague), name_en: nameKo ? String(x.strLeague) : null, slug, country: x.strCountry ?? null } as SearchRow);
   }
-  for (const t of teams.data ?? []) {
+  for (const t of uniqueBy([...(exactTeams.data ?? []), ...(teams.data ?? [])], t => String(t.id))) {
     // teams_v2.id 는 텍스트라 'hist_…' 같은 ID 도 있으므로 주소에는 원래 문자열을 쓴다
-    rows.push({ type: "team", entity_id: parseInt(String(t.id)) || 0, team_id: String(t.id), name: String(t.nameKorean || t.name), short_name: null, crest_url: (t.badgeUrl ?? null) as string | null } as SearchRow);
+    rows.push({ type: "team", entity_id: parseInt(String(t.id)) || 0, team_id: String(t.id), name: String(t.nameKorean || t.name), name_en: t.nameKorean ? String(t.name) : null, short_name: null, crest_url: (t.badgeUrl ?? null) as string | null } as SearchRow);
   }
-  for (const p of players.data ?? []) {
+  for (const p of uniqueBy([...(exactPlayers.data ?? []), ...(players.data ?? [])], p => String(p.idPlayer))) {
     const playerId = parseInt(p.idPlayer.replace(/[^0-9]/g, '')) || 0;
     rows.push({
       type: "player",
@@ -388,7 +403,9 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
       name: String(p.strPlayer),
       team_id: p.idTeam ? String(p.idTeam) : undefined,
       team_name: p.strTeam,
-      crest_url: p.strThumb
+      crest_url: p.strThumb,
+      nationality: p.strNationality ?? null,
+      birth_date: p.dateBorn ?? null,
     } as SearchRow);
   }
   return rows;

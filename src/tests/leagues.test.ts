@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LEAGUE_SLUGS,
   compareLeagueSlugs,
+  leagueIdsByKoreanName,
   leagueNameKo,
   leagueSlugFor,
 } from '@/lib/leagues';
@@ -60,5 +61,15 @@ describe('league metadata', () => {
       'custom-second',
     ]);
     expect(compareLeagueSlugs('custom-first', 'custom-second')).toBe(0);
+  });
+
+  it('finds league IDs by partial Korean name while ignoring spaces', () => {
+    expect(leagueIdsByKoreanName('프리미어')).toEqual(['4328']);
+    expect(leagueIdsByKoreanName('K리그')).toEqual(['4689', '4822']);
+    expect(leagueIdsByKoreanName('세리에A')).toEqual(['4332']);
+    // '리그1'은 '리그 1'뿐 아니라 'K리그1'에도 포함된다.
+    expect(leagueIdsByKoreanName('리 그 1')).toEqual(['4334', '4689']);
+    expect(leagueIdsByKoreanName('없는 리그')).toEqual([]);
+    expect(leagueIdsByKoreanName('   ')).toEqual([]);
   });
 });

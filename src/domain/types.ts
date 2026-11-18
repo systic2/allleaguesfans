@@ -27,9 +27,12 @@ export interface Player {
 
 // 검색 통합 행: 라우팅을 위해 통일된 키 사용
 export type SearchRow =
-  | { type: 'league'; entity_id: number; name: string; slug: string; tier?: number | null; country?: string | null }
-  | { type: 'team'; entity_id: number; name: string; team_id: string; season_id?: number; short_name?: string | null; crest_url?: string | null }
-  | { type: 'player'; entity_id: number; name: string; team_id?: string; team_name?: string | null; crest_url?: string | null };
+  // name 은 한글 이름(없으면 영문), name_en 은 영문 이름
+  | { type: 'league'; entity_id: number; name: string; name_en?: string | null; slug: string; tier?: number | null; country?: string | null }
+  // name 은 한글 이름(없으면 영문), name_en 은 영문 이름
+  | { type: 'team'; entity_id: number; name: string; name_en?: string | null; team_id: string; season_id?: number; short_name?: string | null; crest_url?: string | null }
+  // nationality·birth_date 는 동명이인 구분용
+  | { type: 'player'; entity_id: number; name: string; team_id?: string; team_name?: string | null; crest_url?: string | null; nationality?: string | null; birth_date?: string | null };
 
 // TheSportsDB Teams 테이블 타입
 export interface TeamFromDB {
