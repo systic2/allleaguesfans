@@ -216,15 +216,47 @@ describe('MatchPage', () => {
     expect(screen.queryByText('VS')).not.toBeInTheDocument();
   });
 
+  it('formats the match date and time in Asia/Seoul', async () => {
+    mockFetchMatchDetails.mockResolvedValue({ ...finishedMatch, date: '2026-05-10T16:30:00.000Z' });
+
+    renderMatchPage();
+
+    expect(await screen.findByText(/2026년 5월 11일.*01:30/)).toBeInTheDocument();
+    expect(screen.getAllByText('01:30')).toHaveLength(1);
+  });
+
+  it("shows '시간 미정' below the scoreboard and in the dated time field for UNKNOWN", async () => {
+    mockFetchMatchDetails.mockResolvedValue({ ...finishedMatch, status: 'UNKNOWN' });
+
+    renderMatchPage();
+
+    expect(await screen.findByText('일정 미정')).toBeInTheDocument();
+    expect(screen.getByText('시간 미정')).toBeInTheDocument();
+    expect(screen.getByText(/2026년 5월 10일.*시간 미정/)).toBeInTheDocument();
+    expect(screen.queryByText('19:00')).not.toBeInTheDocument();
+  });
+
+  it('uses the safe fallback label for an unmapped status', async () => {
+    mockFetchMatchDetails.mockResolvedValue({ ...finishedMatch, status: 'NOT_A_STATUS' as typeof finishedMatch.status });
+
+    renderMatchPage();
+
+    expect(await screen.findByText('상태 확인 중')).toBeInTheDocument();
+    expect(screen.getByText('VS')).toBeInTheDocument();
+    expect(screen.queryByText('3 - 1')).not.toBeInTheDocument();
+  });
+
   it.each([
-    ['POSTPONED' as const, '연기됨'],
-    ['CANCELED' as const, '취소됨'],
-  ])('shows the %s label without a score', async (status, panelLabel) => {
+    ['POSTPONED' as const, '연기됨', 2],
+    ['SUSP' as const, '중단', 2],
+    ['INT' as const, '중단', 2],
+    ['CANCELED' as const, '취소됨', 1],
+  ])('shows the %s label without a score', async (status, panelLabel, occurrences) => {
     mockFetchMatchDetails.mockResolvedValue({ ...finishedMatch, status });
 
     renderMatchPage();
 
-    expect((await screen.findAllByText(panelLabel)).length).toBeGreaterThan(0);
+    expect(await screen.findAllByText(panelLabel)).toHaveLength(occurrences);
     expect(screen.queryByText('3 - 1')).not.toBeInTheDocument();
     expect(screen.queryByText('VS')).not.toBeInTheDocument();
   });

@@ -9,6 +9,9 @@ const TeamPage = lazy(() => import("@/pages/TeamPageDB")); // Using new DB-based
 const PlayerPage = lazy(() => import("@/pages/PlayerPage"));
 const MatchPage = lazy(() => import("@/pages/MatchPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
+const TeamsPage = lazy(() => import("@/pages/TeamsPage"));
+const PlayersPage = lazy(() => import("@/pages/PlayersPage"));
+const MatchesPage = lazy(() => import("@/pages/MatchesPage"));
 
 const router = createBrowserRouter([
   {
@@ -25,8 +28,11 @@ const router = createBrowserRouter([
       { path: "leagues/:slug", element: <LeaguePage /> },
 
       // 팀 / 선수 / 경기
+      { path: "teams", element: <TeamsPage /> },
       { path: "teams/:id", element: <TeamPage /> },
+      { path: "players", element: <PlayersPage /> },
       { path: "players/:id", element: <PlayerPage /> },
+      { path: "matches", element: <MatchesPage /> },
       { path: "matches/:id", element: <MatchPage /> },
 
       // 검색
