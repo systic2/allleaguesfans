@@ -2,27 +2,16 @@
 // 팀 선수단 표·선수 시즌 기록 표의 정렬과 표시 규칙 (docs/prd.md TEAM-02·03, PLAYER-02·05, 8.1)
 
 import { ageOn, kstDate } from "@/lib/dates";
-import { positionGroupOf, POSITION_GROUPS, STAFF_POSITIONS, type PositionGroup } from "@/lib/positions";
+import { positionGroupOf, POSITION_GROUPS, type PositionGroup } from "@/lib/positions";
+import { currentRoster } from "@/lib/roster-snapshot";
 import type { TeamPlayer } from "@/lib/api";
 
 export type SquadSortKey = "number" | "name" | "position" | "age" | "nationality" | "appearances" | "goals" | "assists" | "yellow" | "red";
 export type SortDir = "asc" | "desc";
 
-// 한 번의 수집 실행은 모든 행에 같은 시각을 찍는다 (이전 스크립트로 넣은 행은 같은 실행 안에서도 1초 안팎 차이)
-const SNAPSHOT_WINDOW_MS = 60 * 1000;
-
-/**
- * 감독·코치를 빼고, 팀의 마지막 명단 수집과 함께 들어온 선수만 남긴다.
- * 수집 스크립트는 응답에서 빠진 선수를 지우지 않으므로, 최신 수집 시각보다 1분 넘게 오래된 행은 이전 명단으로 본다.
- * 수집 시각이 없는 행은 판단할 수 없어 남긴다.
- */
+/** 감독·코치와 이전 명단을 뺀 현재 선수단 (기준은 roster-snapshot.ts) */
 export function squadPlayers(players: TeamPlayer[]): TeamPlayer[] {
-  const latest = Math.max(...players.map((p) => (p.updatedAt ? Date.parse(p.updatedAt) : NaN)).filter((t) => !Number.isNaN(t)));
-  return players.filter((p) => {
-    if (STAFF_POSITIONS.includes(p.strPosition ?? "")) return false;
-    const at = p.updatedAt ? Date.parse(p.updatedAt) : NaN;
-    return Number.isNaN(at) || !Number.isFinite(latest) || latest - at <= SNAPSHOT_WINDOW_MS;
-  });
+  return currentRoster(players);
 }
 
 function jerseyNumber(value: string | null): number | null {
@@ -97,6 +86,7 @@ export function isKLeague(idLeague: string | null | undefined): boolean {
 /** 기록 범위 안내 (PLAYER-05). 리그 구분별 한 줄 */
 export const RECORD_SCOPE = {
   kleague: "K리그 기록은 kleague.com 득점·도움 순위에서 가져와, 리그별 득점 또는 도움 상위 30위 안의 선수만 있습니다.",
+  kleagueLink: "kleague.com 기록은 같은 팀 명단에서 영문 이름이 정확히 한 명과 일치하는 선수에게만 연결해, 순위에 든 선수라도 기록이 보이지 않을 수 있습니다.",
   europe: "유럽 리그 기록은 경기 타임라인의 득점·도움·카드·PK만 집계합니다. 출전 수와 출전 시간은 제공하지 않으며, 리그의 끝난 경기를 모두 모은 뒤에 반영됩니다.",
   transfer: "기록은 리그·시즌별로 한 줄입니다. 같은 리그 안에서 시즌 중 팀을 옮기면 두 팀 기록이 한 줄로 합쳐지고, 표시되는 팀이 실제 현재 소속과 다를 수 있습니다.",
 } as const;

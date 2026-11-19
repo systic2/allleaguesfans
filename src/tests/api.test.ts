@@ -65,6 +65,8 @@ const mockSeason = '2025';
 describe('API Functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (supabase.from as any).mockReset();
+    (supabase.from as any).mockImplementation(() => createMockSupabaseChain(null));
   });
 
   describe('fetchLeagues', () => {
@@ -588,8 +590,8 @@ describe('API Functions', () => {
         },
       ];
       const mockStatsData = [
-        { idPlayer: 'p1', goals: 5, assists: 3, appearances: 10, yellow_cards: 1, red_cards: 0 },
-        { idPlayer: 'p2', goals: 2, assists: 7, appearances: 12, yellow_cards: 2, red_cards: 0 },
+        { idPlayer: 'p1', idLeague: '4328', goals: 5, assists: 3, appearances: 10, yellow_cards: 1, red_cards: 0 },
+        { idPlayer: 'p2', idLeague: '4328', goals: 2, assists: 7, appearances: 12, yellow_cards: 2, red_cards: 0 },
       ];
 
       (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayersData)); // players
@@ -611,9 +613,14 @@ describe('API Functions', () => {
       expect(result[0]).not.toHaveProperty('updated_at');
       expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
+      expect(supabase.from).not.toHaveBeenCalledWith('kleague_player_links');
       const playersChain = (supabase.from as any).mock.results[0].value;
       expect(playersChain.select).toHaveBeenCalledWith(
         'idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber, strNationality, dateBorn, updated_at',
+      );
+      const statsChain = (supabase.from as any).mock.results[1].value;
+      expect(statsChain.select).toHaveBeenCalledWith(
+        'idPlayer, idLeague, goals, assists, appearances, yellow_cards, red_cards',
       );
     });
 
@@ -634,6 +641,84 @@ describe('API Functions', () => {
         // 기록 행이 없으면 0 이 아니라 null (미제공)
         goals: null, assists: null, appearances: null, yellow_cards: null, red_cards: null,
       });
+    });
+
+    it('attaches a linked K League statistics row to its roster player', async () => {
+      const playersChain = createMockSupabaseChain([{
+        idPlayer: 'sports-1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId,
+        strPosition: 'Forward', strNumber: '10', strNationality: 'South Korea', dateBorn: null,
+      }]);
+      const statsChain = createMockSupabaseChain([{
+        idPlayer: 'kleague-1', idLeague: '4689', goals: 8, assists: 4, appearances: 21,
+        yellow_cards: 2, red_cards: 0,
+      }]);
+      const linksChain = createMockSupabaseChain([{
+        kleaguePlayerId: 'kleague-1', idPlayer: 'sports-1',
+      }]);
+      (supabase.from as any)
+        .mockReturnValueOnce(playersChain)
+        .mockReturnValueOnce(statsChain)
+        .mockReturnValueOnce(linksChain);
+
+      const result = await fetchPlayersByTeam(mockTeamId, mockSeason);
+
+      expect(result[0]).toMatchObject({
+        idPlayer: 'sports-1', goals: 8, assists: 4, appearances: 21,
+        yellow_cards: 2, red_cards: 0,
+      });
+      expect(supabase.from).toHaveBeenNthCalledWith(3, 'kleague_player_links');
+      expect(linksChain.select).toHaveBeenCalledWith('kleaguePlayerId, idPlayer');
+      expect(linksChain.in).toHaveBeenCalledWith('kleaguePlayerId', ['kleague-1']);
+    });
+
+    it('falls back to no K League link when the link query fails', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const playersChain = createMockSupabaseChain([{
+        idPlayer: 'sports-1', strPlayer: 'Player One', strTeam: 'Busan', idTeam: mockTeamId,
+        strPosition: 'Forward', strNumber: '10', strNationality: null, dateBorn: null,
+      }]);
+      const statsChain = createMockSupabaseChain([{
+        idPlayer: 'kleague-1', idLeague: '4822', goals: 8, assists: 4, appearances: 21,
+        yellow_cards: 2, red_cards: 0,
+      }]);
+      const linkError = { message: 'link table unavailable' };
+      (supabase.from as any)
+        .mockReturnValueOnce(playersChain)
+        .mockReturnValueOnce(statsChain)
+        .mockReturnValueOnce(createMockSupabaseChain(null, linkError));
+
+      await expect(fetchPlayersByTeam(mockTeamId, mockSeason)).resolves.toEqual([
+        expect.objectContaining({
+          idPlayer: 'sports-1', goals: null, assists: null, appearances: null,
+          yellow_cards: null, red_cards: null,
+        }),
+      ]);
+      expect(warn).toHaveBeenCalledWith('Error fetching K League player links:', linkError);
+      warn.mockRestore();
+    });
+
+    it('does not attach an unlinked K League row whose id collides with a roster id', async () => {
+      const playersChain = createMockSupabaseChain([{
+        idPlayer: 'same-id', strPlayer: 'Roster Player', strTeam: 'Busan', idTeam: mockTeamId,
+        strPosition: 'Forward', strNumber: '9', strNationality: null, dateBorn: null,
+      }]);
+      const statsChain = createMockSupabaseChain([{
+        idPlayer: 'same-id', idLeague: '4689', goals: 99, assists: 88, appearances: 30,
+        yellow_cards: 1, red_cards: 0,
+      }]);
+      const linksChain = createMockSupabaseChain([]);
+      (supabase.from as any)
+        .mockReturnValueOnce(playersChain)
+        .mockReturnValueOnce(statsChain)
+        .mockReturnValueOnce(linksChain);
+
+      const [result] = await fetchPlayersByTeam(mockTeamId, mockSeason);
+
+      expect(result).toMatchObject({
+        idPlayer: 'same-id', goals: null, assists: null, appearances: null,
+        yellow_cards: null, red_cards: null,
+      });
+      expect(linksChain.in).toHaveBeenCalledWith('kleaguePlayerId', ['same-id']);
     });
 
     it('should return empty array if no players found', async () => {
@@ -745,7 +830,9 @@ describe('API Functions', () => {
         strThumb: 'http://example.com/photo.jpg'
       };
       const mockPlayerStats = [{
+        idPlayer: String(mockPlayerId),
         strSeason: '2026',
+        idLeague: '4328',
         idTeam: '999',
         goals: 10,
         assists: 5,
@@ -758,8 +845,12 @@ describe('API Functions', () => {
         own_goals: 0
       }];
 
-      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerData)); // players
-      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain(mockPlayerStats)); // player_statistics
+      const linksChain = createMockSupabaseChain([]);
+      const ownStatsChain = createMockSupabaseChain(mockPlayerStats);
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain(mockPlayerData)) // players
+        .mockReturnValueOnce(ownStatsChain) // non-K-League player_statistics
+        .mockReturnValueOnce(linksChain); // kleague_player_links
 
       const result = await fetchPlayerDetail(mockPlayerId);
 
@@ -783,15 +874,54 @@ describe('API Functions', () => {
         minutesPlayed: 1800,
       });
 
-      const statsChain = (supabase.from as any).mock.results[1].value;
-      expect(statsChain.eq).toHaveBeenCalledWith('idPlayer', String(mockPlayerId));
-      expect(statsChain.eq).not.toHaveBeenCalledWith('strSeason', expect.anything());
-      expect(statsChain.order).toHaveBeenCalledWith('strSeason', { ascending: false });
-      expect(statsChain.order).toHaveBeenCalledWith('last_updated', { ascending: false });
-      expect(statsChain.limit).not.toHaveBeenCalled();
+      expect(linksChain.in).toHaveBeenCalledWith('idPlayer', [String(mockPlayerId)]);
+      expect(ownStatsChain.eq).toHaveBeenCalledWith('idPlayer', String(mockPlayerId));
+      expect(ownStatsChain.not).toHaveBeenCalledWith('idLeague', 'in', '(4689,4822)');
+      expect(ownStatsChain.eq).not.toHaveBeenCalledWith('strSeason', expect.anything());
+      expect(ownStatsChain.limit).not.toHaveBeenCalled();
       
       expect(supabase.from).toHaveBeenCalledWith('players_v2');
       expect(supabase.from).toHaveBeenCalledWith('player_statistics');
+    });
+
+    it('excludes own-id K League rows and merges only linked K League statistics', async () => {
+      const ownStatsChain = createMockSupabaseChain([{
+        idPlayer: '12345', strSeason: '2025', idLeague: '4328', idTeam: 'old-team',
+        strTeam: 'English Club', goals: 4, assists: 1, appearances: 9,
+        last_updated: '2026-01-01T00:00:00Z',
+      }]);
+      const linksChain = createMockSupabaseChain([{
+        kleaguePlayerId: 'kleague-7', idPlayer: '12345',
+      }]);
+      const linkedStatsChain = createMockSupabaseChain([{
+        idPlayer: 'kleague-7', strSeason: '2026', idLeague: '4689', idTeam: '999',
+        strTeam: 'Test FC', goals: 7, assists: 3, appearances: 12,
+        last_updated: '2026-11-18T00:00:00Z',
+      }]);
+      (supabase.from as any)
+        .mockReturnValueOnce(createMockSupabaseChain({
+          idPlayer: '12345', strPlayer: 'Linked Player', strTeam: 'Test FC',
+          idTeam: '999', strPosition: 'Forward',
+        }))
+        .mockReturnValueOnce(ownStatsChain)
+        .mockReturnValueOnce(linksChain)
+        .mockReturnValueOnce(linkedStatsChain);
+
+      const result = await fetchPlayerDetail(12345);
+
+      expect(ownStatsChain.eq).toHaveBeenCalledWith('idPlayer', '12345');
+      expect(ownStatsChain.not).toHaveBeenCalledWith('idLeague', 'in', '(4689,4822)');
+      expect(linksChain.in).toHaveBeenCalledWith('idPlayer', ['12345']);
+      expect(linkedStatsChain.in).toHaveBeenNthCalledWith(1, 'idPlayer', ['kleague-7']);
+      expect(linkedStatsChain.in).toHaveBeenNthCalledWith(2, 'idLeague', ['4689', '4822']);
+      expect(result?.seasons).toEqual([
+        expect.objectContaining({
+          season: '2026', leagueId: '4689', teamId: '999', goals: 7, assists: 3,
+        }),
+        expect.objectContaining({
+          season: '2025', leagueId: '4328', teamId: 'old-team', goals: 4, assists: 1,
+        }),
+      ]);
     });
 
     it('returns the current team league from its latest supported standing', async () => {
@@ -807,12 +937,13 @@ describe('API Functions', () => {
       (supabase.from as any)
         .mockReturnValueOnce(playerChain)
         .mockReturnValueOnce(statsChain)
+        .mockReturnValueOnce(createMockSupabaseChain([]))
         .mockReturnValueOnce(standingChain);
 
       const result = await fetchPlayerDetail(12345);
 
       expect(result?.teamLeagueId).toBe('4328');
-      expect(supabase.from).toHaveBeenNthCalledWith(3, 'standings_v2');
+      expect(supabase.from).toHaveBeenNthCalledWith(4, 'standings_v2');
       expect(standingChain.select).toHaveBeenCalledWith('leagueId');
       expect(standingChain.eq).toHaveBeenCalledWith('teamId', '999');
       expect(standingChain.in).toHaveBeenCalledWith('leagueId', [
@@ -839,6 +970,7 @@ describe('API Functions', () => {
           idTeam: '999',
           strPosition: 'Forward',
         }))
+        .mockReturnValueOnce(createMockSupabaseChain([]))
         .mockReturnValueOnce(createMockSupabaseChain([]));
 
       const result = await fetchPlayerDetail(12345);
@@ -867,7 +999,8 @@ describe('API Functions', () => {
           penalties_scored: null,
           penalties_missed: 0,
           own_goals: null,
-        }]));
+        }]))
+        .mockReturnValueOnce(createMockSupabaseChain([]));
 
       const result = await fetchPlayerDetail(12345);
 
@@ -901,7 +1034,8 @@ describe('API Functions', () => {
           { strSeason: '2026', idLeague: '4328', idTeam: 'former-team', strTeam: 'Former FC', goals: 3, appearances: 8 },
           { strSeason: '2026', idLeague: '4328', idTeam: 'current-team', strTeam: 'Current FC', goals: 7, appearances: 12 },
           { strSeason: '2025', idLeague: '4328', idTeam: 'current-team', strTeam: 'Current FC', goals: 20, appearances: 30 },
-        ]));
+        ]))
+        .mockReturnValueOnce(createMockSupabaseChain([]));
 
       const result = await fetchPlayerDetail(12345);
 
@@ -928,6 +1062,7 @@ describe('API Functions', () => {
           dateBorn: '',
           strThumb: ' ',
         }))
+        .mockReturnValueOnce(createMockSupabaseChain([]))
         .mockReturnValueOnce(createMockSupabaseChain([]));
 
       const result = await fetchPlayerDetail(12345);

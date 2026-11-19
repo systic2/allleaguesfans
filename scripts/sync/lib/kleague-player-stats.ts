@@ -5,11 +5,13 @@
 // TheSportsDB 에는 K리그 경기 타임라인이 없어 이 경로를 쓴다. 응답 검증·변환은 src/lib/mappers 쪽 순수 함수가 맡는다.
 import { supa } from './supabase.js';
 import {
-  mergeRankings, parseRankingResponse, planStaleDeletion, type KLeagueRecordType,
+  KLEAGUE_TEAM_TO_THESPORTSDB, matchKLeaguePlayers, mergeRankings, parseRankingResponse, planLinkChanges, planStaleDeletion,
+  type KLeaguePlayerLink, type KLeagueRankRow, type KLeagueRecordType, type RosterPlayer,
 } from '../../../src/lib/mappers/kleague-player-stats-mappers.js';
 
 const RANK_URL = 'https://www.kleague.com/record/rankSort.do';
 const PLAYER_STATISTICS_TABLE = 'player_statistics';
+const PLAYER_LINKS_TABLE = 'kleague_player_links';
 
 // K리그 공식 리그 번호 → TheSportsDB 리그 ID
 const KLEAGUE_LEAGUES = [
@@ -17,15 +19,15 @@ const KLEAGUE_LEAGUES = [
   { kleagueId: 2, idLeague: '4822', name: 'K League 2' },
 ] as const;
 
-async function fetchRanking(kleagueId: number, year: number, recordType: KLeagueRecordType) {
+// 언어 헤더에 따라 선수·구단 이름이 한글/영문으로 바뀐다. 기록은 한글로 저장하고, 영문은 명단과 이을 때만 쓴다
+async function fetchRanking(kleagueId: number, year: number, recordType: KLeagueRecordType, language: 'ko' | 'en' = 'ko') {
   const response = await fetch(RANK_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'application/json',
-      // 언어 헤더에 따라 선수·구단 이름이 한글/영문(대문자)으로 바뀌므로 한글로 고정
-      'Accept-Language': 'ko-KR,ko;q=0.9',
+      'Accept-Language': language === 'ko' ? 'ko-KR,ko;q=0.9' : 'en-US,en;q=0.9',
     },
     body: JSON.stringify({ year, leagueId: kleagueId, recordType }),
   });
@@ -42,6 +44,7 @@ async function fetchRanking(kleagueId: number, year: number, recordType: KLeague
 export async function syncKLeaguePlayerStats(season: string): Promise<boolean> {
   console.log(`\n🚀 Starting K League Player Stats Sync (Season ${season})...`);
   let ok = true;
+  const englishRows: KLeagueRankRow[] = [];
 
   for (const league of KLEAGUE_LEAGUES) {
     try {
@@ -98,11 +101,105 @@ export async function syncKLeaguePlayerStats(season: string): Promise<boolean> {
       }
 
       console.log(`[DB] ✅ ${league.name}: ${rows.length} players (goals top ${goals.length}, assists top ${assists.length}, removed ${skip ? 0 : stale.length}).`);
+
+      englishRows.push(...await fetchEnglishRankings(league, Number(season), [...goals, ...assists]));
     } catch (error) {
       console.error(`❌ K League player stats failed for ${league.name}:`, error);
       ok = false;
     }
   }
 
+  // 선수 연결은 부가 정보라 실패해도 기록 동기화는 성공으로 둔다 (화면은 연결 없이도 동작). 문제는 경고로 남긴다.
+  if (englishRows.length > 0) {
+    try {
+      await linkKLeaguePlayers(englishRows);
+    } catch (error) {
+      console.warn('⚠️  K League player links failed:', error);
+    }
+  }
   return ok;
+}
+
+/**
+ * 같은 순위를 영문 이름으로 다시 받는다. 한글 순위와 선수 구성이 다르면(빈 응답·순위 갱신 사이 변동) 이 리그는 연결하지 않는다.
+ */
+async function fetchEnglishRankings(
+  league: (typeof KLEAGUE_LEAGUES)[number], year: number, koreanRows: KLeagueRankRow[]
+): Promise<KLeagueRankRow[]> {
+  try {
+    const rows = [
+      ...await fetchRanking(league.kleagueId, year, 'GOAL', 'en'),
+      ...await fetchRanking(league.kleagueId, year, 'ASSIST', 'en'),
+    ];
+    const key = (list: KLeagueRankRow[]) => [...new Set(list.map(r => `${r.playerId}:${r.teamId}`))].sort().join(',');
+    if (key(rows) !== key(koreanRows)) {
+      console.warn(`⚠️  ${league.name}: English rankings differ from Korean rankings. Skipping player links.`);
+      return [];
+    }
+    return rows;
+  } catch (error) {
+    console.warn(`⚠️  ${league.name}: English rankings failed. Skipping player links.`, error);
+    return [];
+  }
+}
+
+/**
+ * kleague.com 선수 ID 를 players_v2(TheSportsDB) 선수와 잇는다. 같은 팀 현재 명단에서 영문 이름이 정확히 한 명과
+ * 맞을 때만 연결하고(matchKLeaguePlayers), 저장된 연결과 맞춰 1:1 을 유지한다(planLinkChanges).
+ * 같은 사람의 ID 대응이라 순위에서 빠져도 연결은 남긴다. 실패는 경고만 남긴다.
+ */
+async function linkKLeaguePlayers(rows: KLeagueRankRow[]): Promise<void> {
+  const roster: RosterPlayer[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supa
+      .from('players_v2')
+      .select('idPlayer, idTeam, strPlayer, strPosition, updated_at')
+      .in('idTeam', Object.values(KLEAGUE_TEAM_TO_THESPORTSDB))
+      .order('idPlayer')
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.warn('[DB] ⚠️  Failed to load K League rosters for player links:', error);
+      return;
+    }
+    roster.push(...data.map(({ updated_at, ...p }) => ({ ...p, updatedAt: updated_at ?? null })));
+    if (data.length < PAGE) break;
+  }
+
+  const existing: KLeaguePlayerLink[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supa
+      .from(PLAYER_LINKS_TABLE)
+      .select('kleaguePlayerId, idPlayer')
+      .order('kleaguePlayerId')
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.warn('[DB] ⚠️  Failed to read K League player links (migration 22 applied?):', error);
+      return;
+    }
+    existing.push(...data);
+    if (data.length < PAGE) break;
+  }
+
+  const result = matchKLeaguePlayers(rows, roster);
+  const { insert, removeKLeagueIds, conflicts } = planLinkChanges(result, existing);
+  for (const c of conflicts) console.warn(`⚠️  K League player link not saved (conflicts with a stored link): ${c.kleaguePlayerId} -> ${c.idPlayer}`);
+
+  if (removeKLeagueIds.length > 0) {
+    const { error } = await supa.from(PLAYER_LINKS_TABLE).delete().in('kleaguePlayerId', removeKLeagueIds);
+    if (error) {
+      console.warn('[DB] ⚠️  Failed to remove ambiguous K League player links:', error);
+      return;
+    }
+  }
+  if (insert.length > 0) {
+    const matchedAt = new Date().toISOString();
+    const { error } = await supa.from(PLAYER_LINKS_TABLE).insert(insert.map(link => ({ ...link, matchedAt })));
+    if (error) {
+      console.warn('[DB] ⚠️  K League player links insert failed:', error);
+      return;
+    }
+  }
+  const ranked = new Set(rows.map(r => String(r.playerId))).size;
+  console.log(`[DB] ✅ K League player links: ${result.links.length}/${ranked} matched (new ${insert.length}, removed ${removeKLeagueIds.length}, conflicts ${conflicts.length}).`);
 }

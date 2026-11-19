@@ -120,10 +120,7 @@ export default function PlayerPage() {
         <section aria-labelledby="seasons-heading" className="rounded-lg border border-line bg-panel p-4 lg:col-span-8">
           <h2 id="seasons-heading" className="mb-2 text-sm font-bold text-ink/80">시즌 기록</h2>
           {player.seasons.length === 0 ? (
-            <p className="py-6 text-sm text-ink/60">
-              수집된 시즌 기록이 없습니다.
-              {isKLeague(player.teamLeagueId) && " K리그 개인 기록은 kleague.com 선수 ID로 모으고 있어 아직 이 선수와 연결되지 않았습니다."}
-            </p>
+            <p className="py-6 text-sm text-ink/60">수집된 시즌 기록이 없습니다.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full whitespace-nowrap text-sm">
@@ -165,7 +162,7 @@ export default function PlayerPage() {
           )}
           {(hasKLeague || hasEurope) && (
             <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-ink/50">
-              {hasKLeague && <li>{RECORD_SCOPE.kleague}</li>}
+              {hasKLeague && <li>{RECORD_SCOPE.kleague} {RECORD_SCOPE.kleagueLink}</li>}
               {hasEurope && <li>{RECORD_SCOPE.europe}</li>}
               {player.seasons.length > 0 && <li>{RECORD_SCOPE.transfer}</li>}
               {hasMissingCell && <li>—는 그 리그에서 수집하지 않는 항목입니다.</li>}

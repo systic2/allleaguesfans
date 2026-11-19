@@ -118,7 +118,9 @@ describe('PlayerPage', () => {
     expectTableCell(row, '리그', 'K리그1');
     expectTableCell(row, '팀', '테스트 FC');
     expectTableCell(row, '득점', '7');
-    expect(screen.getByText(RECORD_SCOPE.kleague)).toBeInTheDocument();
+    expect(screen.getByText(
+      `${RECORD_SCOPE.kleague} ${RECORD_SCOPE.kleagueLink}`,
+    ).closest('li')).not.toBeNull();
     expect(screen.getByText(RECORD_SCOPE.transfer).closest('li')).not.toBeNull();
 
     for (const fabricatedText of [
@@ -180,8 +182,11 @@ describe('PlayerPage', () => {
 
     renderPlayerPage();
 
-    expect(await screen.findByText(/K리그 개인 기록은 kleague\.com 선수 ID로 모으고 있어 아직 이 선수와 연결되지 않았습니다\./)).toBeInTheDocument();
-    expect(screen.getByText(RECORD_SCOPE.kleague).closest('li')).not.toBeNull();
+    expect(await screen.findByText('수집된 시즌 기록이 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText(
+      `${RECORD_SCOPE.kleague} ${RECORD_SCOPE.kleagueLink}`,
+    ).closest('li')).not.toBeNull();
+    expect(document.body.textContent?.split(RECORD_SCOPE.kleagueLink)).toHaveLength(2);
   });
 
   it('shows the European scope for an empty player record in a European league', async () => {

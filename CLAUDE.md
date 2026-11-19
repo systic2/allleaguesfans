@@ -40,7 +40,7 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 - `src/hooks/useTeamName.ts` – Korean team names (see below)
 - `src/types/domain.ts`, `src/domain/types.ts` – domain types
 - `scripts/sync/` – data sync (see Data Sync)
-- `scripts/migrations/` – SQL migrations, applied by hand in the Supabase SQL Editor. Older files are mixed (duplicate numbers, some unnumbered); new ones continue the sequence (latest: 19)
+- `scripts/migrations/` – SQL migrations, applied by hand in the Supabase SQL Editor. Older files are mixed (duplicate numbers, some unnumbered); new ones continue the sequence (latest: 22)
 - `scripts/one-off/`, `scripts/archive/` – old one-off scripts, not part of any pipeline
 
 ### Key Conventions
@@ -73,7 +73,7 @@ For non-trivial fixes/features in this repo, use the three-role pipeline instead
 
 1. **Standings and teams** from TheSportsDB → `standings_v2`, `teams_v2`
 2. **Events** (fixtures and results) from TheSportsDB → `events_v2`
-3. **K League player stats** (`lib/kleague-player-stats.ts`): goal/assist rankings from kleague.com `/record/rankSort.do` → `player_statistics`
+3. **K League player stats** (`lib/kleague-player-stats.ts`): goal/assist rankings from kleague.com `/record/rankSort.do` → `player_statistics`. kleague.com player ids differ from `players_v2` (TheSportsDB) ids; the step also links them in `kleague_player_links` (migration 22) when exactly one player on the same team has the same English name, and the app reads stats through those links
 4. **European player stats** (`lib/europe-player-stats.ts`): TheSportsDB v2 `event_timeline` per finished match, cached in `event_timelines` (migration 18), aggregated → `player_statistics`. Bounded per run (600 requests, 12-minute deadline, fair share per league); stats for a league are written only once every finished match is cached.
 
 Any failed step makes the script exit 1 so the workflow run shows as failed.

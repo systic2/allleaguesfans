@@ -134,8 +134,8 @@ export default function SquadTable({ players, leagueId, seasonLabel }: { players
         <p className="mt-3 text-xs text-ink/50">
           {isKLeague(leagueId)
             ? statColumns.length > 0
-              ? RECORD_SCOPE.kleague
-              : "K리그 개인 기록은 kleague.com 선수 ID로 모으고 있어 아직 이 명단과 연결되지 않았습니다. 득점·도움 순위는 리그 화면에서 볼 수 있습니다."
+              ? `${RECORD_SCOPE.kleague} ${RECORD_SCOPE.kleagueLink}`
+              : `이 시즌에 이 명단과 연결된 K리그 개인 기록이 아직 없습니다. ${RECORD_SCOPE.kleagueLink} 득점·도움 순위는 리그 화면에서 볼 수 있습니다.`
             : statColumns.length > 0
               ? `${RECORD_SCOPE.europe} 기록이 없는 선수는 —로 표시합니다.`
               : "이 시즌에 이 명단과 연결된 개인 기록이 아직 없습니다."}
