@@ -151,6 +151,8 @@ export interface RosterPlayer {
   strPlayer: string | null;
   strPosition: string | null;
   updatedAt: string | null;
+  /** TheSportsDB 생년월일 (YYYY-MM-DD) */
+  dateBorn?: string | null;
 }
 
 export interface KLeaguePlayerLink {
@@ -164,6 +166,8 @@ export interface KLeagueMatchResult {
   ambiguousKLeagueIds: string[];
   /** kleague.com 선수 둘 이상과 이름이 맞는 명단 선수 */
   ambiguousPlayerIds: string[];
+  /** 같은 팀에서 이름이 맞는 선수가 정확히 한 명이 아닌 kleague.com 선수 (생년월일로 다시 찾을 대상) */
+  unmatchedKLeagueIds: string[];
 }
 
 // NFD 로 분해되지 않는 라틴 문자
@@ -192,24 +196,84 @@ function sameName(a: string[], b: string[]): boolean {
   return [...short].every(token => long.has(token));
 }
 
+// 선수 생년월일로 쓸 만한 'YYYY-MM-DD' 만 받는다 (뒤에 시각 'HH:MM[:SS[.fff]][Z|±HH:MM]' 이 붙는 건 허용).
+// 없는 날짜('0000-00-00', '2001-02-30'), 1950년 이전, 만 14세가 안 되는 값은 기본값·오류로 보고 버린다
+export function birthDateKey(value: string | null | undefined, now: Date = new Date()): string | null {
+  const match = (value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/);
+  if (!match) return null;
+  const date = `${match[1]}-${match[2]}-${match[3]}`;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
+  const today = now.toISOString().slice(0, 10);
+  const latest = `${String(Number(today.slice(0, 4)) - 14).padStart(4, '0')}${today.slice(4)}`;
+  return date >= '1950-01-01' && date <= latest ? date : null;
+}
+
 /**
- * kleague.com 순위 행(영문 이름)을 같은 팀 현재 명단의 TheSportsDB 선수와 잇는다.
- * 같은 팀에서 이름이 일치하는 선수가 정확히 한 명일 때만 연결하고, 한 명단 선수에 kleague.com 선수 둘 이상이
- * 붙으면 모두 버린다. 확실하지 않으면 연결하지 않는 쪽을 택한다(잘못된 선수에 기록이 붙는 것보다 낫다).
- * 명단은 팀별로 감독·코치와 이전 명단을 뺀다(currentRoster).
+ * kleague.com 선수 상세 페이지(record/playerDetail.do, 한국어)에서 생년월일을 'YYYY-MM-DD' 로 꺼낸다.
+ * 생년월일 칸은 있는데 값이 없거나 쓸 수 없으면 null, 칸 자체가 없으면(선수 페이지가 아님: 점검·차단·오류 페이지,
+ * 바뀐 마크업) undefined.
  */
-export function matchKLeaguePlayers(rows: KLeagueRankRow[], roster: RosterPlayer[]): KLeagueMatchResult {
+export function parseKLeagueBirthDate(html: string, now: Date = new Date()): string | null | undefined {
+  if (!/<th>\s*생년월일\s*<\/th>/.test(html)) return undefined;
+  const match = html.match(/생년월일\s*<\/th>\s*<td>\s*(\d{4})[./-](\d{2})[./-](\d{2})\s*<\/td>/);
+  return match ? birthDateKey(`${match[1]}-${match[2]}-${match[3]}`, now) : null;
+}
+
+// 이름 비교용 단어. 띄어 쓴 이름('Seon Min Moon')과 붙인 이름('Seon-Min Moon' → seonmin)이 맞도록 상대 이름은
+// 이웃한 두 단어를 붙인 것까지 넓혀 본다. 전치사는 세지 않는다
+const nameWords = (tokens: string[]) => [...new Set(tokens.filter(t => !NAME_PARTICLES.has(t)))];
+const widenedWords = (tokens: string[]) => new Set([...tokens, ...tokens.slice(1).map((t, i) => tokens[i] + t)]);
+
+// 겹치는 이름 단어가 하나라도 있는가 (같은 팀 후보)
+function shareNameWord(a: string[], b: string[]): boolean {
+  const wideA = widenedWords(a), wideB = widenedWords(b);
+  return nameWords(a).some(t => wideB.has(t)) || nameWords(b).some(t => wideA.has(t));
+}
+
+// 한쪽 이름 단어(둘 이상)가 모두 다른 쪽에 있는가 (다른 팀 후보). 'Kim Min Su'·'Kim Min Jae' 처럼 일부만 겹치면 아니다
+function coveredName(a: string[], b: string[]): boolean {
+  const covered = (from: string[], to: string[]) => {
+    const words = nameWords(from), target = widenedWords(to);
+    return words.length >= 2 && words.every(t => target.has(t));
+  };
+  return covered(a, b) || covered(b, a);
+}
+
+export interface KLeagueMatchOptions {
+  /** kleague.com 선수 ID → 생년월일 ('YYYY-MM-DD') */
+  birthDates?: ReadonlyMap<string, string>;
+  /** 이미 저장된 연결. 생년월일로 남은 유일한 후보가 다른 kleague.com 선수에게 연결돼 있으면 잇지 않는다 */
+  storedLinks?: readonly KLeaguePlayerLink[];
+}
+
+/**
+ * kleague.com 순위 행(영문 이름)을 TheSportsDB 명단 선수와 잇는다. 확실하지 않으면 연결하지 않는 쪽을 택한다
+ * (잘못된 선수에 기록이 붙는 것보다 낫다).
+ * 1. 같은 팀에서 영문 이름이 일치하는 선수가 정확히 한 명이면 연결한다.
+ * 2. 아니면 kleague.com 생년월일이 같은 명단 선수가 정확히 한 명일 때 연결한다. 후보는
+ *    - 같은 팀에 이름이 맞는 선수가 여럿이면 그 선수들 중에서만,
+ *    - 아니면 같은 팀에서 이름 단어가 하나 이상 겹치거나, 다른 팀에서 한쪽 이름 단어(둘 이상)가 모두 다른 쪽에 있는 선수다.
+ *    표기 차이('Seon Min Moon'·'Seon-Min Moon', 'ABDALLAH HLEIHIL'·'Abdallah Hleihel')와 TheSportsDB 명단에
+ *    이적이 늦게 반영된 선수(다른 팀 명단에 남아 있음)가 여기서 이어진다. 생년월일 후보가 둘 이상이면 애매한 것으로 본다.
+ * 한 명단 선수에 kleague.com 선수 둘 이상이 붙으면 모두 버린다. 명단은 팀별로 감독·코치와 이전 명단을 뺀다(currentRoster).
+ */
+export function matchKLeaguePlayers(
+  rows: KLeagueRankRow[], roster: RosterPlayer[], { birthDates = new Map(), storedLinks = [] }: KLeagueMatchOptions = {}
+): KLeagueMatchResult {
   const byTeam = new Map<string, RosterPlayer[]>();
   for (const player of roster) byTeam.set(player.idTeam, [...(byTeam.get(player.idTeam) ?? []), player]);
-  const rosterByTeam = new Map<string, { idPlayer: string; tokens: string[] }[]>();
+  const rosterByTeam = new Map<string, { idPlayer: string; idTeam: string; tokens: string[]; birth: string | null }[]>();
   for (const [idTeam, players] of byTeam) {
     rosterByTeam.set(idTeam, currentRoster(players)
-      .map(p => ({ idPlayer: String(p.idPlayer), tokens: nameTokens(p.strPlayer) }))
+      .map(p => ({ idPlayer: String(p.idPlayer), idTeam, tokens: nameTokens(p.strPlayer), birth: birthDateKey(p.dateBorn) }))
       .filter(p => p.tokens.length > 0));
   }
+  const allPlayers = [...rosterByTeam.values()].flat();
 
   const candidates = new Map<string, string>();
   const ambiguousKLeagueIds = new Set<string>();
+  const unmatched: { kleaguePlayerId: string; idTeam: string | undefined; tokens: string[]; nameHits: typeof allPlayers }[] = [];
   const seen = new Set<string>();
   for (const row of rows) {
     const kleaguePlayerId = String(row.playerId);
@@ -219,7 +283,24 @@ export function matchKLeaguePlayers(rows: KLeagueRankRow[], roster: RosterPlayer
     const tokens = nameTokens(row.name);
     const hits = (idTeam ? rosterByTeam.get(idTeam) ?? [] : []).filter(p => sameName(tokens, p.tokens));
     if (hits.length === 1) candidates.set(kleaguePlayerId, hits[0].idPlayer);
-    else if (hits.length > 1) ambiguousKLeagueIds.add(kleaguePlayerId);
+    else unmatched.push({ kleaguePlayerId, idTeam, tokens, nameHits: hits });
+  }
+
+  // 생년월일 연결은 이번에 이름으로 이어진 명단 선수를 후보에서 뺀다 (이름 연결을 밀어내지 않도록)
+  const nameMatched = new Set(candidates.values());
+  const storedOwner = new Map(storedLinks.map(l => [String(l.idPlayer), String(l.kleaguePlayerId)]));
+  for (const { kleaguePlayerId, idTeam, tokens, nameHits } of unmatched) {
+    const birth = birthDateKey(birthDates.get(kleaguePlayerId));
+    const pool = nameHits.length > 1
+      ? nameHits
+      : allPlayers.filter(p => p.idTeam === idTeam ? shareNameWord(tokens, p.tokens) : coveredName(tokens, p.tokens));
+    const byBirth = birth ? pool.filter(p => p.birth === birth && !nameMatched.has(p.idPlayer)) : [];
+    // 애매한지 먼저 본 뒤, 하나 남은 후보가 저장된 연결로 다른 kleague.com 선수 것이면 잇지 않는다
+    // (저장된 연결을 빼고 세면 두 선수가 실행마다 번갈아 연결·삭제될 수 있다)
+    if (byBirth.length === 1) {
+      const owner = storedOwner.get(byBirth[0].idPlayer);
+      if (owner === undefined || owner === kleaguePlayerId) candidates.set(kleaguePlayerId, byBirth[0].idPlayer);
+    } else if (nameHits.length > 1 || byBirth.length > 1) ambiguousKLeagueIds.add(kleaguePlayerId);
   }
 
   const claims = new Map<string, number>();
@@ -230,7 +311,35 @@ export function matchKLeaguePlayers(rows: KLeagueRankRow[], roster: RosterPlayer
       .map(([kleaguePlayerId, idPlayer]) => ({ kleaguePlayerId, idPlayer })),
     ambiguousKLeagueIds: [...ambiguousKLeagueIds],
     ambiguousPlayerIds: [...claims].filter(([, n]) => n > 1).map(([idPlayer]) => idPlayer),
+    unmatchedKLeagueIds: unmatched.map(u => u.kleaguePlayerId),
   };
+}
+
+export interface KLeagueBirthDateCacheRow {
+  kleaguePlayerId: string;
+  /** 페이지에 생년월일이 없었으면 null */
+  birthDate: string | null;
+  checkedAt: string;
+}
+
+/** 생년월일이 없던 선수는 이 기간이 지나야 다시 확인한다 */
+export const BIRTH_DATE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * 생년월일 페이지를 받을 kleague.com 선수를 고른다: 이름으로 못 이었고, 캐시에 없거나
+ * 생년월일 없이 확인한 지 BIRTH_DATE_RETRY_MS 가 지난 선수. 확인 시각을 읽을 수 없으면 다시 받는다.
+ */
+export function planBirthDateFetch(
+  unmatchedKLeagueIds: string[], cache: KLeagueBirthDateCacheRow[], now: Date = new Date()
+): string[] {
+  const cached = new Map(cache.map(row => [String(row.kleaguePlayerId), row]));
+  return [...new Set(unmatchedKLeagueIds.map(String))].filter(id => {
+    const row = cached.get(id);
+    if (!row) return true;
+    if (row.birthDate) return false;
+    const checkedAt = Date.parse(row.checkedAt);
+    return Number.isNaN(checkedAt) || now.getTime() - checkedAt >= BIRTH_DATE_RETRY_MS;
+  });
 }
 
 /**

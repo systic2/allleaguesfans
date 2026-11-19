@@ -86,7 +86,7 @@ export function isKLeague(idLeague: string | null | undefined): boolean {
 /** 기록 범위 안내 (PLAYER-05). 리그 구분별 한 줄 */
 export const RECORD_SCOPE = {
   kleague: "K리그 기록은 kleague.com 득점·도움 순위에서 가져와, 리그별 득점 또는 도움 상위 30위 안의 선수만 있습니다.",
-  kleagueLink: "kleague.com 기록은 같은 팀 명단에서 영문 이름이 정확히 한 명과 일치하는 선수에게만 연결해, 순위에 든 선수라도 기록이 보이지 않을 수 있습니다.",
+  kleagueLink: "kleague.com 기록은 영문 이름이나 생년월일로 같은 사람임을 확인한 명단 선수에게만 연결해, 순위에 든 선수라도 기록이 보이지 않을 수 있습니다.",
   europe: "유럽 리그 기록은 경기 타임라인의 득점·도움·카드·PK만 집계합니다. 출전 수와 출전 시간은 제공하지 않으며, 리그의 끝난 경기를 모두 모은 뒤에 반영됩니다.",
   transfer: "기록은 리그·시즌별로 한 줄입니다. 같은 리그 안에서 시즌 중 팀을 옮기면 두 팀 기록이 한 줄로 합쳐지고, 표시되는 팀이 실제 현재 소속과 다를 수 있습니다.",
 } as const;

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BIRTH_DATE_RETRY_MS,
   KLEAGUE_TEAM_TO_THESPORTSDB,
+  birthDateKey,
   matchKLeaguePlayers,
   mergeRankings,
   nameTokens,
+  parseKLeagueBirthDate,
   parseRankingResponse,
+  planBirthDateFetch,
   planLinkChanges,
   planStaleDeletion,
   type KLeagueRankRow,
@@ -203,6 +207,67 @@ describe('nameTokens', () => {
   });
 });
 
+describe('parseKLeagueBirthDate', () => {
+  const now = new Date('2026-11-20T00:00:00Z');
+
+  it.each([
+    ['slash', '<th>생년월일</th><td>2001/02/03</td>'],
+    ['dot', '<th>생년월일</th><td>2001.02.03</td>'],
+    ['hyphen', '<th>생년월일</th><td>2001-02-03</td>'],
+    ['surrounding whitespace', '<th>생년월일</th>\n  <td>  2001/02/03  </td>'],
+  ])('parses a valid date with %s', (_label, html) => {
+    expect(parseKLeagueBirthDate(html, now)).toBe('2001-02-03');
+  });
+
+  it('returns undefined when the birth-date header is absent', () => {
+    expect(parseKLeagueBirthDate('<th>국적</th><td>대한민국</td>', now)).toBeUndefined();
+  });
+
+  it.each([
+    ['an empty value', '<th>생년월일</th><td> </td>'],
+    ['an unusable value', '<th>생년월일</th><td>unknown</td>'],
+    ['an impossible day', '<th>생년월일</th><td>2001/02/30</td>'],
+    ['zero date parts', '<th>생년월일</th><td>0000/00/00</td>'],
+  ])('returns null for %s', (_label, html) => {
+    expect(parseKLeagueBirthDate(html, now)).toBeNull();
+  });
+
+  it('applies the exact 14-year age boundary using the supplied clock', () => {
+    expect(parseKLeagueBirthDate('<th>생년월일</th><td>2012-11-20</td>', now))
+      .toBe('2012-11-20');
+    expect(parseKLeagueBirthDate('<th>생년월일</th><td>2012-11-21</td>', now))
+      .toBeNull();
+  });
+});
+
+describe('birthDateKey', () => {
+  const now = new Date('2026-11-20T00:00:00Z');
+
+  it.each([
+    ['1950-01-01', '1950-01-01'],
+    ['2012-11-20', '2012-11-20'],
+    ['1991-06-17T00:00:00Z', '1991-06-17'],
+    ['1991-06-17T00:00:00+00:00', '1991-06-17'],
+    ['1991-06-17 00:00:00', '1991-06-17'],
+    ['1991-06-17 12:34:56.789-09:30', '1991-06-17'],
+  ])('accepts %s', (value, expected) => {
+    expect(birthDateKey(value, now)).toBe(expected);
+  });
+
+  it.each([
+    '1949-12-31',
+    '2012-11-21',
+    '2001-02-30',
+    '0000-00-00',
+    '1991-06-17Tgarbage',
+    '1991-06-17garbage',
+    '17-06-1991',
+    '',
+  ])('rejects %s', (value) => {
+    expect(birthDateKey(value, now)).toBeNull();
+  });
+});
+
 describe('matchKLeaguePlayers', () => {
   const ulsanId = KLEAGUE_TEAM_TO_THESPORTSDB.K01;
   const busanId = KLEAGUE_TEAM_TO_THESPORTSDB.K06;
@@ -223,6 +288,7 @@ describe('matchKLeaguePlayers', () => {
     links: [],
     ambiguousKLeagueIds: [],
     ambiguousPlayerIds: [],
+    unmatchedKLeagueIds: [],
   };
 
   it('links an exact name match on the mapped team', () => {
@@ -269,7 +335,7 @@ describe('matchKLeaguePlayers', () => {
     expect(matchKLeaguePlayers(
       [rankRow({ playerId: 'k1', name, teamId: 'K01' })],
       [rosterPlayer('sports-1', name.toUpperCase())],
-    )).toEqual(emptyResult);
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
   });
 
   it('ignores roster rows with null names', () => {
@@ -286,7 +352,7 @@ describe('matchKLeaguePlayers', () => {
     expect(matchKLeaguePlayers(
       [rankRow({ playerId: 'k1', name: 'Player One', teamId: 'K01' })],
       [rosterPlayer('sports-1', 'Player One', { idTeam: busanId })],
-    )).toEqual(emptyResult);
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
   });
 
   it('reports the K League id when two current roster players match', () => {
@@ -300,6 +366,7 @@ describe('matchKLeaguePlayers', () => {
       links: [],
       ambiguousKLeagueIds: ['k1'],
       ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: ['k1'],
     });
   });
 
@@ -314,6 +381,7 @@ describe('matchKLeaguePlayers', () => {
       links: [],
       ambiguousKLeagueIds: [],
       ambiguousPlayerIds: ['sports-1'],
+      unmatchedKLeagueIds: [],
     });
   });
 
@@ -351,7 +419,284 @@ describe('matchKLeaguePlayers', () => {
     expect(matchKLeaguePlayers(
       [rankRow({ playerId: 'k1', name: 'Player One', teamId: 'UNKNOWN' })],
       [rosterPlayer('sports-1', 'Player One')],
-    )).toEqual(emptyResult);
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
+  });
+
+  it('reports unmatched K League ids once in first-seen order', () => {
+    expect(matchKLeaguePlayers(
+      [
+        rankRow({ playerId: 'matched', name: 'Player One', teamId: 'K01' }),
+        rankRow({ playerId: 'missing-2', name: 'Missing Two', teamId: 'K01' }),
+        rankRow({ playerId: 'missing-1', name: 'Missing One', teamId: 'K01' }),
+        rankRow({ playerId: 'missing-2', name: 'Missing Two', teamId: 'K01' }),
+        rankRow({ playerId: 'ambiguous', name: 'Vitor Gabriel', teamId: 'K01' }),
+      ],
+      [
+        rosterPlayer('sports-1', 'Player One'),
+        rosterPlayer('sports-2', 'Vitor Gabriel Ferreira'),
+        rosterPlayer('sports-3', 'Vitor Gabriel Silva'),
+      ],
+    )).toEqual({
+      links: [{ kleaguePlayerId: 'matched', idPlayer: 'sports-1' }],
+      ambiguousKLeagueIds: ['ambiguous'],
+      ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: ['missing-2', 'missing-1', 'ambiguous'],
+    });
+  });
+
+  it('links by birth date on the same team with one shared name word', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Jaehyeon GO', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Jae-hyun Go', { dateBorn: '1991-06-17' })],
+      { birthDates: new Map([['k1', '1991-06-17']]) },
+    )).toEqual({
+      ...emptyResult,
+      links: [{ kleaguePlayerId: 'k1', idPlayer: 'sports-1' }],
+      unmatchedKLeagueIds: ['k1'],
+    });
+  });
+
+  it.each([
+    ['Cheol Woo Park', 'Cheol-Woo Lee'],
+    ['Cheol-Woo Lee', 'Cheol Woo Park'],
+  ])('accepts a same-team word widened from either name: %s / %s', (rankName, rosterName) => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: rankName, teamId: 'K01' })],
+      [rosterPlayer('sports-1', rosterName, { dateBorn: '1991-06-17' })],
+      { birthDates: new Map([['k1', '1991-06-17']]) },
+    )).toEqual({
+      ...emptyResult,
+      links: [{ kleaguePlayerId: 'k1', idPlayer: 'sports-1' }],
+      unmatchedKLeagueIds: ['k1'],
+    });
+  });
+
+  it('does not link a same-team nickname with no shared name words', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Marcão', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Marcos Vinicius', { dateBorn: '1991-06-17' })],
+      { birthDates: new Map([['k1', '1991-06-17']]) },
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
+  });
+
+  it('links on another team with two shared words including an adjacent-pair form', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Seon Min Moon', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Seon-Min Moon', { idTeam: busanId, dateBorn: '1992-06-09' })],
+      { birthDates: new Map([['k1', '1992-06-09']]) },
+    )).toEqual({
+      ...emptyResult,
+      links: [{ kleaguePlayerId: 'k1', idPlayer: 'sports-1' }],
+      unmatchedKLeagueIds: ['k1'],
+    });
+  });
+
+  it.each([
+    ['Cheolwoo PARK', 'Cheol-Woo Park'],
+    ['Gabriel Henrique DE SOUZA DE OLIVEIRA', 'Gabriel de Souza de Oliveira'],
+  ])('links a covered name on another team: %s / %s', (rankName, rosterName) => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: rankName, teamId: 'K01' })],
+      [rosterPlayer('sports-1', rosterName, { idTeam: busanId, dateBorn: '1991-06-17' })],
+      { birthDates: new Map([['k1', '1991-06-17']]) },
+    )).toEqual({
+      ...emptyResult,
+      links: [{ kleaguePlayerId: 'k1', idPlayer: 'sports-1' }],
+      unmatchedKLeagueIds: ['k1'],
+    });
+  });
+
+  it('does not link on another team with only one shared word', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Young Woo Kim', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Min Jae Kim', { idTeam: busanId, dateBorn: '1996-11-15' })],
+      { birthDates: new Map([['k1', '1996-11-15']]) },
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
+  });
+
+  it('does not link Kim Min Su to Kim Min Jae on another team', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Kim Min Su', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Kim Min Jae', { idTeam: busanId, dateBorn: '1996-11-15' })],
+      { birthDates: new Map([['k1', '1996-11-15']]) },
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
+  });
+
+  it('uses only name hits to resolve a name ambiguity and keeps an unresolved id ambiguous', () => {
+    expect(matchKLeaguePlayers(
+      [
+        rankRow({ playerId: 'resolved', name: 'Vitor Gabriel', teamId: 'K01' }),
+        rankRow({ playerId: 'unresolved', name: 'Vitor Gabriel', teamId: 'K01' }),
+      ],
+      [
+        rosterPlayer('hit-1', 'Vitor Gabriel Ferreira', { dateBorn: '2000-01-14' }),
+        rosterPlayer('hit-2', 'Vitor Gabriel Silva', { dateBorn: '2001-02-15' }),
+        rosterPlayer('non-hit', 'Vitor Claudino', { dateBorn: '2000-01-14' }),
+      ],
+      { birthDates: new Map([
+        ['resolved', '2000-01-14'],
+        ['unresolved', '1999-09-09'],
+      ]) },
+    )).toEqual({
+      links: [{ kleaguePlayerId: 'resolved', idPlayer: 'hit-1' }],
+      ambiguousKLeagueIds: ['unresolved'],
+      ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: ['resolved', 'unresolved'],
+    });
+  });
+
+  it('marks two remaining birth-date candidates as ambiguous', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Kim', teamId: 'K01' })],
+      [
+        rosterPlayer('sports-1', 'Min Kim', { dateBorn: '2000-01-14' }),
+        rosterPlayer('sports-2', 'Jae Kim', { dateBorn: '2000-01-14' }),
+      ],
+      { birthDates: new Map([['k1', '2000-01-14']]) },
+    )).toEqual({
+      ...emptyResult,
+      ambiguousKLeagueIds: ['k1'],
+      unmatchedKLeagueIds: ['k1'],
+    });
+  });
+
+  it('decides birth-date ambiguity before checking a stored owner', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k2', name: 'Kim', teamId: 'K01' })],
+      [
+        rosterPlayer('p1', 'Min Kim', { dateBorn: '2000-01-14' }),
+        rosterPlayer('p2', 'Jae Kim', { dateBorn: '2000-01-14' }),
+      ],
+      {
+        birthDates: new Map([['k2', '2000-01-14']]),
+        storedLinks: [{ kleaguePlayerId: 'k1', idPlayer: 'p1' }],
+      },
+    )).toEqual({
+      ...emptyResult,
+      ambiguousKLeagueIds: ['k2'],
+      unmatchedKLeagueIds: ['k2'],
+    });
+  });
+
+  it.each([
+    ['another id', 'other-id', []],
+    ['the same id', 'k1', [{ kleaguePlayerId: 'k1', idPlayer: 'sports-1' }]],
+  ])('respects a stored link owned by %s', (_label, owner, expectedLinks) => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Jaehyeon GO', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Jae-hyun Go', { dateBorn: '1991-06-17' })],
+      {
+        birthDates: new Map([['k1', '1991-06-17']]),
+        storedLinks: [{ kleaguePlayerId: owner, idPlayer: 'sports-1' }],
+      },
+    )).toEqual({
+      ...emptyResult,
+      links: expectedLinks,
+      unmatchedKLeagueIds: ['k1'],
+    });
+  });
+
+  it('stays unlinked across runs instead of alternating around an ambiguous stored link', () => {
+    const rows = [
+      rankRow({ playerId: 'k1', name: 'Kim', teamId: 'K01' }),
+      rankRow({ playerId: 'k2', name: 'Kim', teamId: 'K01' }),
+    ];
+    const roster = [
+      rosterPlayer('p1', 'Min Kim', { dateBorn: '2000-01-14' }),
+      rosterPlayer('p2', 'Jae Kim', { dateBorn: '2000-01-14' }),
+    ];
+    const birthDates = new Map([
+      ['k1', '2000-01-14'],
+      ['k2', '2000-01-14'],
+    ]);
+    const storedLinks = [{ kleaguePlayerId: 'k1', idPlayer: 'p1' }];
+
+    const first = matchKLeaguePlayers(rows, roster, { birthDates, storedLinks });
+    expect(first).toEqual({
+      ...emptyResult,
+      ambiguousKLeagueIds: ['k1', 'k2'],
+      unmatchedKLeagueIds: ['k1', 'k2'],
+    });
+    const changes = planLinkChanges(first, storedLinks);
+    expect(changes).toEqual({
+      insert: [],
+      removeKLeagueIds: ['k1'],
+      conflicts: [],
+    });
+
+    const removed = new Set(changes.removeKLeagueIds);
+    const nextStoredLinks = [
+      ...storedLinks.filter(link => !removed.has(link.kleaguePlayerId)),
+      ...changes.insert,
+    ];
+    expect(nextStoredLinks).toEqual([]);
+    expect(matchKLeaguePlayers(rows, roster, { birthDates, storedLinks: nextStoredLinks }))
+      .toEqual(first);
+  });
+
+  it('protects a pass-1 name link from the birth-date fallback', () => {
+    expect(matchKLeaguePlayers(
+      [
+        rankRow({ playerId: 'name-id', name: 'Player One', teamId: 'K01' }),
+        rankRow({ playerId: 'birth-id', name: 'Player', teamId: 'K01' }),
+      ],
+      [rosterPlayer('sports-1', 'Player One', { dateBorn: '2001-02-03' })],
+      { birthDates: new Map([['birth-id', '2001-02-03']]) },
+    )).toEqual({
+      ...emptyResult,
+      links: [{ kleaguePlayerId: 'name-id', idPlayer: 'sports-1' }],
+      unmatchedKLeagueIds: ['birth-id'],
+    });
+  });
+
+  it('excludes staff and stale snapshots from birth-date candidates', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Kim', teamId: 'K01' })],
+      [
+        rosterPlayer('current', 'Current Kim', {
+          dateBorn: '1999-09-09',
+          updatedAt: '2026-11-18T12:00:00.000Z',
+        }),
+        rosterPlayer('staff', 'Staff Kim', {
+          strPosition: 'Manager',
+          dateBorn: '1991-06-17',
+          updatedAt: '2026-11-18T12:00:00.000Z',
+        }),
+        rosterPlayer('stale', 'Former Kim', {
+          dateBorn: '1991-06-17',
+          updatedAt: '2026-11-18T11:58:59.999Z',
+        }),
+      ],
+      { birthDates: new Map([['k1', '1991-06-17']]) },
+    )).toEqual({ ...emptyResult, unmatchedKLeagueIds: ['k1'] });
+  });
+
+  it('accepts a valid roster birth date with a time suffix', () => {
+    expect(matchKLeaguePlayers(
+      [rankRow({ playerId: 'k1', name: 'Jaehyeon GO', teamId: 'K01' })],
+      [rosterPlayer('sports-1', 'Jae-hyun Go', { dateBorn: '1991-06-17T00:00:00Z' })],
+      { birthDates: new Map([['k1', '1991-06-17']]) },
+    ).links).toEqual([{ kleaguePlayerId: 'k1', idPlayer: 'sports-1' }]);
+  });
+});
+
+describe('planBirthDateFetch', () => {
+  const now = new Date('2026-11-20T12:00:00.000Z');
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  const checkedAt = (ageMs: number) => new Date(now.getTime() - ageMs).toISOString();
+
+  it('fetches missing and retryable ids at the retry boundary, preserving deduped order', () => {
+    expect(BIRTH_DATE_RETRY_MS).toBe(sevenDays);
+    expect(planBirthDateFetch(
+      ['missing', 'under', 'exact', 'invalid-time', 'has-date', 'missing'],
+      [
+        { kleaguePlayerId: 'under', birthDate: null, checkedAt: checkedAt(sevenDays - 1) },
+        { kleaguePlayerId: 'exact', birthDate: null, checkedAt: checkedAt(sevenDays) },
+        { kleaguePlayerId: 'invalid-time', birthDate: null, checkedAt: 'not-a-date' },
+        { kleaguePlayerId: 'has-date', birthDate: '1991-06-17', checkedAt: checkedAt(sevenDays * 2) },
+      ],
+      now,
+    )).toEqual(['missing', 'exact', 'invalid-time']);
   });
 });
 
@@ -361,6 +706,7 @@ describe('planLinkChanges', () => {
       links: [{ kleaguePlayerId: 'k-new', idPlayer: 'p-new' }],
       ambiguousKLeagueIds: [],
       ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: [],
     }, [])).toEqual({
       insert: [{ kleaguePlayerId: 'k-new', idPlayer: 'p-new' }],
       removeKLeagueIds: [],
@@ -373,6 +719,7 @@ describe('planLinkChanges', () => {
       links: [],
       ambiguousKLeagueIds: ['k-ambiguous'],
       ambiguousPlayerIds: ['p-ambiguous'],
+      unmatchedKLeagueIds: [],
     }, [
       { kleaguePlayerId: 'k-ambiguous', idPlayer: 'p-1' },
       { kleaguePlayerId: 'k-2', idPlayer: 'p-ambiguous' },
@@ -390,6 +737,7 @@ describe('planLinkChanges', () => {
       links: [link],
       ambiguousKLeagueIds: [],
       ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: [],
     }, [link])).toEqual({ insert: [], removeKLeagueIds: [], conflicts: [] });
   });
 
@@ -399,6 +747,7 @@ describe('planLinkChanges', () => {
       links: [proposed],
       ambiguousKLeagueIds: [],
       ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: [],
     }, [{ kleaguePlayerId: 'k-1', idPlayer: 'p-old' }])).toEqual({
       insert: [],
       removeKLeagueIds: [],
@@ -412,6 +761,7 @@ describe('planLinkChanges', () => {
       links: [proposed],
       ambiguousKLeagueIds: [],
       ambiguousPlayerIds: [],
+      unmatchedKLeagueIds: [],
     }, [{ kleaguePlayerId: 'k-existing', idPlayer: 'p-1' }])).toEqual({
       insert: [],
       removeKLeagueIds: [],
