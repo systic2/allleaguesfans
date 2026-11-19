@@ -421,15 +421,32 @@ export interface TeamPlayer {
   goals: number | null; assists: number | null; appearances: number | null; yellow_cards: number | null; red_cards: number | null;
 }
 
+const KLEAGUE_LEAGUE_IDS = ['4689', '4822'];
+
+/** kleague_player_links 에서 column 값이 ids 에 있는 연결을 읽는다. 연결은 부가 정보라 읽지 못하면 연결 없이 진행한다 */
+async function fetchKLeagueLinks(column: 'kleaguePlayerId' | 'idPlayer', ids: string[]): Promise<{ kleaguePlayerId: string; idPlayer: string }[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from('kleague_player_links').select('kleaguePlayerId, idPlayer').in(column, ids);
+  if (error) { console.warn('Error fetching K League player links:', error); return []; }
+  return (data ?? []).map(l => ({ kleaguePlayerId: String(l.kleaguePlayerId), idPlayer: String(l.idPlayer) }));
+}
+
 export async function fetchPlayersByTeam(teamId: string, season: string = DEFAULT_SEASON): Promise<TeamPlayer[]> {
   const { data: playersData, error: playersError } = await supabase.from('players_v2').select('idPlayer, strPlayer, strTeam, idTeam, strPosition, strNumber, strNationality, dateBorn, updated_at').eq('idTeam', teamId).order('strNumber', { ascending: true, nullsFirst: false });
   if (playersError) { console.error('Error fetching players:', playersError); return []; }
   if (!playersData || playersData.length === 0) return [];
   const normalized = normalizeSeason(season);
-  const { data: statsData, error: statsError } = await supabase.from('player_statistics').select('idPlayer, goals, assists, appearances, yellow_cards, red_cards').eq('idTeam', teamId).eq('strSeason', normalized);
+  const { data: statsData, error: statsError } = await supabase.from('player_statistics').select('idPlayer, idLeague, goals, assists, appearances, yellow_cards, red_cards').eq('idTeam', teamId).eq('strSeason', normalized);
   if (statsError) { console.warn('Error fetching player statistics:', statsError); }
+  // K리그 기록은 kleague.com 선수 ID 라 연결(migration 22)을 거쳐서만 명단 선수에 붙인다. 다른 리그는 TheSportsDB ID 그대로
+  const isKLeagueRow = (stat: { idLeague?: unknown }) => KLEAGUE_LEAGUE_IDS.includes(String(stat.idLeague));
+  const links = await fetchKLeagueLinks('kleaguePlayerId', [...new Set((statsData ?? []).filter(isKLeagueRow).map(s => String(s.idPlayer)))]);
+  const linked = new Map(links.map(l => [l.kleaguePlayerId, l.idPlayer]));
   const playerStatsMap = new Map<string, Partial<PlayerStatistics>>();
-  if (statsData) { statsData.forEach(stat => { playerStatsMap.set(stat.idPlayer, stat); }); }
+  for (const stat of statsData ?? []) {
+    const id = isKLeagueRow(stat) ? linked.get(String(stat.idPlayer)) : String(stat.idPlayer);
+    if (id) playerStatsMap.set(id, stat);
+  }
   return playersData.map(({ updated_at, ...player }) => {
     // K리그는 득점·도움 상위 선수만 기록이 있어, 기록 행이 없는 선수는 0 이 아니라 null(미제공)
     const stats = playerStatsMap.get(player.idPlayer) || {};
@@ -465,13 +482,29 @@ function textOrNull(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value : null;
 }
 
+// 갱신 시각을 숫자로 (없거나 잘못된 값은 맨 뒤)
+function updatedTime(value: unknown): number {
+  const time = typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isNaN(time) ? -Infinity : time;
+}
+
 export async function fetchPlayerDetail(playerId: number): Promise<PlayerDetail | null> {
   const { data: player, error } = await supabase.from('players_v2').select('*').eq('idPlayer', String(playerId)).maybeSingle();
   if (error || !player) { console.error("Player not found:", error); return null; }
-  const { data: statRows, error: statsError } = await supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).order('strSeason', { ascending: false }).order('last_updated', { ascending: false });
-  if (statsError) console.warn('Error fetching player statistics:', statsError);
-  // 시즌 내림차순, 같은 시즌이면 현재 소속팀 먼저, 나머지는 DB 순서(최근 갱신순) 유지
-  const seasons = (statRows ?? [])
+  // K리그 기록은 연결된 kleague.com 선수 ID 로만 읽고(migration 22), 다른 리그 기록은 TheSportsDB ID 로 읽는다
+  const leagueList = `(${KLEAGUE_LEAGUE_IDS.join(',')})`;
+  const [ownStats, links] = await Promise.all([
+    supabase.from('player_statistics').select('*').eq('idPlayer', String(playerId)).not('idLeague', 'in', leagueList),
+    fetchKLeagueLinks('idPlayer', [String(playerId)]),
+  ]);
+  const kleagueStats = links.length > 0
+    ? await supabase.from('player_statistics').select('*').in('idPlayer', links.map(l => l.kleaguePlayerId)).in('idLeague', KLEAGUE_LEAGUE_IDS)
+    : { data: [], error: null };
+  for (const { error: statsError } of [ownStats, kleagueStats]) if (statsError) console.warn('Error fetching player statistics:', statsError);
+  // 시즌 내림차순, 같은 시즌이면 현재 소속팀 먼저, 그다음 최근 갱신순
+  const statRows = [...(ownStats.data ?? []), ...(kleagueStats.data ?? [])]
+    .sort((a, b) => updatedTime(b.last_updated) - updatedTime(a.last_updated));
+  const seasons = statRows
     .map((row): PlayerSeasonStats => ({
       season: String(row.strSeason), leagueId: String(row.idLeague ?? ''), teamId: String(row.idTeam ?? ''), teamName: String(row.strTeam ?? ''),
       appearances: toCount(row.appearances), minutesPlayed: toCount(row.minutes_played), goals: toCount(row.goals), assists: toCount(row.assists),

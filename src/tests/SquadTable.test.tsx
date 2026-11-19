@@ -53,7 +53,9 @@ describe('SquadTable', () => {
     for (const label of ['출전', '득점', '도움', '경고', '퇴장']) {
       expect(screen.queryByRole('columnheader', { name: label })).not.toBeInTheDocument();
     }
-    expect(screen.getByText(/kleague\.com 선수 ID로 모으고 있어 아직 이 명단과 연결되지 않았습니다/)).toBeInTheDocument();
+    expect(screen.getByText(
+      `이 시즌에 이 명단과 연결된 K리그 개인 기록이 아직 없습니다. ${RECORD_SCOPE.kleagueLink} 득점·도움 순위는 리그 화면에서 볼 수 있습니다.`,
+    )).toBeInTheDocument();
   });
 
   it('shows the transfer scope after the league scope when stat columns are visible', () => {
@@ -62,7 +64,9 @@ describe('SquadTable', () => {
     const scopeNote = screen.getByText((_, element) =>
       element?.tagName === 'P' && element.textContent?.includes(RECORD_SCOPE.transfer) === true,
     );
-    expect(scopeNote).toHaveTextContent(`${RECORD_SCOPE.kleague} ${RECORD_SCOPE.transfer}`);
+    expect(scopeNote).toHaveTextContent(
+      `${RECORD_SCOPE.kleague} ${RECORD_SCOPE.kleagueLink} ${RECORD_SCOPE.transfer}`,
+    );
   });
 
   it('gives every column sort button the minimum touch-target width', () => {

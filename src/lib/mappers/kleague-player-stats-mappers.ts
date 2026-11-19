@@ -2,6 +2,8 @@
 // K리그 공식 사이트 선수 순위(/record/rankSort.do) 응답을 검증하고 player_statistics 행으로 바꾼다.
 // 네트워크·DB 는 scripts/sync/lib/kleague-player-stats.ts 가 담당하고, 여기는 순수 함수만 둔다.
 
+import { currentRoster } from '../roster-snapshot';
+
 export type KLeagueRecordType = 'GOAL' | 'ASSIST';
 
 // K리그 공식 구단 코드 → TheSportsDB 팀 ID (teams_v2.id). 화면의 팀 링크가 이 ID 를 쓴다.
@@ -141,4 +143,122 @@ export function planStaleDeletion(existingIds: string[], keepIds: string[]): { s
   const keep = new Set(keepIds);
   const stale = existingIds.filter(id => !keep.has(id));
   return { stale, skip: stale.length > existingIds.length * 0.2 };
+}
+
+export interface RosterPlayer {
+  idPlayer: string;
+  idTeam: string;
+  strPlayer: string | null;
+  strPosition: string | null;
+  updatedAt: string | null;
+}
+
+export interface KLeaguePlayerLink {
+  kleaguePlayerId: string;
+  idPlayer: string;
+}
+
+export interface KLeagueMatchResult {
+  links: KLeaguePlayerLink[];
+  /** 같은 팀에 이름이 맞는 명단 선수가 둘 이상인 kleague.com 선수 */
+  ambiguousKLeagueIds: string[];
+  /** kleague.com 선수 둘 이상과 이름이 맞는 명단 선수 */
+  ambiguousPlayerIds: string[];
+}
+
+// NFD 로 분해되지 않는 라틴 문자
+const LATIN_FOLD: Record<string, string> = { 'đ': 'd', 'ł': 'l', 'ø': 'o', 'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'ı': 'i', 'þ': 'th' };
+// 이름 토큰 수를 셀 때 빼는 성 앞 전치사 ('Da Silva' 는 사실상 한 단어)
+const NAME_PARTICLES = new Set(['da', 'de', 'do', 'dos', 'das', 'di', 'del', 'van', 'von', 'der', 'la', 'le', 'el', 'bin']);
+
+/** 영문 이름을 비교용 토큰으로: 악센트·대소문자·하이픈·아포스트로피 차이를 없앤다 ('Dae-Won Kim' = 'DAEWON KIM') */
+export function nameTokens(name: string | null | undefined): string[] {
+  return (name ?? '')
+    .toLowerCase()
+    .replace(/[đłøæœßıþ]/g, ch => LATIN_FOLD[ch])
+    .normalize('NFD').replace(/\p{M}/gu, '')
+    .replace(/['’-]/g, '')
+    .split(/[^a-z]+/)
+    .filter(Boolean);
+}
+
+// 한쪽 토큰이 모두 다른 쪽에 있어야 같은 이름으로 본다 (kleague.com 은 풀네임, TheSportsDB 는 줄인 이름이 많다).
+// 양쪽 모두 전치사를 뺀 서로 다른 토큰이 둘 이상이어야 한다 ('Marcão', 'Da Silva' 는 다른 선수와 겹치기 쉽다).
+function sameName(a: string[], b: string[]): boolean {
+  const meaningful = (tokens: string[]) => new Set(tokens.filter(t => !NAME_PARTICLES.has(t))).size;
+  if (meaningful(a) < 2 || meaningful(b) < 2) return false;
+  const setA = new Set(a), setB = new Set(b);
+  const [short, long] = setA.size <= setB.size ? [setA, setB] : [setB, setA];
+  return [...short].every(token => long.has(token));
+}
+
+/**
+ * kleague.com 순위 행(영문 이름)을 같은 팀 현재 명단의 TheSportsDB 선수와 잇는다.
+ * 같은 팀에서 이름이 일치하는 선수가 정확히 한 명일 때만 연결하고, 한 명단 선수에 kleague.com 선수 둘 이상이
+ * 붙으면 모두 버린다. 확실하지 않으면 연결하지 않는 쪽을 택한다(잘못된 선수에 기록이 붙는 것보다 낫다).
+ * 명단은 팀별로 감독·코치와 이전 명단을 뺀다(currentRoster).
+ */
+export function matchKLeaguePlayers(rows: KLeagueRankRow[], roster: RosterPlayer[]): KLeagueMatchResult {
+  const byTeam = new Map<string, RosterPlayer[]>();
+  for (const player of roster) byTeam.set(player.idTeam, [...(byTeam.get(player.idTeam) ?? []), player]);
+  const rosterByTeam = new Map<string, { idPlayer: string; tokens: string[] }[]>();
+  for (const [idTeam, players] of byTeam) {
+    rosterByTeam.set(idTeam, currentRoster(players)
+      .map(p => ({ idPlayer: String(p.idPlayer), tokens: nameTokens(p.strPlayer) }))
+      .filter(p => p.tokens.length > 0));
+  }
+
+  const candidates = new Map<string, string>();
+  const ambiguousKLeagueIds = new Set<string>();
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const kleaguePlayerId = String(row.playerId);
+    if (seen.has(kleaguePlayerId)) continue;
+    seen.add(kleaguePlayerId);
+    const idTeam = KLEAGUE_TEAM_TO_THESPORTSDB[row.teamId];
+    const tokens = nameTokens(row.name);
+    const hits = (idTeam ? rosterByTeam.get(idTeam) ?? [] : []).filter(p => sameName(tokens, p.tokens));
+    if (hits.length === 1) candidates.set(kleaguePlayerId, hits[0].idPlayer);
+    else if (hits.length > 1) ambiguousKLeagueIds.add(kleaguePlayerId);
+  }
+
+  const claims = new Map<string, number>();
+  for (const idPlayer of candidates.values()) claims.set(idPlayer, (claims.get(idPlayer) ?? 0) + 1);
+  return {
+    links: [...candidates]
+      .filter(([, idPlayer]) => claims.get(idPlayer) === 1)
+      .map(([kleaguePlayerId, idPlayer]) => ({ kleaguePlayerId, idPlayer })),
+    ambiguousKLeagueIds: [...ambiguousKLeagueIds],
+    ambiguousPlayerIds: [...claims].filter(([, n]) => n > 1).map(([idPlayer]) => idPlayer),
+  };
+}
+
+/**
+ * 이번 매칭 결과를 이미 저장된 연결과 맞춘다. 연결은 1:1 로 유지한다.
+ * - 이번에 애매해진 kleague.com 선수·명단 선수의 기존 연결은 지운다.
+ * - 이미 연결된 kleague.com 선수는 바꾸지 않는다(다른 선수로 바뀌면 경고만).
+ * - 다른 kleague.com 선수가 이미 차지한 명단 선수에는 새로 잇지 않는다.
+ */
+export function planLinkChanges(result: KLeagueMatchResult, existing: KLeaguePlayerLink[]): {
+  insert: KLeaguePlayerLink[]; removeKLeagueIds: string[]; conflicts: KLeaguePlayerLink[];
+} {
+  const ambiguousK = new Set(result.ambiguousKLeagueIds);
+  const ambiguousP = new Set(result.ambiguousPlayerIds);
+  const removeKLeagueIds = existing
+    .filter(l => ambiguousK.has(l.kleaguePlayerId) || ambiguousP.has(l.idPlayer))
+    .map(l => l.kleaguePlayerId);
+  const removed = new Set(removeKLeagueIds);
+  const kept = existing.filter(l => !removed.has(l.kleaguePlayerId));
+  const byKLeague = new Map(kept.map(l => [l.kleaguePlayerId, l.idPlayer]));
+  const byPlayer = new Map(kept.map(l => [l.idPlayer, l.kleaguePlayerId]));
+
+  const insert: KLeaguePlayerLink[] = [];
+  const conflicts: KLeaguePlayerLink[] = [];
+  for (const link of result.links) {
+    const current = byKLeague.get(link.kleaguePlayerId);
+    if (current === link.idPlayer) continue;
+    if (current !== undefined || byPlayer.has(link.idPlayer)) { conflicts.push(link); continue; }
+    insert.push(link);
+  }
+  return { insert, removeKLeagueIds, conflicts };
 }
