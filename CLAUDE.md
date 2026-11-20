@@ -69,7 +69,7 @@ For non-trivial fixes/features in this repo, use the three-role pipeline instead
 ## Data Sync
 
 ### Pipeline
-`.github/workflows/data-sync.yml` runs `pnpm sync:full` every hour (and on manual dispatch; runs never overlap). `scripts/sync/orchestrator.ts` does, in order:
+`.github/workflows/data-sync.yml` runs `pnpm sync:full` every hour (and on manual dispatch; runs never overlap). Before that, each run first runs `import-team-players.ts --if-older-than-days=7`, which re-fetches each team whose newest `players_v2` row is at least 7 days old, or that has no rows (manual dispatch with `import_rosters` re-fetches every team); teams that fail keep their previous roster, and a team that was due (7+ days old or empty) is retried on the next run, the sync still runs, and the run is marked failed. `scripts/sync/orchestrator.ts` does, in order:
 
 1. **Standings and teams** from TheSportsDB → `standings_v2`, `teams_v2`
 2. **Events** (fixtures and results) from TheSportsDB → `events_v2`
@@ -78,7 +78,7 @@ For non-trivial fixes/features in this repo, use the three-role pipeline instead
 
 Any failed step makes the script exit 1 so the workflow run shows as failed.
 
-Manual backfills, not run by the workflow: `import-historical-champions-euro.ts` (European champions history in `standings_v2`) and `import-team-players.ts` (`players_v2`).
+Manual backfill, not run by the workflow: `import-historical-champions-euro.ts` (European champions history in `standings_v2`).
 
 ### Environment Variables
 Sync scripts (`scripts/sync/lib/supabase.ts`):

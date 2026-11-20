@@ -11,7 +11,7 @@ Owns CI/CD and deployment for allleaguesfans.
 
 ## Workflow Inventory
 - `.github/workflows/ci-cd.yml` — typecheck, test, build on pushes to `main`, PRs into `main`, and manual dispatch (pnpm 10, Node 22)
-- `.github/workflows/data-sync.yml` — hourly `pnpm sync:full` (`0 * * * *`) + manual dispatch; `concurrency` keeps runs from overlapping; 30-minute timeout
+- `.github/workflows/data-sync.yml` — hourly `pnpm sync:full` (`0 * * * *`) + manual dispatch; `concurrency` keeps runs from overlapping; 45-minute timeout. Each run first refreshes rosters (`import-team-players.ts --if-older-than-days=7`, 10-minute step limit, `continue-on-error`)
 - `.github/workflows/keepalive.yml` — weekly run so GitHub doesn't disable the scheduled sync after 60 days of inactivity
 - Vercel — deploys `main` to production on merge, previews for PRs. `vercel.json` rewrites non-`/assets/` paths to `/` and sets cache/security headers.
 

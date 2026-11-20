@@ -19,7 +19,7 @@ const PLAYER_STATISTICS_TABLE = 'player_statistics';
 const REQUEST_INTERVAL_MS = 700;
 // 한 번의 동기화에서 보낼 HTTP 요청 최대 수 (재시도 포함). 남은 경기는 다음 실행에서 이어 받는다.
 const MAX_REQUESTS_PER_RUN = 600;
-// 워크플로 timeout(30분) 안에 끝나도록 타임라인 수집에 쓰는 시간 상한
+// 워크플로 timeout(45분, 명단 단계 10분 포함) 안에 끝나도록 타임라인 수집에 쓰는 시간 상한
 const FETCH_DEADLINE_MS = 12 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15_000;
 // 받은 타임라인을 이 개수마다 저장해 중간에 끊겨도 진행분을 남긴다
