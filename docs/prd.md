@@ -58,7 +58,7 @@
 | 유럽 선수 기록 범위 | 출전·분·슈팅·패스·태클·평점 | `event_timeline` 집계: 득점·도움·카드·PK만 | 원본 PLAYER-02의 상세 열은 “미제공”으로 표시. 출전·분은 수집 경로 확인 전까지 제외 |
 | 누락값 0 채우기 | 누락은 “—”, 0은 확인된 0만 | `player_statistics` 컬럼 `DEFAULT 0`, `fetchPlayerDetail`이 누락을 0으로, 마이그레이션 10이 과거 순위 지표를 0으로 저장 | P0 정리 작업(DATA-01~03)으로 편입 |
 | 순위 갱신 시각 | 원천 갱신 시각이 없으면 수집 시각으로 꾸미지 않음 | `mapTheSportsDBStandingToDomain`이 `dateUpdated` 없으면 `new Date()`로 채움 | 수집 시각과 원천 시각을 분리(DATA-04) |
-| 선수단 이력 | 현재 명단과 시즌별 소속 구분 | `players_v2`는 현재 명단 스냅샷(`idTeam` 하나), 수동 백필(`import-team-players.ts`) | 과거 시즌 명단은 MVP에서 “제공 안 함”으로 표시. 이력 모델은 P2 |
+| 선수단 이력 | 현재 명단과 시즌별 소속 구분 | `players_v2`는 현재 명단 스냅샷(`idTeam` 하나), 약 7일마다 갱신(`import-team-players.ts`) | 과거 시즌 명단은 MVP에서 “제공 안 함”으로 표시. 이력 모델은 P2 |
 | 경기 부가 정보 | 라인업·이벤트·팀 통계 조건부 P0 | DB에 없음. 득점·카드 타임라인은 유럽 리그만 `event_timelines`에 있음(교체·VAR 제외, anon 접근 불가) | 유럽 리그 득점·카드 타임라인만 P0(공개 뷰 추가). 라인업·팀 통계는 TheSportsDB v2 제공 여부 확인 후 P1 |
 | 연장·승부차기 점수 | 정규·연장·승부차기 별도 필드 | `events_v2`는 `homeScore`/`awayScore`만, 상태 `AET`·`PEN`은 있음 | 리그 경기만 다루는 MVP에서는 상태 표시로 충분. 컵·UCL(P1) 도입 시 컬럼 추가 |
 | 상태 코드 | football-data.org 코드 기준 | TheSportsDB 코드(`NS`, `1H`, `HT`, `2H`, `ET`, `P`, `FT`, `AET`, `PEN`, `SUSP`, `INT` …), 체크 제약 제거(14) | 8.2를 TheSportsDB 기준으로 다시 씀 |
@@ -342,7 +342,8 @@ FM의 CA·PA, 별점 잠재력, 임의 평점은 제공하지 않는다.
 | 주 공급자 | TheSportsDB 프리미엄 v1 | 리그·팀·순위(`lookuptable`)·시즌 일정(`eventsseason`) | 7개 리그 |
 | 경기 타임라인 | TheSportsDB v2 `event_timeline` | 유럽 5대 리그 득점·도움·카드 | 1회 실행당 600요청·12분 제한, `event_timelines` 캐시 |
 | K리그 선수 기록 | kleague.com `/record/rankSort.do` | K리그1·2 득점·도움 상위 30명 | 🔴 비공개 내부 엔드포인트 (R-01) |
-| 과거 우승·선수단 | 수동 스크립트 (`import-historical-champions-euro.ts`, `import-team-players.ts`) | 유럽 우승 이력, `players_v2` | 정기 실행 아님 |
+| 과거 우승 | 수동 스크립트 (`import-historical-champions-euro.ts`) | 유럽 우승 이력 | 정기 실행 아님 |
+| 선수단 | `import-team-players.ts` (`data-sync.yml` 매시 실행이 팀별 마지막 수집 7일 경과 팀만 받음, 수동 실행 시 `import_rosters`로 강제) | `players_v2` | 약 7일마다. 받기에 실패한 팀은 이전 명단 유지 |
 
 원본의 통합 공급자 후보(Sportmonks, TheStatsAPI) 비교와 선정 절차는 **D-02의 대안**으로 보존한다. 아래 0단계 검사에서 TheSportsDB가 다음 중 하나를 못 채우면 그 절차를 다시 연다.
 
@@ -404,7 +405,7 @@ flowchart LR
 | 시즌 일정·결과 | 매시 | 경기일 15분, 진행 경기 5분 (별도 경량 워크플로 또는 v2 라이브 엔드포인트) |
 | 유럽 타임라인 | 매시, 실행당 600요청·12분 | 종료 직후 + 다음 날 보정 |
 | K리그 득점·도움 | 매시 | 공식 경로 확보 후 재설계 |
-| 선수단 | 수동 | 하루 1회 |
+| 선수단 | 팀별 7일마다(매시 실행이 팀별 마지막 수집 시각 확인, 받을 차례였던 팀이 실패하면 다음 실행에 재시도) | 하루 1회 |
 
 GitHub Actions 스케줄은 정시 실행이 보장되지 않으므로, 5분 갱신이 필요해지면 실행 간격·지연을 실측한 뒤 방식을 정한다(D-06).
 

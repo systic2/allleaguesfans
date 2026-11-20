@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 * * * *'  # Run every hour at minute 0
   workflow_dispatch:      # Allow manual trigger
+    inputs:
+      import_rosters:
+        description: '선수 명단(players_v2)을 마지막 수집 시각과 관계없이 지금 다시 받기'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -16,7 +21,8 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 명단 단계 최대 10분 + 동기화(유럽 선수 기록 12분 제한 포함)
+    timeout-minutes: 45
     
     steps:
     - name: Checkout code
@@ -36,6 +42,26 @@ jobs:
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
       
+    # 선수 명단은 팀마다 마지막 수집에서 7일이 지났을 때만 다시 받는다(별도 cron 은 이 동시성 그룹의 대기열에서 밀려 취소될 수 있어 쓰지 않는다).
+    # 명단을 먼저 받아야 같은 실행의 K리그 선수 연결이 새 명단으로 이뤄진다.
+    # 실패한 팀은 이전 명단이 그대로 남으므로, 실패해도 동기화는 계속하고 실행만 실패로 표시한다
+    - name: Import team rosters
+      id: rosters
+      continue-on-error: true
+      timeout-minutes: 10
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE }}
+        THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }}
+        NODE_ENV: production
+        FORCE_ROSTERS: ${{ inputs.import_rosters }}
+      run: |
+        if [ "$FORCE_ROSTERS" = "true" ]; then
+          pnpm exec tsx scripts/sync/import-team-players.ts
+        else
+          pnpm exec tsx scripts/sync/import-team-players.ts --if-older-than-days=7
+        fi
+
     - name: Run Full Sync
       env:
         # DB Credentials (mapping standard secrets to what scripts expect)
@@ -54,3 +80,9 @@ jobs:
         echo "🚀 Starting hourly sync for all leagues (K-League + Big 5)..."
         pnpm sync:full
         echo "✅ Sync completed successfully."
+
+    - name: Report roster import failure
+      if: ${{ !cancelled() && steps.rosters.outcome == 'failure' }}
+      run: |
+        echo "::error::선수 명단 받기에 실패했습니다. 'Import team rosters' 단계 로그의 Failed teams 를 확인하세요."
+        exit 1

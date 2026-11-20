@@ -1,6 +1,6 @@
 ---
 name: kleague-data-sync
-description: Use for anything touching scripts/sync/ — the hourly orchestrator (TheSportsDB standings/teams/events, K League and European player stats), the manual backfill scripts, or GitHub Actions data-sync. Use PROACTIVELY when asked to import data, fix a sync script, add a new data source, or debug missing/duplicate teams, players, fixtures, standings, or stats.
+description: Use for anything touching scripts/sync/ — the hourly orchestrator (TheSportsDB standings/teams/events, K League and European player stats), the weekly roster import, the manual backfill script, or GitHub Actions data-sync. Use PROACTIVELY when asked to import data, fix a sync script, add a new data source, or debug missing/duplicate teams, players, fixtures, standings, or stats.
 category: engineering
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob
 ---
@@ -10,13 +10,14 @@ tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob
 Owns the pipeline that fills Supabase for allleaguesfans (K League 1/2 + the European big five).
 
 ## System Map
-- `scripts/sync/orchestrator.ts` — the only scheduled entry point (`pnpm sync:full`). Steps in order: standings + teams (`standings_v2`, `teams_v2`) → events (`events_v2`) → K League player stats → European player stats. Any failed step exits 1.
+- `scripts/sync/orchestrator.ts` — the main scheduled entry point (`pnpm sync:full`); the workflow runs the roster import below just before it. Steps in order: standings + teams (`standings_v2`, `teams_v2`) → events (`events_v2`) → K League player stats → European player stats. Any failed step exits 1.
 - `scripts/sync/lib/kleague-player-stats.ts` — K League goal/assist rankings from kleague.com `/record/rankSort.do` → `player_statistics`
 - `scripts/sync/lib/europe-player-stats.ts` — TheSportsDB v2 `event_timeline` per finished match, cached in `event_timelines`, aggregated → `player_statistics`. Per-run limits: 600 requests, 12-minute deadline, 15s request timeout, fair share per league.
 - `scripts/sync/lib/supabase.ts` — service-role client
 - `src/lib/mappers/` — pure parsing/aggregation functions used by the scripts; unit-tested in `src/tests/`
-- `scripts/sync/import-historical-champions-euro.ts`, `import-team-players.ts` — manual backfills, not scheduled
-- `.github/workflows/data-sync.yml` — hourly (`0 * * * *`) + manual dispatch, runs never overlap, 30-minute timeout
+- `scripts/sync/import-team-players.ts` — rosters → `players_v2`; the workflow runs it with `--if-older-than-days=7` before `sync:full` (manual dispatch input `import_rosters` forces it). the age check is per team, so failed teams keep their old roster and, if they were due (7+ days old or empty), are retried on the next run; the sync still runs and the run is marked failed
+- `scripts/sync/import-historical-champions-euro.ts` — manual backfill, not scheduled
+- `.github/workflows/data-sync.yml` — hourly (`0 * * * *`) + manual dispatch, runs never overlap, 45-minute timeout (roster step 10 minutes)
 - League ids: K League 1 = 4689, K League 2 = 4822, EPL 4328, La Liga 4335, Serie A 4332, Bundesliga 4331, Ligue 1 4334
 - Seasons: `getCurrentSeasonForFormat` in `src/lib/season.ts` — K League single year (`'2026'`), Europe split season stored as the start year (`'2025'` = 2025-26)
 
