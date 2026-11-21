@@ -41,7 +41,7 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 - `src/hooks/useTeamName.ts` – Korean team names (see below)
 - `src/types/domain.ts`, `src/domain/types.ts` – domain types
 - `scripts/sync/` – data sync (see Data Sync)
-- `scripts/migrations/` – SQL migrations, applied by hand in the Supabase SQL Editor. Older files are mixed (duplicate numbers, some unnumbered); new ones continue the sequence (latest: 24)
+- `scripts/migrations/` – SQL migrations, applied by hand in the Supabase SQL Editor. Older files are mixed (duplicate numbers, some unnumbered); new ones continue the sequence (latest: 25)
 - `scripts/one-off/`, `scripts/archive/` – old one-off scripts, not part of any pipeline
 
 ### Key Conventions
@@ -70,7 +70,7 @@ For non-trivial fixes/features in this repo, use the three-role pipeline instead
 ## Data Sync
 
 ### Pipeline
-`.github/workflows/data-sync.yml` runs `pnpm sync:full` every hour (and on manual dispatch; runs never overlap). Before that, each run first runs `import-team-players.ts --if-older-than-days=7`, which re-fetches each team whose newest `players_v2` row is at least 7 days old, or that has no rows (manual dispatch with `import_rosters` re-fetches every team); teams that fail keep their previous roster, and a team that was due (7+ days old or empty) is retried on the next run, the sync still runs, and the run is marked failed. `scripts/sync/orchestrator.ts` does, in order:
+`.github/workflows/data-sync.yml` runs `pnpm sync:full` every hour (and on manual dispatch; runs never overlap). The hourly start comes from Supabase pg_cron job `dispatch-data-sync` (migration 25), which calls `workflow_dispatch` at minute 7 with a fine-grained token (Actions read/write on this repo only) stored in Supabase Vault as `github_actions_dispatch_token`. The workflow's own schedule (`30 */6 * * *`) is only a fallback, because GitHub delays scheduled runs (on 2026-11-20 the hourly schedule fired only every 6-8 hours); a fallback run may run right after a dispatched one, which is harmless (upserts), but it can replace a pending manual run. Before that, each run first runs `import-team-players.ts --if-older-than-days=7`, which re-fetches each team whose newest `players_v2` row is at least 7 days old, or that has no rows (manual dispatch with `import_rosters` re-fetches every team); teams that fail keep their previous roster, and a team that was due (7+ days old or empty) is retried on the next run, the sync still runs, and the run is marked failed. `scripts/sync/orchestrator.ts` does, in order:
 
 1. **Standings and teams** from TheSportsDB → `standings_v2`, `teams_v2`
 2. **Events** (fixtures and results) from TheSportsDB → `events_v2`
@@ -102,7 +102,7 @@ Scripts run with `tsx`. Existing scripts import TypeScript modules with a `.js` 
 ## Build & Deployment
 - Vercel deploys `main` to production on every merge; pull requests get preview deployments.
 - `vercel.json` rewrites every non-`/assets/` path to `/` for client-side routing and sets cache and security headers.
-- `.github/workflows/ci-cd.yml` runs typecheck, tests and build on pushes to `main`, PRs into `main`, and manual dispatch. `keepalive.yml` runs weekly so GitHub does not disable the hourly sync schedule.
+- `.github/workflows/ci-cd.yml` runs typecheck, tests and build on pushes to `main`, PRs into `main`, and manual dispatch. `keepalive.yml` runs weekly so GitHub does not disable the hourly sync schedule (the 6-hour fallback for the pg_cron dispatch).
 
 ## Development Workflow
 1. Work on a feature branch; open a PR into `main`.

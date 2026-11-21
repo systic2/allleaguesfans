@@ -17,7 +17,7 @@ Owns the pipeline that fills Supabase for allleaguesfans (K League 1/2 + the Eur
 - `src/lib/mappers/` — pure parsing/aggregation functions used by the scripts; unit-tested in `src/tests/`
 - `scripts/sync/import-team-players.ts` — rosters → `players_v2`; the workflow runs it with `--if-older-than-days=7` before `sync:full` (manual dispatch input `import_rosters` forces it). the age check is per team, so failed teams keep their old roster and, if they were due (7+ days old or empty), are retried on the next run; the sync still runs and the run is marked failed
 - `scripts/sync/import-historical-champions-euro.ts` — manual backfill, not scheduled
-- `.github/workflows/data-sync.yml` — hourly (`0 * * * *`) + manual dispatch, runs never overlap, 45-minute timeout (roster step 10 minutes)
+- `.github/workflows/data-sync.yml` — 6-hour fallback schedule (`30 */6 * * *`) + manual dispatch + hourly Supabase pg_cron `dispatch-data-sync` calling `workflow_dispatch` at minute 7 (migration 25, token in Vault `github_actions_dispatch_token`), runs never overlap, 45-minute timeout (roster step 10 minutes)
 - League ids: K League 1 = 4689, K League 2 = 4822, EPL 4328, La Liga 4335, Serie A 4332, Bundesliga 4331, Ligue 1 4334
 - Seasons: `getCurrentSeasonForFormat` in `src/lib/season.ts` — K League single year (`'2026'`), Europe split season stored as the start year (`'2025'` = 2025-26)
 

@@ -19,7 +19,7 @@
 | 주제 | 원본 결정 | 수정 결정 | 이유 |
 | --- | --- | --- | --- |
 | 데이터 공급자 | Sportmonks 또는 TheStatsAPI로 교체 + K리그 공식 Open API | **TheSportsDB 유지**. 공급자 교체는 0단계 검증 결과가 나쁠 때만 검토(D-02) | 수집·매퍼·테스트·DB가 모두 TheSportsDB 기준으로 이미 돌아감. 교체는 사실상 재작성 |
-| 수집 실행 | Supabase Edge Functions + pg_cron | **GitHub Actions 매시 정각 `pnpm sync:full` 유지** | 이미 운영 중, 실패 시 워크플로 실패로 드러남 |
+| 수집 실행 | Supabase Edge Functions + pg_cron | **GitHub Actions `pnpm sync:full` 유지, 실행 시작은 Supabase pg_cron 이 매시 7분 `workflow_dispatch`로(migration 25), GitHub 예약 실행은 6시간마다 예비** | 이미 운영 중, 실패 시 워크플로 실패로 드러남. GitHub 예약 실행만으로는 6~8시간 간격(2026-11-20 실측) |
 | 읽기 경로 | Vercel Functions `/api/*` + CDN 캐시 | **브라우저 → Supabase(anon, RLS 읽기 전용, 뷰) 직접 조회 유지**. `/api`는 필요가 생긴 경로만 P1 | 현재 비밀키 노출 없이 동작. 별도 API 계층은 아직 필요 없음 |
 | 진행 경기 갱신 | 5분 | **MVP는 매시 갱신**, 5분 갱신은 P1 별도 작업 | 현재 파이프라인은 1시간 주기 |
 | MVP 대회 | K리그1·2 + 유럽 5대 + UCL | **K리그1·2 + 유럽 5대(현재 7개)**. UCL은 P1 | UCL 리그 페이즈·녹아웃을 담을 단계·그룹 컬럼이 `standings_v2`에 없음 |
@@ -387,13 +387,13 @@ FM의 CA·PA, 별점 잠재력, 임의 평점은 제공하지 않는다.
 
 ```mermaid
 flowchart LR
-    TSDB["TheSportsDB v1·v2"] --> GHA["GitHub Actions<br/>매시 pnpm sync:full"]
+    TSDB["TheSportsDB v1·v2"] --> GHA["GitHub Actions<br/>매시 pnpm sync:full<br/>(pg_cron 이 실행 시작)"]
     KL["kleague.com 기록"] --> GHA
     GHA -->|service role| DB[("Supabase Postgres<br/>RLS·뷰")]
     DB -->|anon, 읽기 전용| WEB["React SPA (Vercel)"]
 ```
 
-- 수집은 GitHub Actions에서만 돌고, 브라우저는 Supabase를 anon 키로 읽기만 한다. 외부 API 키와 service role 키는 Actions 시크릿에만 있다.
+- 수집은 GitHub Actions에서만 돌고, 브라우저는 Supabase를 anon 키로 읽기만 한다. 외부 API 키와 service role 키는 Actions 시크릿에만 있다. 워크플로 실행용 GitHub 토큰(Actions 읽기·쓰기, 이 저장소만)은 Supabase Vault `github_actions_dispatch_token`에 있다.
 - 실행이 겹치지 않고, 단계 하나라도 실패하면 exit 1로 워크플로가 실패한다(현행). `keepalive.yml`이 스케줄 비활성화를 막는다.
 - 원본 11.1의 Vercel Functions 읽기 API는 두지 않는다. 다음 중 하나가 생기면 해당 경로만 `/api`로 만든다(P1): 응답 캐시가 필요한 무거운 집계, 서버 전용 검색 인덱스, 외부 호출이 필요한 조회.
 
@@ -411,7 +411,7 @@ GitHub Actions 스케줄은 정시 실행이 보장되지 않으므로, 5분 갱
 
 ### 11.2 최신성·호출 방어
 
-- 모든 패널에 마지막 성공 수집 시각을 표시한다(`sync_status` 뷰). 예정 간격은 1시간이지만 GitHub 예약 실행이 밀려 실제로는 6~8시간 간격이므로(2026-11-20 실측) 12시간이 지나면 “갱신 지연”.
+- 모든 패널에 마지막 성공 수집 시각을 표시한다(`sync_status` 뷰). 예정 간격은 1시간이지만 GitHub 예약 실행만으로는 6~8시간 간격이었으므로(2026-11-20 실측) 12시간이 지나면 “갱신 지연”. pg_cron 실행(migration 25)이 매시 도는 것을 확인하면 기준을 줄인다.
 - 429·5xx는 2/4/8초 백오프로 최대 3회 재시도(현행 `fetchWithRetry`). 실패·빈 응답으로 정상 데이터를 지우지 않고, 재실행해도 행이 중복되지 않는다(upsert).
 - 점수 갱신이 성공했다고 실패한 다른 단계의 기준 시각까지 새로 쓰지 않는다(단계별 기록).
 

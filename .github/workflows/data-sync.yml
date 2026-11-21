@@ -2,7 +2,9 @@ name: "All Leagues Data Sync"
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Run every hour at minute 0
+    # 예비(6시간마다). 매시 실행은 Supabase pg_cron 이 7분에 workflow_dispatch 로 시작한다 (migration 25).
+    # GitHub 예약 실행만으로는 밀려서 6~8시간 간격이었다 (2026-11-20)
+    - cron: '30 */6 * * *'
   workflow_dispatch:      # Allow manual trigger
     inputs:
       import_rosters:
