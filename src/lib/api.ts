@@ -795,3 +795,60 @@ export async function fetchNextMatchDate(date: string, leagueId?: string | null,
   if (error) throw error;
   return data?.[0]?.date ? kstDate(new Date(data[0].date)) : null;
 }
+
+// ---------- 홈 (/) ----------
+
+/**
+ * 한국 날짜 [fromDate, toDate] 사이의 경기 (양 끝 포함). teamIds 가 있으면 그 팀이 홈·원정인 경기만.
+ * descending 이면 최근 경기부터, limit 개까지
+ */
+export async function fetchMatchesInRange(fromDate: string, toDate: string, opts: {
+  phases?: MatchPhase[]; teamIds?: string[]; descending?: boolean; limit?: number;
+} = {}): Promise<MatchWithTeams[]> {
+  if (opts.teamIds && opts.teamIds.length === 0) return [];
+  let query = supabase.from('events_v2').select(MATCH_SELECT)
+    .gte('date', kstDayRange(fromDate).from).lt('date', kstDayRange(toDate).to)
+    .in('leagueId', supportedLeagueIds());
+  if (opts.phases) query = query.in('status', opts.phases.flatMap(statusesOf));
+  if (opts.teamIds) {
+    // 팀 ID 는 문자열(hist_* 포함)이라 따옴표로 감싸고, 따옴표·역슬래시는 PostgREST 규칙대로 역슬래시로 이스케이프한다
+    const ids = opts.teamIds.map(id => `"${id.replace(/["\\]/g, '\\$&')}"`).join(',');
+    query = query.or(`homeTeamId.in.(${ids}),awayTeamId.in.(${ids})`);
+  }
+  const ascending = !opts.descending;
+  const { data, error } = await query.order('date', { ascending }).order('id', { ascending }).limit(opts.limit ?? 100);
+  if (error) throw error;
+  return (data ?? []) as MatchWithTeams[];
+}
+
+export type LeagueLeaderRow = {
+  league_id: string; season: string; rank: number; team_id: string; team_name: string;
+  crest_url: string | null; played: number | null; points: number | null;
+};
+
+/** 지원 리그별 가장 최근 시즌의 1~topN위 (리그 메뉴 순서 → 순위 순) */
+export async function fetchLeagueLeaders(topN: number = 4): Promise<LeagueLeaderRow[]> {
+  const leagueIds = supportedLeagueIds();
+  // fetchTeamsList 와 같이 최근 두 시즌(한국 날짜 기준 작년부터)만 받아 리그마다 가장 최근 시즌을 고른다
+  const minSeason = String(Number(kstDate().slice(0, 4)) - 1);
+  const { data, error } = await supabase.from('standings_v2')
+    .select('leagueId, season, rank, teamId, teamName, teamBadgeUrl, gamesPlayed, points')
+    .in('leagueId', leagueIds).gte('season', minSeason).lte('rank', topN);
+  if (error) throw error;
+  const latest = new Map<string, string>();
+  for (const row of data ?? []) if (!latest.has(row.leagueId) || row.season > latest.get(row.leagueId)!) latest.set(row.leagueId, row.season);
+  return (data ?? [])
+    .filter(row => row.season === latest.get(row.leagueId))
+    .map(row => ({
+      league_id: String(row.leagueId), season: String(row.season), rank: Number(row.rank), team_id: String(row.teamId),
+      team_name: String(row.teamName), crest_url: row.teamBadgeUrl ?? null, played: toCount(row.gamesPlayed), points: toCount(row.points),
+    }))
+    .sort((a, b) => leagueIds.indexOf(a.league_id) - leagueIds.indexOf(b.league_id) || a.rank - b.rank);
+}
+
+/** 수집 단계별 마지막 성공 시각 (sync_status 뷰, migration 21). 예: { events: '2026-11-20T22:53:55Z' } */
+export async function fetchSyncStatus(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.from('sync_status').select('step, lastSuccessAt');
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).filter(row => row.lastSuccessAt).map(row => [String(row.step), String(row.lastSuccessAt)]));
+}

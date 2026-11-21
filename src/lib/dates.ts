@@ -39,6 +39,17 @@ export function kstDateLabel(date: string): string {
   return new Date(`${date}T00:00:00+09:00`).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
 
+/** '11. 22. (토)' — 경기 시각(UTC ISO)의 한국 날짜 */
+export function kstShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
+}
+
+/** '11월 21일 07:53' (한국 시간) */
+export function kstDateTime(iso: string): string {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("ko-KR", { month: "long", day: "numeric", timeZone: "Asia/Seoul" })} ${kstTime(iso)}`;
+}
+
 /** 생년월일과 오늘(한국 날짜)로 만 나이 */
 export function ageOn(birthDate: string | null | undefined, today: string = kstDate()): number | null {
   if (!isDateString(birthDate?.slice(0, 10))) return null;

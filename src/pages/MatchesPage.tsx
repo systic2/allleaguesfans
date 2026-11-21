@@ -2,12 +2,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { fetchMatchesOnDate, fetchNextMatchDate } from "@/lib/api";
-import type { MatchWithTeams } from "@/lib/thesportsdb-api";
-import { isDateString, kstDate, kstDateLabel, kstTime, shiftDate } from "@/lib/dates";
-import { hasConfirmedScore, hasKickoffTime, matchPhase, statusLabel, type MatchPhase } from "@/lib/match-status";
+import { isDateString, kstDate, kstDateLabel, shiftDate } from "@/lib/dates";
+import type { MatchPhase } from "@/lib/match-status";
 import { leagueIdForSlug, leagueNameKo, leagueSlugFor, supportedLeagueIds } from "@/lib/leagues";
-import { useTeamName } from "@/hooks/useTeamName";
-import CrestImg from "@/app/components/CrestImg";
+import { MatchRow } from "@/components/MatchRow";
 import { FilterBar, FilterField, SegmentedControl, filterControl } from "@/components/FilterBar";
 
 type StatusFilter = "" | "live" | "scheduled" | "finished";
@@ -141,37 +139,5 @@ export default function MatchesPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function Crest({ src }: { src: string | null | undefined }) {
-  return <CrestImg src={src} alt="" size={20} className="shrink-0" />;
-}
-
-function MatchRow({ match }: { match: MatchWithTeams }) {
-  const teamName = useTeamName();
-  const phase = matchPhase(match.status);
-  const showScore = hasConfirmedScore(match.status, match.homeScore, match.awayScore);
-  return (
-    <li className="grid grid-cols-[4.5rem_1fr_auto_1fr] items-center gap-2 border-b border-line px-3 py-2 text-sm last:border-0 sm:px-4">
-      <span className={`text-xs ${phase === "live" ? "font-bold text-loss" : "text-ink/60"}`}>
-        {hasKickoffTime(match.status) ? kstTime(match.date) : statusLabel(match.status)}
-      </span>
-      <Link to={`/teams/${match.homeTeamId}`} className="flex min-w-0 items-center justify-end gap-2 hover:text-accent">
-        <span className="truncate">{teamName(match.homeTeamId, match.homeTeam?.name ?? match.homeTeamId)}</span>
-        <Crest src={match.homeTeam?.badgeUrl} />
-      </Link>
-      <Link
-        to={`/matches/${match.id}`}
-        aria-label="경기 상세"
-        className="min-w-14 rounded bg-sunken px-2 py-1 text-center font-mono font-bold hover:bg-raised"
-      >
-        {showScore ? `${match.homeScore} - ${match.awayScore}` : "VS"}
-      </Link>
-      <Link to={`/teams/${match.awayTeamId}`} className="flex min-w-0 items-center gap-2 hover:text-accent">
-        <Crest src={match.awayTeam?.badgeUrl} />
-        <span className="truncate">{teamName(match.awayTeamId, match.awayTeam?.name ?? match.awayTeamId)}</span>
-      </Link>
-    </li>
   );
 }
