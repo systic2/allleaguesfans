@@ -728,7 +728,10 @@ export type PlayerListRow = {
 export type PlayerSort = 'name' | 'young' | 'old';
 export const PLAYER_PAGE_SIZE = 25;
 
-/** 현재 선수단(players_v2)에서 걸러 한 페이지. 정렬·페이지는 서버에서 한다 */
+/**
+ * 현재 선수단에서 걸러 한 페이지. 정렬·페이지는 서버에서 한다.
+ * players_v2_current(migration 24)는 팀 선수단 화면(currentRoster)과 같은 기준으로 이전 명단에만 있는 선수를 뺀 뷰다
+ */
 export async function fetchPlayersPage(opts: {
   teamIds?: string[]; position?: PositionGroup | null; q?: string; sort?: PlayerSort; page?: number;
 }): Promise<{ rows: PlayerListRow[]; total: number }> {
@@ -737,7 +740,7 @@ export async function fetchPlayersPage(opts: {
   const page = Math.max(1, opts.page ?? 1);
   const q = (opts.q ?? '').replace(/[%_*"\\]/g, ' ').trim();
   const filtered = (head: boolean) => {
-    let query = supabase.from('players_v2')
+    let query = supabase.from('players_v2_current')
       .select('idPlayer, strPlayer, idTeam, strTeam, strPosition, strNumber, strNationality, dateBorn, strThumb', { count: 'exact', head })
       // 감독·코치는 빼고, 포지션이 비어 있는 선수는 남긴다
       .or(`strPosition.is.null,strPosition.not.in.(${STAFF_POSITIONS.map(p => `"${p}"`).join(',')})`);

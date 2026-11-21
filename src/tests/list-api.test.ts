@@ -68,7 +68,7 @@ describe('list page API queries', () => {
         number: '4', nationality: 'South Korea', birth_date: '2000-01-02', photo_url: 'kim.png',
       }],
     });
-    expect(supabase.from).toHaveBeenCalledWith('players_v2');
+    expect(supabase.from).toHaveBeenCalledWith('players_v2_current');
     expect(chain.select).toHaveBeenCalledWith(
       'idPlayer, strPlayer, idTeam, strTeam, strPosition, strNumber, strNationality, dateBorn, strThumb',
       { count: 'exact', head: false },
@@ -119,6 +119,8 @@ describe('list page API queries', () => {
     });
 
     expect(supabase.from).toHaveBeenCalledTimes(2);
+    expect(supabase.from).toHaveBeenNthCalledWith(1, 'players_v2_current');
+    expect(supabase.from).toHaveBeenNthCalledWith(2, 'players_v2_current');
     expect(rangeChain.select).toHaveBeenCalledWith(expect.any(String), { count: 'exact', head: false });
     expect(countChain.select).toHaveBeenCalledWith(expect.any(String), { count: 'exact', head: true });
     for (const chain of [rangeChain, countChain]) {
