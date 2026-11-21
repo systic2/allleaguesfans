@@ -375,12 +375,13 @@ export async function searchByName(q: string): Promise<SearchRow[]> {
   const koreanLeagueIds = leagueIdsByKoreanName(qq);
   if (koreanLeagueIds.length > 0) leagueFilters.push(`idLeague.in.(${koreanLeagueIds.map(quoted).join(',')})`);
   // 포함 검색은 순서 없이 30건만 오므로, 이름이 정확히 같은 팀·선수는 따로 받아 앞에 둔다 (src/lib/search.ts 가 정렬)
+  // 선수는 /players 목록과 같이 이전 명단에만 있는 행을 뺀 players_v2_current(migration 24)에서 찾는다
   const [leagues, teams, players, exactTeams, exactPlayers] = await Promise.all([
     supabase.from("leagues").select("idLeague, strLeague, strCountry, highlightly_id").or(leagueFilters.join(',')).limit(30),
     supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(teamFilters.join(',')).limit(30),
-    supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn").ilike("strPlayer", pattern).limit(30),
+    supabase.from("players_v2_current").select("idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn").ilike("strPlayer", pattern).limit(30),
     supabase.from("teams_v2").select("id, name, nameKorean, badgeUrl").or(`name.ilike.${quoted(qq)},nameKorean.ilike.${quoted(qq)}`).limit(10),
-    supabase.from("players_v2").select("idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn").ilike("strPlayer", qq).limit(10),
+    supabase.from("players_v2_current").select("idPlayer, strPlayer, idTeam, strTeam, strThumb, strNationality, dateBorn").ilike("strPlayer", qq).limit(10),
   ]);
   // 조회 오류를 '결과 없음'으로 보이지 않게 던진다
   const failed = [leagues, teams, players, exactTeams, exactPlayers].find(result => result.error);
