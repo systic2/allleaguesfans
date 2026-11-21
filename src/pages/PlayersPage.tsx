@@ -14,7 +14,7 @@ const SORT_OPTIONS: { value: PlayerSort; label: string }[] = [
   { value: "old", label: "나이 많은순" },
 ];
 
-// /players?league=&team=&position=GK&q=&sort=&page= — 현재 선수단(players_v2) 기준
+// /players?league=&team=&position=GK&q=&sort=&page= — 현재 선수단(players_v2_current) 기준
 export default function PlayersPage() {
   const [params, setParams] = useSearchParams();
   const teamName = useTeamName();
