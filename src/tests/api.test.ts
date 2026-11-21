@@ -396,8 +396,9 @@ describe('API Functions', () => {
 
       const result = await searchByName('Query');
 
+      expect(supabase.from).toHaveBeenNthCalledWith(3, 'players_v2_current');
       expect(supabase.from).toHaveBeenNthCalledWith(4, 'teams_v2');
-      expect(supabase.from).toHaveBeenNthCalledWith(5, 'players_v2');
+      expect(supabase.from).toHaveBeenNthCalledWith(5, 'players_v2_current');
       expect(exactTeamChain.or).toHaveBeenCalledWith('name.ilike."Query",nameKorean.ilike."Query"');
       expect(exactTeamChain.limit).toHaveBeenCalledWith(10);
       expect(exactPlayerChain.ilike).toHaveBeenCalledWith('strPlayer', 'Query');
