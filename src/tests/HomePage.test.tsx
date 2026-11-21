@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -85,7 +85,7 @@ function renderPage() {
 
 describe('HomePage', () => {
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
     vi.setSystemTime(new Date('2026-11-21T00:00:00.000Z'));
     vi.clearAllMocks();
     mockUseFavorites.mockReturnValue(favoritesResult([]));
@@ -95,8 +95,8 @@ describe('HomePage', () => {
     mockFetchLeaders.mockResolvedValue([]);
     mockFetchRange.mockResolvedValue([]);
     mockFetchSyncStatus.mockResolvedValue({
-      events: '2026-11-20T18:00:00.000Z',
-      standings: '2026-11-20T10:00:00.000Z',
+      events: '2026-11-20T22:00:00.000Z',
+      standings: '2026-11-20T19:00:00.000Z',
     });
   });
 
@@ -132,14 +132,121 @@ describe('HomePage', () => {
     const recent = screen.getByRole('region', { name: '최근 결과' });
     expect(within(recent).getByText('2 - 1')).toBeInTheDocument();
 
-    expect(screen.getAllByText(/기준 11월 21일 03:00/)).toHaveLength(3);
-    expect(screen.getByText('기준 11월 20일 19:00 · 갱신 지연')).toBeInTheDocument();
+    expect(screen.getAllByText('기준 11월 21일 07:00')).toHaveLength(3);
+    expect(screen.getByText('기준 11월 21일 04:00 · 갱신 지연')).toBeInTheDocument();
     expect(mockFetchToday).toHaveBeenCalledWith('2026-11-21', { leagueId: null, phase: null });
     expect(mockFetchLeaders).toHaveBeenCalledWith(4);
     expect(mockFetchRange).toHaveBeenCalledWith('2026-11-22', '2026-11-27', { limit: 30 });
     expect(mockFetchRange).toHaveBeenCalledWith('2026-11-15', '2026-11-21', { phases: ['finished'], descending: true, limit: 30 });
     expect(mockFetchNextDate).not.toHaveBeenCalled();
     expect(mockFetchToday).toHaveBeenCalledTimes(1);
+  });
+
+  it('fetches sync status once on initial render for all freshness labels', async () => {
+    renderPage();
+
+    expect(await screen.findAllByText('기준 11월 21일 07:00')).toHaveLength(3);
+    expect(screen.getByText('기준 11월 21일 04:00 · 갱신 지연')).toBeInTheDocument();
+    expect(mockFetchSyncStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the stale marker when the five-minute refetch returns a newer sync time', async () => {
+    mockFetchSyncStatus
+      .mockResolvedValueOnce({
+        events: '2026-11-20T19:00:00.000Z',
+        standings: '2026-11-20T19:00:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        events: '2026-11-20T23:00:00.000Z',
+        standings: '2026-11-20T23:00:00.000Z',
+      });
+
+    renderPage();
+
+    expect(await screen.findAllByText('기준 11월 21일 04:00 · 갱신 지연')).toHaveLength(4);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    });
+
+    await waitFor(() => expect(mockFetchSyncStatus).toHaveBeenCalledTimes(2));
+    expect(await screen.findAllByText('기준 11월 21일 08:00')).toHaveLength(4);
+    expect(screen.queryByText(/갱신 지연/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the previous freshness text when the five-minute refetch fails', async () => {
+    mockFetchSyncStatus
+      .mockResolvedValueOnce({
+        events: '2026-11-20T22:00:00.000Z',
+        standings: '2026-11-20T22:00:00.000Z',
+      })
+      .mockRejectedValueOnce(new Error('sync refetch failed'));
+
+    const { queryClient } = renderPage();
+
+    expect(await screen.findAllByText('기준 11월 21일 07:00')).toHaveLength(4);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    });
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(['sync-status'])?.status).toBe('error');
+    });
+    expect(await screen.findAllByText('기준 11월 21일 07:00')).toHaveLength(4);
+    expect(screen.queryByText('기준 시각 확인 불가')).not.toBeInTheDocument();
+  });
+
+  it('marks sync status stale only when it is older than exactly 4 hours', async () => {
+    mockFetchSyncStatus.mockResolvedValue({
+      events: '2026-11-20T20:00:00.000Z',
+      standings: '2026-11-20T19:59:59.999Z',
+    });
+
+    renderPage();
+
+    expect(await screen.findAllByText('기준 11월 21일 05:00')).toHaveLength(3);
+    expect(screen.getByText('기준 11월 21일 04:59 · 갱신 지연')).toBeInTheDocument();
+  });
+
+  it('marks sync status stale after the page stays open past the 4-hour boundary', async () => {
+    mockFetchSyncStatus.mockResolvedValue({
+      events: '2026-11-20T20:00:30.000Z',
+      standings: '2026-11-20T20:00:30.000Z',
+    });
+
+    renderPage();
+
+    expect(await screen.findAllByText('기준 11월 21일 05:00')).toHaveLength(4);
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+
+    expect(await screen.findAllByText('기준 11월 21일 05:00 · 갱신 지연')).toHaveLength(4);
+  });
+
+  it('rechecks freshness when the page becomes visible after crossing the 4-hour boundary', async () => {
+    mockFetchSyncStatus.mockResolvedValue({
+      events: '2026-11-20T20:00:30.000Z',
+      standings: '2026-11-20T20:00:30.000Z',
+    });
+    renderPage();
+
+    expect(await screen.findAllByText('기준 11월 21일 05:00')).toHaveLength(4);
+
+    vi.setSystemTime(new Date('2026-11-21T00:01:00.000Z'));
+    const visibilityStateSpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+
+    try {
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(await screen.findAllByText('기준 11월 21일 05:00 · 갱신 지연')).toHaveLength(4);
+    } finally {
+      visibilityStateSpy.mockRestore();
+    }
   });
 
   it('keeps successful sections visible when other section queries and sync status fail', async () => {

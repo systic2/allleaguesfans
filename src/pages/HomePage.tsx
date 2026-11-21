@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Star } from "lucide-react";
@@ -14,10 +14,12 @@ import type { Favorite } from "@/lib/favorites";
 import CrestImg from "@/app/components/CrestImg";
 import { MatchRow } from "@/components/MatchRow";
 
-// 수집 워크플로는 매시 예약돼 있지만 GitHub 예약 실행만으로는 6~8시간 간격이었다(2026-11-20 기록).
-// pg_cron 실행(migration 25)이 매시 도는 것을 확인하면 이 기준을 줄인다.
+// 수집은 Supabase pg_cron(migration 25)이 매시 7분에 시작한다(2026-11-21 05:07 UTC 실행 확인).
+// 매시 실행이 두 번 빠지면 마지막 성공에서 약 3시간 뒤 세 번째 실행이 끝난다. 여기에 약 1시간 여유
+// (러너 대기, 명단 갱신 최대 10분, 예비·수동 실행이 대기열에서 앞설 때)를 더해 4시간으로 잡는다.
+// pg_cron 이 멈춰 예비 실행(6시간마다)만 남으면 예비 실행 사이마다 보통 약 2시간씩(다음 예비 실행이 밀리면 더 길게, 앞 실행이 밀렸다 정시로 돌아오면 더 짧게) 표시된다.
 // 마지막 성공이 이보다 오래되면 '갱신 지연'으로 표시한다 (docs/prd.md HOME-04, AC-11)
-const STALE_AFTER_MS = 12 * 60 * 60 * 1000;
+const STALE_AFTER_MS = 4 * 60 * 60 * 1000;
 const WEEK_LIMIT = 30;
 const RECENT_LIMIT = 30;
 const FAVORITE_TEAMS_SHOWN = 8;
@@ -32,14 +34,16 @@ export default function HomePage() {
   const favoriteTeams = favorites.filter((fav) => fav.type === "team");
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-xl font-bold text-ink">홈</h1>
-      <FavoriteTeamsSection teams={favoriteTeams} today={today} />
-      <TodaySection today={today} />
-      <LeadersSection />
-      <WeekSection today={today} />
-      <RecentSection today={today} />
-    </div>
+    <SyncFreshnessProvider>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <h1 className="text-xl font-bold text-ink">홈</h1>
+        <FavoriteTeamsSection teams={favoriteTeams} today={today} />
+        <TodaySection today={today} />
+        <LeadersSection />
+        <WeekSection today={today} />
+        <RecentSection today={today} />
+      </div>
+    </SyncFreshnessProvider>
   );
 }
 
@@ -60,14 +64,39 @@ function Section({ title, step, action, children }: {
   );
 }
 
+type SyncFreshness = { data: Awaited<ReturnType<typeof fetchSyncStatus>> | undefined; isError: boolean; now: number };
+const SyncFreshnessContext = createContext<SyncFreshness>({ data: undefined, isError: false, now: 0 });
+
+/**
+ * 기준 시각을 홈 전체에서 한 번만 읽고 한 시계로 판정한다. 페이지를 열어 둔 채로도 새 수집 시각과
+ * '갱신 지연' 전환이 반영되도록, 보이는 동안 5분마다(탭으로 돌아왔을 때는 5분이 지났으면) 다시 읽고
+ * 1분마다 그리고 탭으로 돌아올 때 다시 판정한다.
+ * children 은 이 컴포넌트의 상태가 바뀌어도 다시 그려지지 않고, 문맥을 읽는 AsOf 만 다시 그려진다.
+ */
+function SyncFreshnessProvider({ children }: { children: ReactNode }) {
+  const { data, isError } = useQuery({
+    queryKey: ["sync-status"], queryFn: fetchSyncStatus,
+    staleTime: 5 * 60 * 1000, refetchInterval: 5 * 60 * 1000, refetchOnWindowFocus: true,
+  });
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const onVisible = () => { if (document.visibilityState === "visible") tick(); };
+    const id = setInterval(tick, 60 * 1000);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVisible); };
+  }, []);
+  return <SyncFreshnessContext.Provider value={{ data, isError, now }}>{children}</SyncFreshnessContext.Provider>;
+}
+
 /** 이 섹션 데이터의 수집 단계가 마지막으로 성공한 시각 */
 function AsOf({ step }: { step: "events" | "standings" }) {
-  const { data, isError } = useQuery({ queryKey: ["sync-status"], queryFn: fetchSyncStatus, staleTime: 5 * 60 * 1000 });
-  if (isError) return <span className="text-ink/50">기준 시각 확인 불가</span>;
-  if (!data) return null;
+  const { data, isError, now } = useContext(SyncFreshnessContext);
+  // 다시 읽기가 잠깐 실패해도 이미 받은 시각은 그대로 보여 준다(오래되면 '갱신 지연'으로 바뀐다)
+  if (!data) return isError ? <span className="text-ink/50">기준 시각 확인 불가</span> : null;
   const at = data[step];
   if (!at) return <span className="text-ink/50">기준 시각 미제공</span>;
-  const isStale = Date.now() - Date.parse(at) > STALE_AFTER_MS;
+  const isStale = now - Date.parse(at) > STALE_AFTER_MS;
   return (
     <span className={isStale ? "text-draw" : "text-ink/50"}>
       기준 {kstDateTime(at)}{isStale ? " · 갱신 지연" : ""}
