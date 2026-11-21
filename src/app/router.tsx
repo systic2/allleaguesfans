@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@/app/layout/RootLayout";
 import NotFound from "@/app/components/NotFound";
 
+const HomePage = lazy(() => import("@/pages/HomePage"));
 const LeagueListPage = lazy(() => import("@/pages/LeagueListPage"));
 const LeaguePage = lazy(() => import("@/pages/LeaguePage"));
 const TeamPage = lazy(() => import("@/pages/TeamPageDB")); // Using new DB-based version
@@ -20,7 +21,7 @@ const router = createBrowserRouter([
     // 지연 로딩 중에도 사이드바·상단 바가 남도록 Suspense 는 RootLayout 안(Outlet 주변)에 둔다
     element: <RootLayout />,
     children: [
-      { index: true, element: <LeagueListPage /> },
+      { index: true, element: <HomePage /> },
 
       // 리그 목록은 LeagueListPage로 고정
       { path: "leagues", element: <LeagueListPage /> },

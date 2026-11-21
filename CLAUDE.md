@@ -25,6 +25,7 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 - **Vitest** + Testing Library
 
 ### Routes (`src/app/router.tsx`)
+- `/` – home (`HomePage`: favorite teams, today's matches, league top 4, this week, recent results; each section loads on its own)
 - `/leagues`, `/leagues/:slug` – league list and league page (standings, fixtures, scorers, champions)
 - `/teams/:id` – `TeamPageDB` (tabs via `?tab=overview|squad|fixtures|stats`)
 - `/players/:id`, `/matches/:id`, `/search`
@@ -91,7 +92,7 @@ Frontend (`src/lib/supabaseClient.ts`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON
 GitHub Actions maps the repo secrets `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SERVICE_ROLE`) and `THESPORTSDB_API_KEY` to these names.
 
 ### Database
-- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `leagues`, and the `top_scorers` / `top_assisters` / `players_v2_current` views (`players_v2_current`, migration 24, keeps only each team's latest roster snapshot, the same rule as `src/lib/roster-snapshot.ts`; `/players` and the global search read it). (`v2_events_enhanced` still exists in the DB but the app no longer reads it.)
+- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `leagues`, and the `top_scorers` / `top_assisters` / `players_v2_current` / `sync_status` views (`players_v2_current`, migration 24, keeps only each team's latest roster snapshot, the same rule as `src/lib/roster-snapshot.ts`; `/players` and the global search read it; `sync_status`, migration 21, gives the home page's per-section as-of time). (`v2_events_enhanced` still exists in the DB but the app no longer reads it.)
 - RLS is on; anon can only read (migration 16). Views use `security_invoker` (migration 17). `event_timelines` and `kleague_player_birthdates` are service-role only.
 - New schema changes go in a new numbered file in `scripts/migrations/` and are applied manually in the Supabase SQL Editor. Make migrations safe to re-run.
 
