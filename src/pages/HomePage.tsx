@@ -14,7 +14,8 @@ import type { Favorite } from "@/lib/favorites";
 import CrestImg from "@/app/components/CrestImg";
 import { MatchRow } from "@/components/MatchRow";
 
-// 수집 워크플로는 매시 예약돼 있지만 GitHub 예약 실행이 밀려 실제로는 6~8시간 간격으로 돈다(2026-11-20 기록).
+// 수집 워크플로는 매시 예약돼 있지만 GitHub 예약 실행만으로는 6~8시간 간격이었다(2026-11-20 기록).
+// pg_cron 실행(migration 25)이 매시 도는 것을 확인하면 이 기준을 줄인다.
 // 마지막 성공이 이보다 오래되면 '갱신 지연'으로 표시한다 (docs/prd.md HOME-04, AC-11)
 const STALE_AFTER_MS = 12 * 60 * 60 * 1000;
 const WEEK_LIMIT = 30;
