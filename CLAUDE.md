@@ -25,18 +25,23 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 - **Vitest** + Testing Library
 
 ### Routes (`src/app/router.tsx`)
-- `/` – home (`HomePage`: favorite teams, today's matches, league top 4, this week, recent results; each section loads on its own)
+- `/` – home (`HomePage`: favorite teams, today's matches, league top 4, this week, recent results; each section loads on its own and shows its as-of time from `sync_status` (except the favorite-teams section when no team is favorited), with "갱신 지연" after 4 hours)
 - `/leagues`, `/leagues/:slug` – league list and league page (standings, fixtures, scorers, champions)
-- `/teams/:id` – `TeamPageDB` (tabs via `?tab=overview|squad|fixtures|stats`)
-- `/players/:id`, `/matches/:id`, `/search`
+- `/teams`, `/teams/:id` – team list; team page `TeamPageDB` (tabs via `?tab=overview|squad|fixtures|stats`)
+- `/players`, `/players/:id` – player list (reads `players_v2_current`) and player page
+- `/matches`, `/matches/:id` – matches by date (`?date=YYYY-MM-DD`) and match page
+- `/search`, `/favorites`; unknown paths render `NotFound`
 
 ### Project Structure
 - `src/app/` – router, layout, query client, shared app components (`GlobalSearch`, `CrestImg`, `Sidebar`); the per-route error boundary is in `layout/RootLayout.tsx`
 - `src/pages/` – route components
 - `src/components/` – page sections; `fm/` holds the league page boxes (`FMStandings`, `FMFixtures`, `FMPlayerStats`, `FMHistory`)
+- `src/components/MatchRow.tsx` – the match row shared by the home and matches pages
 - `src/lib/api.ts` – most Supabase queries used by the pages
 - `src/lib/thesportsdb-api.ts` – match details, team fixtures and upcoming fixtures from `events_v2`
 - `src/lib/season.ts` – `getCurrentSeasonForFormat` (see Seasons below)
+- `src/lib/dates.ts` – KST date helpers (`kstDate`, `kstDateTime`, `shiftDate`, …); use them in new code (some older components, e.g. `FMFixtures`, `UpcomingFixtures`, `TeamPageDB`, still format in the browser's timezone)
+- `src/lib/favorites.ts`, `src/hooks/useFavorites.ts` – league/team/player favorites, no login; kept in this browser's `localStorage` (`alf:favorites:v1`), or in memory for the tab when storage is unavailable
 - `src/lib/mappers/` – pure parsing/aggregation functions used by the sync scripts (TheSportsDB mappers, timeline parsing, player-stats helpers); kept under `src/` so Vitest covers them
 - `src/hooks/useTeamName.ts` – Korean team names (see below)
 - `src/types/domain.ts`, `src/domain/types.ts` – domain types
@@ -54,30 +59,33 @@ Uses **pnpm** (`pnpm-lock.yaml`). CI and the sync workflow use pnpm 10 and Node 
 
 ## Agent Team Workflow (Claude Code + Codex CLI + Antigravity CLI)
 
-For non-trivial fixes/features in this repo, use the three-role pipeline instead of a single agent doing everything end to end:
+For non-trivial fixes/features, use three roles instead of one agent doing everything:
 
-1. **Claude Code (implementer)** — investigates root cause, writes the actual code/config fix.
-2. **Codex CLI (test writer)** — after the fix lands, invoke `codex exec -s workspace-write "<prompt>"` with the specific change described (what changed, why, which files) and ask it to write/extend the relevant Vitest tests under `src/tests/` and run them to confirm they pass. Keep its scope explicitly limited to the tests for that change.
-3. **Independent verifier — Codex CLI second pass + Antigravity CLI (`agy`)** — after tests pass, run a second, independent `codex exec -s read-only --skip-git-repo-check "<prompt>"` review pass (fresh session, no memory of the implementation) with the diff and root-cause narrative, asking it to find bugs/missed edge cases/whether the fix addresses the root cause. Then cross-check with `agy -p "<prompt>" --dangerously-skip-permissions` (see note below) as a second independent model/vendor opinion on the same diff. Only move to commit/push once both come back clean (or concerns are addressed and re-verified).
+1. **Claude Code (implementer)** – finds the root cause and writes the code/config fix.
+2. **Codex CLI (test writer)**, after the fix lands – `codex exec -s workspace-write "<prompt>" </dev/null`. Describe the change (what, why, which files) and ask it to write or extend the Vitest tests under `src/tests/` and run them. Limit it to the tests for that change.
+3. **Independent reviewers**, after the tests pass, run in parallel – a fresh `codex exec -s read-only --skip-git-repo-check "<prompt>" </dev/null` and `agy -p "<prompt>" --dangerously-skip-permissions </dev/null`, each given the diff and the root-cause story and asked for bugs, missed edge cases, and whether the fix addresses the cause. Commit and push only when both come back clean (fix findings and review again).
 
-**Gemini CLI (`gemini`) is currently unusable — do not use it.** Google removed "Sign in with Google" / OAuth for Gemini CLI on 2026-06-18 (including paid AI Pro/Ultra subscriber logins); only API-key auth remains, and the local key has no billing account attached, so every call 429s on the free-tier quota (confirmed 2026-08-09). Attaching billing to the key at aistudio.google.com/apikey would fix it, but that's a user decision, not something to do silently.
-
-**Antigravity CLI (`agy`) is the working Google-account-based replacement** (`agy --version` confirms it's installed and already authenticated on this machine). Headless usage: `agy -p "<prompt>"`. In headless/print mode, `agy` soft-denies shell commands (e.g. `git show`, `git diff`) by default and returns "no output produced" instead of prompting — for a read-only review pass, add `--dangerously-skip-permissions` (safe here because the review prompt only asks it to read files/git history, never to edit). If `agy` is asked to make edits unattended, use `--mode=accept-edits` instead of the skip-permissions flag.
-
-`codex` and `agy` are both pre-authenticated on this machine and confirmed working as of 2026-08-09 (verified during the K League 2026-season sync fix, see git log). `gemini` is on PATH but non-functional until its API key gets a billing account.
-
+CLI notes (`codex` and `agy` are installed and signed in on this machine):
+- Pass prompts inline and redirect stdin from `/dev/null` so a run started from Claude Code never waits on stdin.
+- `agy` in print mode silently refuses shell commands (`git diff`, …) and returns "no output produced". `--dangerously-skip-permissions` is acceptable only for read-only review prompts; for unattended edits use `--mode=accept-edits`. `agy -p` runs are allowed by the user-approved `Bash(agy -p:*)` rule in the untracked `.claude/settings.local.json`; do not work around a denial.
+- `.claude/settings.local.json` is gitignored now but was tracked in older commits, so checking out or pulling across those commits can delete or overwrite it; back it up before switching branches.
+- **Do not use the Gemini CLI (`gemini`).** Since 2026-06-18 it accepts only API-key auth, and the local key has no billing account, so every call returns 429 (confirmed 2026-08-09). Adding billing is the user's decision.
 
 ## Data Sync
 
 ### Pipeline
-`.github/workflows/data-sync.yml` runs `pnpm sync:full` every hour (and on manual dispatch; runs never overlap). The hourly start comes from Supabase pg_cron job `dispatch-data-sync` (migration 25), which calls `workflow_dispatch` at minute 7 with a fine-grained token (Actions read/write on this repo only) stored in Supabase Vault as `github_actions_dispatch_token`. The workflow's own schedule (`30 */6 * * *`) is only a fallback, because GitHub delays scheduled runs (on 2026-11-20 the hourly schedule fired only every 6-8 hours); a fallback run may run right after a dispatched one, which is harmless (upserts), but it can replace a pending manual run. Before that, each run first runs `import-team-players.ts --if-older-than-days=7`, which re-fetches each team whose newest `players_v2` row is at least 7 days old, or that has no rows (manual dispatch with `import_rosters` re-fetches every team); teams that fail keep their previous roster, and a team that was due (7+ days old or empty) is retried on the next run, the sync still runs, and the run is marked failed. `scripts/sync/orchestrator.ts` does, in order:
+`.github/workflows/data-sync.yml` runs the sync; runs never overlap (concurrency group `data-sync`).
+- **Hourly start:** Supabase pg_cron job `dispatch-data-sync` (migration 25) calls `workflow_dispatch` at minute 7, using a fine-grained token (Actions read/write on this repo only) stored in Supabase Vault as `github_actions_dispatch_token`. Confirmed working from 2026-11-21 05:07 UTC. When the token expires, create a new one and replace the Vault value.
+- **Fallback:** the workflow's own schedule `30 */6 * * *`, because GitHub delays scheduled runs (on 2026-11-20 the hourly schedule fired only every 6-8 hours). A fallback run may run right after a dispatched one (harmless, upserts), but it can replace a pending manual run.
+- **Rosters first:** each run starts with `import-team-players.ts --if-older-than-days=7`, which re-fetches each team whose newest `players_v2` row is at least 7 days old or that has none (manual dispatch with `import_rosters` re-fetches every team). A team that fails keeps its previous roster; if it was due (7+ days old or empty) it is retried next run, otherwise only once it becomes due; the sync still runs, and the run is marked failed.
+- Then `pnpm sync:full` (`scripts/sync/orchestrator.ts`) runs these steps in order, recording each in `sync_runs`:
 
 1. **Standings and teams** from TheSportsDB → `standings_v2`, `teams_v2`
 2. **Events** (fixtures and results) from TheSportsDB → `events_v2`
 3. **K League player stats** (`lib/kleague-player-stats.ts`): goal/assist rankings from kleague.com `/record/rankSort.do` → `player_statistics`. kleague.com player ids differ from `players_v2` (TheSportsDB) ids; the step also links them in `kleague_player_links` (migration 22) when exactly one player on the same team has the same English name, or, failing that, exactly one K League roster player has the birth date from the kleague.com player page (cached in `kleague_player_birthdates`, migration 23) and shares a name word (same team) or, on another team, has every word (at least two) of one name in the other; the app reads stats through those links
 4. **European player stats** (`lib/europe-player-stats.ts`): TheSportsDB v2 `event_timeline` per finished match, cached in `event_timelines` (migration 18), aggregated → `player_statistics`. Bounded per run (600 requests, 12-minute deadline, fair share per league); stats for a league are written only once every finished match is cached.
 
-Any failed step makes the script exit 1 so the workflow run shows as failed.
+Any failed step makes the script exit 1, so the workflow run shows as failed.
 
 Manual backfill, not run by the workflow: `import-historical-champions-euro.ts` (European champions history in `standings_v2`).
 
@@ -92,9 +100,12 @@ Frontend (`src/lib/supabaseClient.ts`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON
 GitHub Actions maps the repo secrets `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SERVICE_ROLE`) and `THESPORTSDB_API_KEY` to these names.
 
 ### Database
-- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `leagues`, and the `top_scorers` / `top_assisters` / `players_v2_current` / `sync_status` views (`players_v2_current`, migration 24, keeps only each team's latest roster snapshot, the same rule as `src/lib/roster-snapshot.ts`; `/players` and the global search read it; `sync_status`, migration 21, gives the home page's per-section as-of time). (`v2_events_enhanced` still exists in the DB but the app no longer reads it.)
-- RLS is on; anon can only read (migration 16). Views use `security_invoker` (migration 17). `event_timelines` and `kleague_player_birthdates` are service-role only.
-- New schema changes go in a new numbered file in `scripts/migrations/` and are applied manually in the Supabase SQL Editor. Make migrations safe to re-run.
+- Tables the app uses: `teams_v2`, `standings_v2`, `events_v2`, `player_statistics`, `players_v2`, `kleague_player_links`, `leagues`.
+- Views the app uses: `top_scorers`, `top_assisters`, `players_v2_current` (migration 24: each team's latest roster snapshot, the same rule as `src/lib/roster-snapshot.ts`; read by `/players` and the global search) and `sync_status` (migration 21: last successful time per sync step from `sync_runs`; the home page's as-of times).
+- `v2_events_enhanced` still exists in the DB, but the app no longer reads it.
+- RLS is on; anon can only read (migration 16). Views use `security_invoker` (migrations 17, 21, 24). `event_timelines` and `kleague_player_birthdates` are service-role only; anon can read only `step`, `startedAt`, `finishedAt` and `ok` of `sync_runs` (not `id` or `error`).
+- New schema changes go in a new numbered file in `scripts/migrations/`. The user applies them by hand in the Supabase SQL Editor, so make them safe to re-run, and don't merge code that needs a migration before it is applied.
+- Production data writes need the user's permission. For read-only checks use the anon key.
 
 ### Script Imports
 Scripts run with `tsx`. Existing scripts import TypeScript modules with a `.js` extension (`import { supa } from './lib/supabase.js'`), which tsx resolves to the `.ts` file; follow the surrounding file's style.
@@ -102,10 +113,11 @@ Scripts run with `tsx`. Existing scripts import TypeScript modules with a `.js` 
 ## Build & Deployment
 - Vercel deploys `main` to production on every merge; pull requests get preview deployments.
 - `vercel.json` rewrites every non-`/assets/` path to `/` for client-side routing and sets cache and security headers.
-- `.github/workflows/ci-cd.yml` runs typecheck, tests and build on pushes to `main`, PRs into `main`, and manual dispatch. `keepalive.yml` runs weekly so GitHub does not disable the hourly sync schedule (the 6-hour fallback for the pg_cron dispatch).
+- `.github/workflows/ci-cd.yml` runs typecheck, tests and build on pushes to `main`, PRs into `main`, and manual dispatch. `keepalive.yml` runs weekly so GitHub does not disable the scheduled workflows after 60 days without activity (this keeps the 6-hour fallback alive).
 
 ## Development Workflow
 1. Work on a feature branch; open a PR into `main`.
-2. Before committing: `pnpm typecheck`, `pnpm lint:unused`, `pnpm test`, `pnpm build`.
-3. After merging, check the change on the production site.
-4. Never commit secrets (`.env*` files are ignored).
+2. Use the three-role pipeline above for non-trivial changes.
+3. Before committing: `pnpm typecheck`, `pnpm lint:unused`, `pnpm test`, `pnpm build`.
+4. After merging, check the change on the production site (allleaguesfans.vercel.app).
+5. Never commit secrets (`.env*` files are ignored). List env variable names only, never their values.
