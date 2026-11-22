@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '@/lib/supabaseClient';
 import {
   fetchMatchesOnDate,
@@ -26,8 +26,11 @@ vi.mock('@/lib/supabaseClient', () => ({
 
 describe('list page API queries', () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
 
   it('selects each supported league latest season, then orders leagues and ranks', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-22T00:00:00Z'));
     const chain = createChain([
       { leagueId: '4328', season: '2025', teamId: 4, teamName: 'Old Arsenal', teamBadgeUrl: null, rank: 1 },
       { leagueId: '4689', season: '2026', teamId: 2, teamName: 'Jeonbuk', teamBadgeUrl: 'j.png', rank: 2 },
@@ -43,7 +46,18 @@ describe('list page API queries', () => {
     ]);
     expect(supabase.from).toHaveBeenCalledWith('standings_v2');
     expect(chain.in).toHaveBeenCalledWith('leagueId', ['4689', '4822', '4328', '4335', '4332', '4331', '4334']);
-    expect(chain.gte).toHaveBeenCalledWith('season', String(new Date().getFullYear() - 1));
+    expect(chain.gte).toHaveBeenCalledWith('season', '2025');
+  });
+
+  it('uses the KST year when selecting the minimum standings season', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-12-31T15:30:00Z'));
+    const chain = createChain([]);
+    vi.mocked(supabase.from).mockReturnValue(chain);
+
+    await fetchTeamsList();
+
+    expect(chain.gte).toHaveBeenCalledWith('season', '2025');
   });
 
   it('throws a standings error', async () => {

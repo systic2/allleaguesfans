@@ -16,6 +16,7 @@ import {
   mapTheSportsDBStandingToDomain, TheSportsDBStanding,
   mapTheSportsDBTeamToDomain, TheSportsDBTeam,
 } from '../../src/lib/mappers/thesportsdb-mappers.js';
+import { getCurrentSeasonForFormat } from '../../src/lib/season.js';
 import type { Standing, Team } from '../../src/types/domain';
 
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY;
@@ -32,9 +33,8 @@ const LEAGUES = [
 ];
 
 // Split-format season: TheSportsDB's table endpoint wants "startYear-endYear",
-// we store just the start year, mirroring getCurrentSeasonForFormat('split').
-const now = new Date();
-const currentStartYear = now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+// we store just the start year (getCurrentSeasonForFormat('split')).
+const currentStartYear = Number(getCurrentSeasonForFormat('split').dbValue); // 한국 날짜 기준
 // currentStartYear and currentStartYear-1 are already covered by the daily sync
 // (current + previous season); backfill the 15 seasons before that.
 const HISTORICAL_START_YEARS = Array.from({ length: 15 }, (_, i) => currentStartYear - 2 - i);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageOn, isDateString, kstDate, kstDateLabel, kstDayRange, kstTime, shiftDate } from '@/lib/dates';
+import { ageOn, isDateString, kstDate, kstDateLabel, kstDayRange, kstMonthDay, kstTime, shiftDate } from '@/lib/dates';
 import { leagueIdForSlug, seasonFormatFor, seasonLabel, supportedLeagueIds } from '@/lib/leagues';
 import { hasConfirmedScore, hasKickoffTime, matchPhase, statusesOf, statusLabel, type MatchPhase } from '@/lib/match-status';
 import { isPositionGroup, POSITION_GROUPS, positionGroupOf, STAFF_POSITIONS } from '@/lib/positions';
@@ -75,6 +75,7 @@ describe('KST date helpers', () => {
     });
     expect(kstTime('2026-11-17T15:30:00.000Z')).toBe('00:30');
     expect(kstDateLabel('2026-11-18')).toContain('11월 18일');
+    expect(kstMonthDay('2026-11-21T15:30:00.000Z')).toBe('11월 22일');
   });
 
   it('validates the date format and shifts across month and year boundaries', () => {

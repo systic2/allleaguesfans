@@ -1,6 +1,7 @@
 // src/lib/thesportsdb-api.ts
 // REFACTORED VERSION: Uses events_v2 and Match domain model
 import { supabase } from "@/lib/supabaseClient";
+import { kstDate, kstDayRange } from "@/lib/dates";
 import type { Match, Team } from "@/types/domain";
 
 // Define a new type for a Match with joined team data
@@ -64,8 +65,8 @@ export interface TheSportsDBScheduleResponse {
  */
 export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<MatchWithTeams[]> {
   try {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    // 한국 날짜 오늘 0시(UTC 로는 전날 15시)부터
+    const today = kstDayRange(kstDate()).from;
 
     const { data, error } = await supabase
       .from('events_v2')
@@ -101,8 +102,8 @@ export async function fetchAllUpcomingFixtures(limit: number = 10): Promise<Matc
  */
 export async function fetchLeagueUpcomingFixtures(leagueId: string): Promise<MatchWithTeams[]> {
   try {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    // 한국 날짜 오늘 0시(UTC 로는 전날 15시)부터
+    const today = kstDayRange(kstDate()).from;
 
     const { data: upcomingData, error: upcomingError } = await supabase
       .from('events_v2')
@@ -180,8 +181,8 @@ export async function fetchLeaguePreviousFixtures(leagueId: string): Promise<Mat
  */
 export async function fetchTeamUpcomingFixtures(teamId: string): Promise<MatchWithTeams[]> {
   try {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    // 한국 날짜 오늘 0시(UTC 로는 전날 15시)부터
+    const today = kstDayRange(kstDate()).from;
 
     const { data, error } = await supabase
       .from('events_v2')

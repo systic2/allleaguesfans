@@ -1,6 +1,7 @@
 // src/lib/mappers/thesportsdb-mappers.ts
 
 import type { Standing, Match, Team } from '@/types/domain';
+import { kstDate } from '../dates';
 
 // This interface is based on the structure from TheSportsDB API
 // and is co-located here for mapping purposes.
@@ -45,7 +46,7 @@ export function mapTheSportsDBStandingToDomain(rawStanding: TheSportsDBStanding)
   return {
     leagueId: rawStanding.idLeague,
     teamId: rawStanding.idTeam,
-    season: rawStanding.strSeason || new Date().getFullYear().toString(),
+    season: rawStanding.strSeason || kstDate().slice(0, 4),
     rank: parseCount(rawStanding.intRank) ?? 0,
     teamName: rawStanding.strTeam,
     teamBadgeUrl: rawStanding.strBadge,
