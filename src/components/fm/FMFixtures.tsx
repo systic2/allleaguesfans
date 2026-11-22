@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 import { useTeamName } from "@/hooks/useTeamName";
+import { kstShortDate, kstTime } from "@/lib/dates";
 
 export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] }) {
   const teamName = useTeamName();
@@ -14,9 +15,8 @@ export default function FMFixtures({ fixtures }: { fixtures: MatchWithTeams[] })
         <table className="w-full text-xs text-gray-300">
           <tbody className="divide-y divide-line">
             {fixtures.map((match) => {
-              const date = new Date(match.date);
-              const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-              const dateStr = date.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
+              const timeStr = kstTime(match.date);
+              const dateStr = kstShortDate(match.date);
               
               const isFinished = ['FINISHED', 'FT', 'AET', 'PEN'].includes(match.status);
               const isLive = ['IN_PLAY', 'LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P'].includes(match.status);

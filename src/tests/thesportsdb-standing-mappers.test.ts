@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   mapTheSportsDBStandingToDomain,
   type TheSportsDBStanding,
@@ -30,6 +30,10 @@ function standing(overrides: Partial<TheSportsDBStanding> = {}): TheSportsDBStan
 }
 
 describe('mapTheSportsDBStandingToDomain', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('maps missing, blank, and non-numeric collected statistics to null while rank remains 0', () => {
     const result = mapTheSportsDBStandingToDomain(standing({
       intRank: '',
@@ -83,5 +87,14 @@ describe('mapTheSportsDBStandingToDomain', () => {
       goalDifference: 0,
       lastUpdated: '2026-11-18T00:00:00Z',
     });
+  });
+
+  it('uses the current KST year when the source season is empty', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2025-12-31T15:30:00Z'));
+
+    const result = mapTheSportsDBStandingToDomain(standing({ strSeason: '' }));
+
+    expect(result.season).toBe('2026');
   });
 });

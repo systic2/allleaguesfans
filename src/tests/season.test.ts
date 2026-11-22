@@ -29,4 +29,22 @@ describe('getCurrentSeasonForFormat', () => {
       dbValue: '2026',
     });
   });
+
+  it('uses the KST July date for a split season at the UTC month boundary', () => {
+    const now = new Date('2026-06-30T15:30:00.000Z');
+
+    expect(getCurrentSeasonForFormat('split', now)).toEqual({
+      queryParam: '2026-2027',
+      dbValue: '2026',
+    });
+  });
+
+  it('uses the KST new year for a single season at the UTC year boundary', () => {
+    const now = new Date('2025-12-31T15:30:00.000Z');
+
+    expect(getCurrentSeasonForFormat('single', now)).toEqual({
+      queryParam: '2026',
+      dbValue: '2026',
+    });
+  });
 });

@@ -44,10 +44,14 @@ export function kstShortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
 
+/** '11월 21일' — 경기 시각(UTC ISO)의 한국 날짜 */
+export function kstMonthDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric", timeZone: "Asia/Seoul" });
+}
+
 /** '11월 21일 07:53' (한국 시간) */
 export function kstDateTime(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString("ko-KR", { month: "long", day: "numeric", timeZone: "Asia/Seoul" })} ${kstTime(iso)}`;
+  return `${kstMonthDay(iso)} ${kstTime(iso)}`;
 }
 
 /** 생년월일과 오늘(한국 날짜)로 만 나이 */

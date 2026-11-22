@@ -23,11 +23,10 @@ import NotFound from "@/app/components/NotFound";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getCurrentSeasonForFormat } from "@/lib/season";
 import { useTeamName } from "@/hooks/useTeamName";
+import { kstDate, kstMonthDay, kstTime } from "@/lib/dates";
 
 // Types
 type FormResult = 'W' | 'D' | 'L';
-
-const FALLBACK_SEASON = String(new Date().getFullYear());
 
 const TEAM_TABS = [
   { key: "overview", label: "개요" },
@@ -77,7 +76,7 @@ export default function TeamPageDB() {
     staleTime: 5 * 60 * 1000,
   });
   // 팀이 속한 리그의 최근 시즌 (K리그는 달력 연도, 유럽은 시즌 시작 연도)
-  const currentSeason = teamData?.currentSeason ?? FALLBACK_SEASON;
+  const currentSeason = teamData?.currentSeason ?? kstDate().slice(0, 4);
   // 우승 횟수에서 빼야 하는 '진행 중' 시즌은 팀의 마지막 시즌이 아니라 리그의 현재 시즌이다
   // (해체된 팀은 마지막 시즌도 끝난 시즌이라 그 우승을 세야 한다)
   const inProgressSeason = getCurrentSeasonForFormat(
@@ -122,8 +121,9 @@ export default function TeamPageDB() {
   });
 
   // --- Helper Functions ---
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-  const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // 경기 시각은 UTC 로 저장돼 있으므로 한국 시간으로 표시한다
+  const formatDate = kstMonthDay;
+  const formatTime = kstTime;
 
   const topScorers = squadPlayers(players ?? [])
     .filter((p) => p.goals !== null && p.goals > 0)

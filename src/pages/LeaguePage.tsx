@@ -20,6 +20,7 @@ import FMStandings from "@/components/fm/FMStandings";
 import FMFixtures from "@/components/fm/FMFixtures";
 import FMHistory from "@/components/fm/FMHistory";
 import { useTeamName } from "@/hooks/useTeamName";
+import { kstDate } from "@/lib/dates";
 import FMPlayerStats from "@/components/fm/FMPlayerStats";
 
 export default function LeaguePage() {
@@ -167,7 +168,7 @@ export default function LeaguePage() {
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight break-words">{league.name_korean ?? league.name}</h1>
             <span className="bg-white/10 text-xs px-2 py-0.5 rounded text-gray-300 border border-white/10 whitespace-nowrap">
-              {league.current_season || new Date().getFullYear()}
+              {league.current_season || kstDate().slice(0, 4)}
             </span>
           </div>
           <div className="mb-2">

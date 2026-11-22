@@ -1,9 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock('@/lib/thesportsdb-api');
 
 import { supabase } from '@/lib/supabaseClient';
-import { fetchAllUpcomingFixtures } from '@/lib/thesportsdb-api';
+import {
+  fetchAllUpcomingFixtures,
+  fetchLeagueUpcomingFixtures,
+  fetchTeamUpcomingFixtures,
+} from '@/lib/thesportsdb-api';
 
 // Helper to create a mock chain for Supabase methods
 const createMockSupabaseChain = (mockData: any, mockError: any = null) => {
@@ -12,6 +16,7 @@ const createMockSupabaseChain = (mockData: any, mockError: any = null) => {
   // Chainable methods
   mockChain.select = vi.fn(() => mockChain);
   mockChain.eq = vi.fn(() => mockChain); // We want to spy on this
+  mockChain.or = vi.fn(() => mockChain);
   mockChain.in = vi.fn(() => mockChain);
   mockChain.gte = vi.fn(() => mockChain);
   mockChain.order = vi.fn(() => mockChain);
@@ -33,6 +38,29 @@ vi.mock('@/lib/supabaseClient', () => ({
 describe('TheSportsDB API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['all fixtures', () => fetchAllUpcomingFixtures()],
+    ['league fixtures', () => fetchLeagueUpcomingFixtures('4689')],
+    ['team fixtures', () => fetchTeamUpcomingFixtures('team-1')],
+  ])('uses the KST midnight cutoff for %s', async (_label, fetchFixtures) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-21T16:00:00.000Z'));
+    const mockChain = createMockSupabaseChain([{
+      id: 'fixture-1',
+      round: '1',
+      date: '2026-11-22T10:00:00.000Z',
+    }]);
+    (supabase.from as any).mockReturnValue(mockChain);
+
+    await fetchFixtures();
+
+    expect(mockChain.gte).toHaveBeenCalledWith('date', '2026-11-21T15:00:00.000Z');
   });
 
   describe('fetchAllUpcomingFixtures', () => {

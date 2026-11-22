@@ -200,6 +200,19 @@ describe('TeamPageDB', () => {
     expect(screen.getByText('Seoul Test FC')).toBeInTheDocument();
   });
 
+  it('renders the next fixture date and time in KST across the UTC day boundary', async () => {
+    mockFetchTeamDetails.mockResolvedValue(team);
+    mockFetchTeamFixtures.mockResolvedValue({
+      upcoming: [{ ...upcomingAwayMatch, date: '2026-11-21T15:30:00.000Z' }],
+      recent: [],
+    });
+
+    renderTeamPage();
+
+    expect(await screen.findByText('11월 22일')).toBeInTheDocument();
+    expect(screen.getByText('00:30')).toBeInTheDocument();
+  });
+
   it('favorites the team using its id, Korean name, and badge', async () => {
     mockFetchTeamDetails.mockResolvedValue({ ...team, badgeUrl: '/test-team.png' });
 

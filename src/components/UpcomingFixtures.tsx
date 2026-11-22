@@ -3,6 +3,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTeamName } from "@/hooks/useTeamName";
+import { kstDate, kstDateTime, kstTime, shiftDate } from "@/lib/dates";
 import { 
   fetchAllUpcomingFixtures,
   fetchLeagueUpcomingFixtures,
@@ -97,28 +98,24 @@ function FixtureCard({ fixture }: FixtureCardProps) {
   const teamName = useTeamName();
   const leagueName = LEAGUE_NAMES[leagueId];
 
-  const fixtureDate = new Date(date);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today.getTime() + 86400000);
-  
-  const isToday = fixtureDate.toDateString() === today.toDateString();
-  const isTomorrow = fixtureDate.toDateString() === tomorrow.toDateString();
-  
+  // 오늘·내일은 한국 날짜로 판단한다. 시각이 없거나 잘못된 경기는 날짜를 계산하지 않는다
+  // new Date(null) 은 1970-01-01 이 되므로 빈 값은 먼저 거른다
+  const kickoff = date ? new Date(date) : null;
+  const hasKickoff = kickoff !== null && !Number.isNaN(kickoff.getTime());
+  const fixtureDay = kickoff && hasKickoff ? kstDate(kickoff) : null;
+  const today = kstDate();
+  const isToday = fixtureDay === today;
+  const isTomorrow = fixtureDay === shiftDate(today, 1);
+
   let dateDisplay: string;
-  if (status === 'UNKNOWN') {
+  if (status === 'UNKNOWN' || !hasKickoff) {
     dateDisplay = '일정 미정';
   } else if (isToday) {
-    dateDisplay = `오늘 ${fixtureDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+    dateDisplay = `오늘 ${kstTime(date)}`;
   } else if (isTomorrow) {
-    dateDisplay = `내일 ${fixtureDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+    dateDisplay = `내일 ${kstTime(date)}`;
   } else {
-    dateDisplay = fixtureDate.toLocaleDateString('ko-KR', { 
-      month: 'long', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    dateDisplay = kstDateTime(date);
   }
 
   const statusDisplay: Record<string, string> = {
