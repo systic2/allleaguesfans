@@ -82,7 +82,7 @@ describe('fetchHistoricalChampions', () => {
     ]);
   });
 
-  it('falls back to the calendar year when the current season is not passed', async () => {
+  it('falls back to the split-season start year when the current season is not passed', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2031-04-15T12:00:00Z'));
     const query = createMockSupabaseChain([]);
@@ -90,7 +90,27 @@ describe('fetchHistoricalChampions', () => {
 
     await fetchHistoricalChampions(4328);
 
+    expect(query.lt).toHaveBeenCalledWith('season', '2030');
+  });
+
+  it('falls back to the calendar year for a single-year league', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2031-04-15T12:00:00Z'));
+    const query = createMockSupabaseChain([]);
+    (supabase.from as any).mockReturnValueOnce(query);
+
+    await fetchHistoricalChampions(4689);
+
     expect(query.lt).toHaveBeenCalledWith('season', '2031');
+  });
+
+  it('normalizes a hyphenated current season to the stored season format', async () => {
+    const query = createMockSupabaseChain([]);
+    (supabase.from as any).mockReturnValueOnce(query);
+
+    await fetchHistoricalChampions(4328, '2025-2026');
+
+    expect(query.lt).toHaveBeenCalledWith('season', '2025');
   });
 
   it('maps champions and keeps descending season order capped at 15 rows', async () => {

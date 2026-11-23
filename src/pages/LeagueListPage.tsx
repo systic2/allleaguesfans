@@ -2,7 +2,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchLeagues, type LeagueLite } from "@/lib/api";
 import { compareLeagueSlugs } from "@/lib/leagues";
-import { kstDate } from "@/lib/dates";
 import { Link } from "react-router-dom";
 import UpcomingFixtures from "@/components/UpcomingFixtures";
 
@@ -113,7 +112,7 @@ function LeagueCard({ league }: { league: LeagueLite }) {
         {/* 추가 정보 표시 영역 */}
         <div className="mt-4 pt-4 border-t border-slate-700/50 mt-auto">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>시즌 {league.current_season || kstDate().slice(0, 4)}</span>
+            <span>시즌 {league.current_season}</span>
           </div>
         </div>
       </div>

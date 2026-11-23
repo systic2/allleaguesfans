@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/lib/supabaseClient';
 import {
   fetchLeagues, // Added
@@ -14,6 +14,7 @@ import {
   fetchTeamKoreanNames,
   fetchLeagueBySlug,
   leagueSlugFor,
+  resolveLeagueSeason,
   searchByName,
   normalizeSeason,
   TeamDetails,
@@ -69,6 +70,35 @@ describe('API Functions', () => {
     (supabase.from as any).mockImplementation(() => createMockSupabaseChain(null));
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('resolveLeagueSeason', () => {
+    it('keeps a non-empty stored season after trimming it', () => {
+      expect(resolveLeagueSeason('4328', ' 2024-2025 ')).toBe('2024-2025');
+    });
+
+    it.each([null, '', '   '])('falls back when the stored season is %j', (stored) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-06-30T15:30:00.000Z'));
+
+      expect(resolveLeagueSeason('4689', stored)).toBe('2026');
+    });
+
+    it('uses KST at the July 1 boundary for single and split seasons', () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+
+      vi.setSystemTime(new Date('2026-06-30T15:30:00.000Z'));
+      expect(resolveLeagueSeason('4689', null)).toBe('2026');
+      expect(resolveLeagueSeason('4328', null)).toBe('2026');
+
+      vi.setSystemTime(new Date('2026-06-30T14:30:00.000Z'));
+      expect(resolveLeagueSeason('4689', null)).toBe('2026');
+      expect(resolveLeagueSeason('4328', null)).toBe('2025');
+    });
+  });
+
   describe('fetchLeagues', () => {
     it('should fetch leagues and map IDs to slugs correctly', async () => {
       const mockLeaguesData = [
@@ -98,6 +128,24 @@ describe('API Functions', () => {
       expect(laLiga?.name_korean).toBe('라리가');
 
       expect(supabase.from).toHaveBeenCalledWith('leagues');
+    });
+
+    it('returns a fallback current season when the stored season is null', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-06-30T15:30:00.000Z'));
+      (supabase.from as any).mockReturnValueOnce(createMockSupabaseChain([
+        {
+          idLeague: '4328',
+          strLeague: 'English Premier League',
+          strCountry: 'England',
+          strBadge: 'epl.png',
+          strCurrentSeason: null,
+        },
+      ]));
+
+      const result = await fetchLeagues();
+
+      expect(result[0].current_season).toBe('2026');
     });
   });
 
@@ -164,6 +212,23 @@ describe('API Functions', () => {
       expect(leagueChain.eq).toHaveBeenCalledWith('idLeague', '4689');
       expect(result?.slug).toBe('k-league-1');
       expect(result?.name_korean).toBe('K리그1');
+    });
+
+    it('returns a fallback current season when the stored season is null', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-06-30T14:30:00.000Z'));
+      const leagueChain = createMockSupabaseChain({
+        idLeague: '4328',
+        strLeague: 'English Premier League',
+        strCountry: 'England',
+        strBadge: 'epl.png',
+        strCurrentSeason: null,
+      });
+      (supabase.from as any).mockReturnValueOnce(leagueChain);
+
+      const result = await fetchLeagueBySlug('premier-league');
+
+      expect(result?.current_season).toBe('2025');
     });
   });
 

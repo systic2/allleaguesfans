@@ -5,7 +5,8 @@ import type { SearchRow, TeamFromDB, FormResult } from "@/domain/types";
 import type { Match, Standing } from "@/types/domain"; 
 import type { MatchWithTeams } from "@/lib/thesportsdb-api";
 import { findTeamIdsByAlias } from "@/lib/team-aliases";
-import { LEAGUE_SLUGS, leagueIdsByKoreanName, leagueNameKo, leagueSlugFor, supportedLeagueIds } from "@/lib/leagues";
+import { LEAGUE_SLUGS, leagueIdsByKoreanName, leagueNameKo, leagueSlugFor, seasonFormatFor, supportedLeagueIds } from "@/lib/leagues";
+import { getCurrentSeasonForFormat } from "@/lib/season";
 import { POSITION_GROUPS, STAFF_POSITIONS, type PositionGroup } from "@/lib/positions";
 import { statusesOf, type MatchPhase } from "@/lib/match-status";
 import { kstDate, kstDayRange } from "@/lib/dates";
@@ -49,7 +50,7 @@ export type LeagueLite = {
   banner_url?: string | null; 
   country_code?: string; 
   primary_source?: string;
-  current_season?: string; // Added field for dynamic season display
+  current_season: string; // 비어 있으면 resolveLeagueSeason 이 계산한 값
 };
 export type TeamLite = { id: number; name: string; name_korean?: string | null; short_name: string | null; crest_url: string | null; logo_url?: string | null; badge_url?: string | null; banner_url?: string | null; primary_source?: string; };
 
@@ -79,19 +80,23 @@ export async function fetchLeagues(): Promise<LeagueLite[]> {
     banner_url: null, 
     country_code: x.strCountry, 
     primary_source: "thesportsdb",
-    // Postgres NULL comes through as `null`, not `undefined`; coerce so callers relying
-    // on a `= defaultSeason()` default parameter (which only triggers on `undefined`) work.
-    current_season: x.strCurrentSeason ?? undefined
+    current_season: resolveLeagueSeason(String(x.idLeague), x.strCurrentSeason)
   }));
 }
 
-export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: string; current_season?: string; };
+export type LeagueDetail = { id: number; name: string; name_korean?: string | null; logo_url?: string | null; banner_url?: string | null; slug: string; country: string | null; primary_source?: string; tier?: number | null; season: string; current_season: string; };
 // teams_v2.id 는 텍스트('hist_…' 포함)라 문자열로 둔다. 기록 값이 null 이면 수집되지 않은 값(과거 우승팀 행 등)
 export type TeamStanding = { team_id: string; team_name: string; short_name: string | null; crest_url: string | null; rank: number; points: number | null; played: number | null; win: number | null; draw: number | null; lose: number | null; goals_for: number | null; goals_against: number | null; goals_diff: number | null; form: string | null; };
 
 // DB 의 NULL(수집 안 됨)은 0 으로 바꾸지 않고 null 로 둔다
 function toCount(value: unknown): number | null {
   return value === null || value === undefined ? null : Number(value);
+}
+
+// 리그의 현재 시즌. 수집이 넣는 strCurrentSeason 이 비어 있으면(NULL·빈 문자열) 리그 형식(K리그 단일 연도,
+// 유럽 7월 시작)으로 한국 날짜에서 계산한다. 비어 있으면 리그 페이지의 라운드·일정 조회가 꺼지기 때문
+export function resolveLeagueSeason(idLeague: string, stored: string | null | undefined): string {
+  return stored?.trim() || getCurrentSeasonForFormat(seasonFormatFor(idLeague)).dbValue;
 }
 
 // 리그 slug·한글 이름은 src/lib/leagues.ts. 기존 호출부를 위해 다시 내보낸다
@@ -106,7 +111,7 @@ export async function fetchLeagueBySlug(slug: string): Promise<LeagueDetail | nu
 
   return {
     id: data.idLeague === '4689' ? 249276 : data.idLeague === '4822' ? 250127 : parseInt(data.idLeague) || 0,
-    name: String(data.strLeague), name_korean: leagueNameKo(leagueSlugFor(String(data.idLeague))), logo_url: data.strBadge, banner_url: null, slug: leagueSlugFor(String(data.idLeague)), country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: defaultSeason(), current_season: data.strCurrentSeason ?? undefined
+    name: String(data.strLeague), name_korean: leagueNameKo(leagueSlugFor(String(data.idLeague))), logo_url: data.strBadge, banner_url: null, slug: leagueSlugFor(String(data.idLeague)), country: data.strCountry as string | null, primary_source: "thesportsdb", tier: null, season: defaultSeason(), current_season: resolveLeagueSeason(String(data.idLeague), data.strCurrentSeason)
   };
 }
 
@@ -237,13 +242,10 @@ export async function fetchTopAssists(leagueId: number, season: string = default
 
 export async function fetchHistoricalChampions(leagueId: number, currentSeason?: string): Promise<HistoricalChampion[]> {
   const theSportsDBLeagueId = toTheSportsDBLeagueId(leagueId);
-  // Split-format leagues (EPL, La Liga, etc.) store season as the split's start year,
-  // e.g. "2025" for the 2025-2026 season, which stays the active season through June of
-  // the following calendar year. Using the calendar year as the "current" cutoff
-  // would fail to exclude that still-active season from Jan-Jun. Prefer the league's own
-  // current_season (already resolved by fetchLeagueBySlug/getCurrentSeasonForFormat) and
-  // only fall back to the calendar year when it isn't available yet.
-  const excludeFrom = currentSeason || kstDate().slice(0, 4);
+  // 진행 중인 시즌부터는 제외한다. 유럽 리그는 시작 연도로 저장되고('2025' = 2025-26) 이듬해 6월까지
+  // 진행 중이라 달력 연도를 기준으로 쓰면 1-6월에 진행 중 시즌이 역대 우승에 들어간다. 그래서 리그 형식으로
+  // 계산하고, '2025-2026' 처럼 들어와도 standings_v2 형식('2025')으로 맞춘다('2025' < '2025-2026' 이므로)
+  const excludeFrom = normalizeSeason(resolveLeagueSeason(theSportsDBLeagueId, currentSeason));
   const { data: standingsData, error: standingsError } = await supabase.from("standings_v2").select("season, teamId, teamName").eq("leagueId", theSportsDBLeagueId).eq("rank", 1).lt("season", excludeFrom).order("season", { ascending: false }).limit(15);
   if (standingsError) { console.warn("Failed to fetch historical champions standings:", standingsError); return []; }
   if (!standingsData || standingsData.length === 0) return [];
