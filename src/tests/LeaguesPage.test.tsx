@@ -16,6 +16,7 @@ vi.mock("../lib/api", () => {
         slug: "ligue-1",
         logo_url: "",
         tier: 1,
+        current_season: "2025",
       },
       {
         id: 9999,
@@ -24,6 +25,7 @@ vi.mock("../lib/api", () => {
         slug: "league-9999",
         logo_url: "",
         tier: 1,
+        current_season: "2025",
       },
       {
         id: 4328,
@@ -32,6 +34,7 @@ vi.mock("../lib/api", () => {
         slug: "premier-league",
         logo_url: "",
         tier: 1,
+        current_season: "2025",
       },
       {
         id: 4689,
@@ -40,6 +43,7 @@ vi.mock("../lib/api", () => {
         slug: "k-league-1",
         logo_url: "",
         tier: 1,
+        current_season: "2025",
       },
     ]),
   };
@@ -76,5 +80,6 @@ describe("LeaguesPage", () => {
       "Ligue 1",
       "Custom League",
     ]);
+    expect(screen.getAllByText("시즌 2025")).toHaveLength(4);
   });
 });

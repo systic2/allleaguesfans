@@ -96,7 +96,8 @@ describe("League Data Integrity Verification", () => {
         name: "K League 1",
         slug: "league-4689",
         country: "South Korea",
-        season: "2025"
+        season: "2025",
+        current_season: "2025"
       };
 
       expect(sampleLeagueDetail.id).toBe(4689);
