@@ -57,3 +57,9 @@ export function seasonLabel(idLeague: string, season: string): string {
   if (seasonFormatFor(idLeague) === 'single' || !/^\d{4}$/.test(season)) return season;
   return `${season}/${String((Number(season) + 1) % 100).padStart(2, '0')}`;
 }
+
+/** slug 로 시즌 표시. 지원하지 않는 리그(league-…)는 DB 값을 그대로 둔다 */
+export function seasonLabelForSlug(slug: string, season: string): string {
+  const leagueId = leagueIdForSlug(slug);
+  return leagueId ? seasonLabel(leagueId, season) : season;
+}

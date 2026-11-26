@@ -154,6 +154,15 @@ describe('LeaguePage readability', () => {
     expect(screen.getByText('지난 우승팀 >')).toBeInTheDocument();
   });
 
+  it('shows a European league season as start/end years', async () => {
+    (api.fetchLeagueBySlug as any).mockResolvedValue({ ...mockLeague, id: 4328, slug: 'premier-league', name: 'Premier League' });
+
+    renderLeaguePage();
+
+    expect(await screen.findByText('2025/26')).toBeInTheDocument();
+    expect(screen.queryByText('2025')).not.toBeInTheDocument();
+  });
+
   it('favorites the league using its slug, Korean name, and logo', async () => {
     (api.fetchLeagueBySlug as any).mockResolvedValue({ ...mockLeague, name_korean: 'K리그1' });
 
