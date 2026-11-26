@@ -5,6 +5,7 @@ import {
   leagueIdsByKoreanName,
   leagueNameKo,
   leagueSlugFor,
+  seasonLabelForSlug,
 } from '@/lib/leagues';
 
 const supportedLeagues = [
@@ -71,5 +72,22 @@ describe('league metadata', () => {
     expect(leagueIdsByKoreanName('리 그 1')).toEqual(['4334', '4689']);
     expect(leagueIdsByKoreanName('없는 리그')).toEqual([]);
     expect(leagueIdsByKoreanName('   ')).toEqual([]);
+  });
+});
+
+describe('seasonLabelForSlug', () => {
+  it('K리그는 단일 연도를 그대로 보여 준다', () => {
+    expect(seasonLabelForSlug('k-league-1', '2026')).toBe('2026');
+    expect(seasonLabelForSlug('k-league-2', '2026')).toBe('2026');
+  });
+
+  it('유럽 리그는 시작 연도를 시작/끝 연도로 보여 준다', () => {
+    expect(seasonLabelForSlug('premier-league', '2026')).toBe('2026/27');
+    expect(seasonLabelForSlug('ligue-1', '2099')).toBe('2099/00');
+  });
+
+  it('지원하지 않는 리그와 연도 형식이 아닌 값은 그대로 둔다', () => {
+    expect(seasonLabelForSlug('league-9999', '2026')).toBe('2026');
+    expect(seasonLabelForSlug('premier-league', '2025-2026')).toBe('2025-2026');
   });
 });

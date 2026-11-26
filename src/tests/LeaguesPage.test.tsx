@@ -80,6 +80,8 @@ describe("LeaguesPage", () => {
       "Ligue 1",
       "Custom League",
     ]);
-    expect(screen.getAllByText("시즌 2025")).toHaveLength(4);
+    // 유럽 리그는 시작 연도 '2025' 를 '2025/26' 으로, K리그·미지원 리그는 그대로 보여 준다
+    expect(screen.getAllByText("시즌 2025/26")).toHaveLength(2);
+    expect(screen.getAllByText("시즌 2025")).toHaveLength(2);
   });
 });
